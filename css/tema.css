@@ -1,0 +1,35 @@
+/* Tema "armatura Cremesi": rosso cremisi e oro su pietra scura; variante pergamena per il tema chiaro.
+   Preso dalla scheda originale senza cambiare i colori. */
+:root{
+  --bg:#141116; --bg2:#1b171e; --panel:#211c24; --panel2:#29222c; --ink:#ece4d6; --muted:#a39888; --line:#3a3036;
+  --crimson:#b3263a; --crimson-deep:#6e1222; --crimson-soft:#3a1820; --gold:#d4ad5f; --gold-deep:#8f6d2e; --gold-soft:#2f2617;
+  --ok:#5fb37f; --ok-soft:#1c2d22; --warn:#e09a46; --on-accent:#fff6ea;
+  --glow:radial-gradient(1200px 500px at 50% -120px,rgba(179,38,58,.28),transparent 70%);
+  --f-display:"Cinzel","Trajan Pro",Georgia,serif;
+  --f-serif:"Cormorant Garamond",Georgia,serif;
+  --f-body:"Alegreya Sans","Segoe UI",system-ui,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){
+  --bg:#efe7d8; --bg2:#e7dcc8; --panel:#f8f2e6; --panel2:#f1e8d6; --ink:#2a1d1a; --muted:#76665a; --line:#d9c9ae;
+  --crimson:#9b1d30; --crimson-deep:#6e1222; --crimson-soft:#f3dcdc; --gold:#8f6a24; --gold-deep:#6d5019; --gold-soft:#f1e3c2;
+  --ok:#2c6b45; --ok-soft:#dcebdf; --warn:#9a5b12; --on-accent:#fff8ee;
+  --glow:radial-gradient(1200px 500px at 50% -120px,rgba(155,29,48,.14),transparent 70%);
+  color-scheme:light}}
+:root[data-theme="light"]{
+  --bg:#efe7d8; --bg2:#e7dcc8; --panel:#f8f2e6; --panel2:#f1e8d6; --ink:#2a1d1a; --muted:#76665a; --line:#d9c9ae;
+  --crimson:#9b1d30; --crimson-deep:#6e1222; --crimson-soft:#f3dcdc; --gold:#8f6a24; --gold-deep:#6d5019; --gold-soft:#f1e3c2;
+  --ok:#2c6b45; --ok-soft:#dcebdf; --warn:#9a5b12; --on-accent:#fff8ee;
+  --glow:radial-gradient(1200px 500px at 50% -120px,rgba(155,29,48,.14),transparent 70%);
+  color-scheme:light}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);background-image:var(--glow);background-repeat:no-repeat;color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 56px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.wrap{max-width:1120px;margin:0 auto}

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Importa i dati</title>
+<link rel="stylesheet" href="../css/tema.css">
+<style>
+  body{background:var(--bg);color:var(--ink);font-family:var(--f-body);padding:24px 16px;max-width:560px;margin:0 auto;line-height:1.5}
+  h1{font-family:var(--f-display);color:var(--gold);font-size:24px}
+  input,button{font:inherit;color:inherit;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel)}
+  button{background:var(--gold-soft);border-color:var(--gold-deep);color:var(--gold);font-weight:700;cursor:pointer}
+  pre{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px;white-space:pre-wrap;font-family:var(--f-num);font-size:14px}
+  .avviso{border-left:3px solid var(--crimson);padding-left:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<h1>Importa i dati della vecchia scheda</h1>
+<p>Questa pagina legge <code>originali/dati-attuali.json</code> e scrive Rombosogliola e Ireena nell'archivio
+  (quello scelto in <code>js/config.js</code>). Si usa una volta sola.</p>
+<p class="avviso">Sovrascrive le due schede nell'archivio con i dati del file. Se ci hai già giocato con la nuova app, quelle modifiche si perdono.</p>
+<p><label>PIN di Rombosogliola <input id="pin" type="password" inputmode="numeric" maxlength="6" autocomplete="off"></label></p>
+<p><button id="vai">Importa</button></p>
+<pre id="esito">In attesa.</pre>
+<script type="module">
+  import { CONFIG } from "../js/config.js";
+  import { creaArchivio } from "../js/archivio.js";
+  import { PERSONAGGI } from "../js/personaggi/index.js";
+  import { normalizza } from "../js/regole/base.js";
+
+  const scrivi = t => document.getElementById("esito").textContent += "\n" + t;
+  document.getElementById("vai").onclick = async () => {
+    document.getElementById("esito").textContent = `Archivio: ${CONFIG.modalita}`;
+    try {
+      const arch = await creaArchivio(CONFIG);
+      await arch.entra("rombosogliola", document.getElementById("pin").value.trim());
+      scrivi("PIN corretto.");
+      const dati = await (await fetch("../originali/dati-attuali.json", { cache: "no-store" })).json();
+      for (const id of ["rombosogliola", "ireena"]) {
+        if (!dati[id]) { scrivi(`${id}: assente nel file, salto.`); continue; }
+        const s = normalizza(PERSONAGGI[id].def, dati[id]);
+        await arch.scrivi("personaggi/" + id, s);
+        scrivi(`${PERSONAGGI[id].name}: importata (PF ${s.hp}/${s.maxhp}, ${s.inv.length} oggetti, ${s.weapons.length} armi, ${s.coins.mo} mo).`);
+      }
+      await arch.esci();
+      scrivi("Fatto. Ora apri l'app ed entra col tuo profilo.");
+    } catch (e) {
+      scrivi("Errore: " + (e.message || e));
+    }
+  };
+</script>
+</body>
+</html>

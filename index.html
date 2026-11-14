@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#141116">
+<title>Il tavolo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Alegreya+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="css/tema.css">
+<link rel="stylesheet" href="css/scheda.css">
+<link rel="stylesheet" href="css/profili.css">
+</head>
+<body>
+
+<!-- ============ Schermata dei profili ============ -->
+<main id="vistaProfili" class="profili" hidden>
+  <div class="eyebrow">La maledizione di Strahd</div>
+  <h1 class="ptitolo">Chi siede al tavolo?</h1>
+  <div class="pgriglia" id="pGriglia"></div>
+  <p class="pmodo" id="pModo"></p>
+</main>
+
+<!-- ============ In attesa della scheda (Petrus, Rex) ============ -->
+<main id="vistaAttesa" class="profili" hidden>
+  <div class="pcrest" id="aStemma"></div>
+  <h1 class="ptitolo" id="aNome"></h1>
+  <p class="intro" id="aTesto"></p>
+  <button class="btn" id="aEsci">Cambia profilo</button>
+</main>
+
+<!-- ============ Scheda ============ -->
+<div id="vistaScheda" hidden>
+<div class="wrap">
+  <nav class="switch open" id="switch" aria-label="Scheda"></nav>
+  <header class="hero">
+    <div id="crest" class="crestbox"></div>
+    <div class="name">
+      <h1 id="charName">Rombosogliola</h1>
+      <div class="klass"><strong id="klassName">Guerriero</strong> <span id="subclass">Campione</span></div>
+      <div class="lvline">
+        <span class="lvbadge">Livello <b id="lvV">6</b></span>
+        <button class="btn up" id="lvUp">Sali di livello</button>
+        <button class="btn link" id="undoLv" hidden>Annulla l'ultimo</button>
+      </div>
+      <div class="tags" id="tags"></div>
+    </div>
+    <div class="ring">
+      <div class="hpblock">
+        <div class="hprow"><span class="lbl">Punti ferita</span><span><span class="hpnow" id="hpNow">52</span><span class="hpmax"> / <span id="hpMax">52</span></span></span></div>
+        <div class="hpbar" role="meter" aria-label="Punti ferita" id="hpBar"><i id="gFill"></i></div>
+      </div>
+      <div class="stats">
+        <div class="stat ca"><b id="caV">21</b><span>CA</span></div>
+        <div class="stat"><b id="iniV">+2</b><span id="iniL">Iniz.</span></div>
+        <div class="stat"><b id="spdV">9 m</b><span>Vel.</span></div>
+      </div>
+      <div class="resist" id="resist" hidden></div>
+    </div>
+  </header>
+</div>
+
+<div class="dock">
+  <div class="dock-in">
+    <span class="minihp"><span id="miniHp">50</span><small id="miniMax"> / 50</small></span>
+    <input id="amt" type="number" inputmode="numeric" min="0" placeholder="0" aria-label="Quantità">
+    <button class="btn dmg" id="bDmg">Danno</button>
+    <button class="btn heal" id="bHeal">Cura</button>
+    <button class="btn" id="bTemp" title="Imposta i PF temporanei">Temp</button>
+    <span class="dot busy" id="sync" title="Caricamento della scheda" role="status"><i></i><em id="syncTxt">Caricamento</em></span>
+  </div>
+  <div class="float" id="float" hidden aria-live="polite"><span id="floatTxt"></span><button class="btn link" id="undoHp" hidden>Annulla</button></div>
+</div>
+
+<div class="wrap">
+  <div class="grid">
+    <div class="col">
+
+      <section>
+        <h2>Risorse <small id="bcV">BC +3</small></h2>
+        <div class="res">
+          <div class="what"><div>Recuperare energie</div><small id="reTxt">Azione bonus · 1d10 + 6 PF · riposo breve</small></div>
+          <div class="act"><div class="pips" data-res="re" data-max="1" id="rePips"></div></div>
+        </div>
+        <div class="res" id="aiRow">
+          <div class="what"><div>Azione impetuosa</div><small>Un'azione in più nel turno · riposo breve</small></div>
+          <div class="act"><div class="pips" data-res="ai" data-max="1" id="aiPips"></div></div>
+        </div>
+        <div class="res">
+          <div class="what"><div id="dvName">Dadi vita d10</div><small id="dvTxt">Durante un riposo breve · 1d10 + 2 PF ciascuno</small></div>
+          <div class="act"><div class="pips" data-res="dv" data-max="6" id="dvPips"></div></div>
+        </div>
+        <div class="res" id="indRow" hidden>
+          <div class="what"><div id="indName">Indomito</div><small>Ripeti un tiro salvezza fallito · riposo lungo</small></div>
+          <div class="act"><div class="pips" data-res="ind" data-max="1" id="indPips"></div></div>
+        </div>
+        <div class="res" id="inspRow">
+          <div class="what"><div>Ispirazione</div><small>Fino a 4 · vantaggio a un tiro</small></div>
+          <div class="act"><div class="pips" data-res="insp" data-max="4" data-invert="1"></div></div>
+        </div>
+        <p class="hint">Le losanghe piene sono gli usi spesi; per i PF recuperati usa Cura.</p>
+        <div class="rests">
+          <button class="btn" id="shortRest">Riposo breve</button>
+          <button class="btn" id="longRest">Riposo lungo</button>
+        </div>
+      </section>
+
+      <section>
+        <h2>Attacchi <small id="atkTxt">Critico 19–20 · due attacchi</small><button class="btn link wedit" id="wEdit" type="button">Modifica</button></h2>
+        <table class="atk">
+          <thead><tr><th>Arma</th><th>Colpire</th><th>Danni</th><th class="wcol" hidden></th></tr></thead>
+          <tbody id="atkBody"></tbody></table>
+        <form class="wform" id="wForm" hidden>
+          <div class="lbl">Nuova arma</div>
+          <input id="wName" placeholder="Nome, es. Spadone" aria-label="Nome dell'arma">
+          <div class="wf-grid">
+            <label><span class="lbl">Dado</span><select id="wDice"><option>1d4</option><option>1d6</option><option selected>1d8</option><option>1d10</option><option>1d12</option><option>2d6</option></select></label>
+            <label><span class="lbl">Caratteristica</span><select id="wAb"><option value="for">Forza</option><option value="des">Destrezza</option><option value="fin">Accurata (la migliore)</option></select></label>
+            <label><span class="lbl">Danno</span><select id="wType"><option>Taglienti</option><option>Perforanti</option><option>Contundenti</option></select></label>
+            <label><span class="lbl">Bonus magico</span><select id="wMagic"><option value="0">nessuno</option><option value="1">+1</option><option value="2">+2</option><option value="3">+3</option></select></label>
+          </div>
+          <input id="wNote" placeholder="Nota (facoltativa), es. versatile 1d10" aria-label="Nota sull'arma">
+          <div class="wf-checks"><label><input type="checkbox" id="wRanged"> A distanza</label><label id="wAmmoWrap" hidden><input type="checkbox" id="wAmmo" checked> Usa munizioni</label></div>
+          <button class="btn gold" type="submit">Aggiungi l'arma</button>
+        </form>
+        <div class="ammo"><span>Munizioni</span>
+          <button class="btn step" data-ammo="-1" aria-label="Togli una munizione">−</button>
+          <b class="num" id="ammo">20</b>
+          <button class="btn step" data-ammo="1" aria-label="Aggiungi una munizione">+</button>
+        </div>
+      </section>
+
+      <section class="armor" id="armorSec">
+        <h2>Armatura Cremesi <small>In sintonia</small></h2>
+        <div class="spell">
+          <div class="top"><b>Stretta folgorante</b></div>
+          <div class="meta"><span class="tag">a volontà · CD 5</span></div>
+          <p>Trucchetto a contatto. Vantaggio se il bersaglio indossa metallo. 2d8 danni da fulmine e niente reazioni fino al suo prossimo turno.</p>
+        </div>
+        <div class="spell">
+          <div class="top"><b>Dardo caotico</b><div class="pips" data-res="dardo" data-max="3"></div></div>
+          <div class="meta"><span class="tag">3 al giorno · CD 5</span></div>
+          <p>1° livello, 36 m. 2d8 + 1d6 danni da fulmine. Se i due d8 sono uguali, l'energia balza su un'altra creatura entro 9 m.</p>
+        </div>
+        <div class="spell">
+          <div class="top"><b>Fulmine</b><div class="pips" data-res="fulmine" data-max="1"></div></div>
+          <div class="meta"><span class="tag">1 al giorno · CD 13</span></div>
+          <p>3° livello, linea di 30 m. Tiro salvezza su Destrezza: 8d6 danni da fulmine, metà se lo supera.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2>Condizioni</h2>
+        <div class="chips" id="conds"></div>
+        <div class="row2 death">
+          <div class="ok"><div class="lbl">Successi contro morte</div><div class="pips" data-death="s"></div></div>
+          <div class="ko"><div class="lbl">Fallimenti</div><div class="pips" data-death="f"></div></div>
+          <div><div class="lbl">Indebolimento</div><div class="exh" style="margin-top:6px">
+            <button class="btn step" data-exh="-1" aria-label="Riduci indebolimento">−</button>
+            <b class="num" id="exh">0</b>
+            <button class="btn step" data-exh="1" aria-label="Aumenta indebolimento">+</button></div></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section>
+        <h2>Caratteristiche <small id="ppV">Percezione passiva 10</small></h2>
+        <div class="abil" id="abil"></div>
+        <div class="skills" id="skills"></div>
+      </section>
+
+      <section>
+        <h2>Borsa <small id="attTxt">Sintonia 1/3</small></h2>
+        <div class="purse" id="purse"></div>
+        <div class="lbl" style="margin:4px 0 6px">Equipaggiamento <span class="attnote">· tocca <span class="att-mini" aria-hidden="true"></span> per la sintonia</span></div>
+        <ul class="inv" id="inv"></ul>
+        <form class="add" id="addForm">
+          <input id="newItem" placeholder="Aggiungi un oggetto" aria-label="Nuovo oggetto">
+          <button class="btn gold" type="submit">Aggiungi</button>
+          <label class="isw"><input type="checkbox" id="isWeapon"> È un'arma: aggiungila anche agli attacchi</label>
+        </form>
+      </section>
+
+      <section>
+        <h2>Privilegi</h2>
+        <div id="feats"></div>
+        <dl class="kv" id="kv"></dl>
+      </section>
+
+      <section>
+        <h2>Note di sessione</h2>
+        <textarea id="notes" placeholder="Appunti, nomi, cose da ricordare…"></textarea>
+      </section>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ============ Finestre ============ -->
+<div class="veil" id="veil" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="lvTitle">
+    <h3 id="lvTitle">Livello 7</h3>
+    <p class="intro">Ecco cosa cambia. Conferma e la scheda si aggiorna da sola.</p>
+    <ul class="chg" id="lvChanges"></ul>
+    <div id="lvChoice"></div>
+    <div class="foot"><button class="btn" id="lvCancel">Annulla</button><button class="btn up" id="lvOk">Conferma</button></div>
+  </div>
+</div>
+
+<div class="veil" id="pinVeil" hidden>
+  <div class="sheet pinsheet" role="dialog" aria-modal="true" aria-labelledby="pinNome">
+    <div class="pinhead"><div class="pcrest small" id="pinStemma"></div><div><div class="eyebrow">Entra come</div><h3 id="pinNome">Master</h3></div></div>
+    <div class="pindots" id="pinDots" aria-live="polite"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <p class="pinmsg" id="pinMsg">Scrivi il PIN a sei cifre</p>
+    <div class="pinpad" id="pinPad">
+      <button data-n="1">1</button><button data-n="2">2</button><button data-n="3">3</button>
+      <button data-n="4">4</button><button data-n="5">5</button><button data-n="6">6</button>
+      <button data-n="7">7</button><button data-n="8">8</button><button data-n="9">9</button>
+      <button class="pinaux" id="pinAnnulla" type="button">Annulla</button><button data-n="0">0</button>
+      <button class="pinaux" id="pinCanc" type="button" aria-label="Cancella l'ultima cifra"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h11v14H9l-6-7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 9l5 6M17 9l-5 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<div class="veil" id="esciVeil" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="esciTit">
+    <h3 id="esciTit">Cambiare profilo?</h3>
+    <p class="intro" id="esciTxt">Le modifiche sono già salvate. Per rientrare servirà di nuovo il PIN.</p>
+    <div class="foot"><button class="btn" id="esciNo">Resta</button><button class="btn up" id="esciSi">Cambia profilo</button></div>
+  </div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

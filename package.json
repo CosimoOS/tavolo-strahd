@@ -1,0 +1,10 @@
+{
+  "name": "dnd-platform",
+  "private": true,
+  "type": "module",
+  "description": "Schede e combattimento per la campagna di D&D del gruppo",
+  "scripts": {
+    "start": "node strumenti/server.js",
+    "test": "node --test test/"
+  }
+}

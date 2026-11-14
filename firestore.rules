@@ -1,0 +1,39 @@
+// Regole di sicurezza di Firestore: girano sui server di Google, non sul telefono,
+// quindi nessuno le può aggirare modificando l'app. Si incollano nella console di Firebase
+// (Firestore Database → Regole → Pubblica).
+//
+// Chi è chi: ogni profilo è un utente con email <profilo>@example.com e il PIN come password.
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function entrato()      { return request.auth != null; }
+    function profilo()      { return request.auth.token.email.split('@')[0]; }
+    function dm()           { return entrato() && profilo() == 'dm'; }
+
+    // Quali schede appartengono a quale profilo. Rombosogliola gioca anche Ireena.
+    function proprietario(scheda) {
+      return entrato() && (
+        profilo() == scheda ||
+        (profilo() == 'rombosogliola' && scheda == 'ireena')
+      );
+    }
+
+    // Schede: le leggono tutti quelli entrati; le scrive il proprietario o il DM.
+    match /personaggi/{scheda} {
+      allow read:  if entrato();
+      allow write: if dm() || proprietario(scheda);
+    }
+
+    // Dati del master (mostri, PF veri dei nemici): solo il DM, né lettura né scrittura per gli altri.
+    match /dm/{documento=**} {
+      allow read, write: if dm();
+    }
+
+    // Tutto il resto è chiuso.
+    match /{tutto=**} {
+      allow read, write: if false;
+    }
+  }
+}

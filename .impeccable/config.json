@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gradient-text",
+        "value": "*",
+        "files": [
+          "index.html"
+        ],
+        "createdAt": "2026-11-14T17:03:23.510Z",
+        "reason": "Titolo in sfumatura ereditato dalla scheda originale dell'utente, che ha chiesto di mantenere il tema invariato"
+      }
+    ]
+  }
+}
