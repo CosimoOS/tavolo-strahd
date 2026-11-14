@@ -8,13 +8,13 @@
    Nota sulla sicurezza: i valori "firebase" qui sotto NON sono segreti. Finiscono comunque nel
    browser di chiunque apra l'app. A proteggere i dati sono le regole in firestore.rules. */
 export const CONFIG = {
-  modalita: "locale",
+  modalita: "firebase",
 
   firebase: {
-    apiKey: "",
-    authDomain: "",
-    projectId: "",
-    appId: "",
+    apiKey: "AIzaSyCa0xYAIHHvK3jRJPmABdwwWpddvxnrWgY",
+    authDomain: "tavolo-strahd.firebaseapp.com",
+    projectId: "tavolo-strahd",
+    appId: "1:813054865415:web:69546c79f5760e1f567aa2",
   },
 
   /* Ogni profilo è un utente Firebase con email <profilo>@<dominio> e il PIN come password.
