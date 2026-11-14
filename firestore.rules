@@ -31,6 +31,28 @@ service cloud.firestore {
       allow read, write: if dm();
     }
 
+    // Scontro: lo vedono tutti quelli entrati, lo prepara e lo guida il master.
+    // Un giocatore può solo far avanzare il turno di uno, e solo quando tocca a un suo personaggio.
+    match /scontro/attuale {
+      allow read: if entrato();
+      allow write: if dm();
+      allow update: if entrato()
+        && resource.data.stato == 'in corso'
+        && proprietario(resource.data.ordine[resource.data.turno].id)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['turno', 'round'])
+        && (
+          (request.resource.data.turno == resource.data.turno + 1 && request.resource.data.round == resource.data.round) ||
+          (request.resource.data.turno == 0 && request.resource.data.round == resource.data.round + 1
+            && resource.data.turno == resource.data.ordine.size() - 1)
+        );
+    }
+
+    // Tiri d'iniziativa: ognuno scrive solo il proprio (Rombosogliola anche quello di Ireena), il master tutti.
+    match /scontro/attuale/tiri/{scheda} {
+      allow read: if entrato();
+      allow write: if dm() || proprietario(scheda);
+    }
+
     // Tutto il resto è chiuso.
     match /{tutto=**} {
       allow read, write: if false;

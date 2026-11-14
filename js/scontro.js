@@ -1,0 +1,260 @@
+/* Lo scontro: iniziativa e turni, condivisi in tempo reale fra tutti i telefoni.
+
+   Nell'archivio:
+     scontro/attuale            → { stato, id, partecipanti, ordine, turno, round }   (lo scrive il master;
+                                  un giocatore può solo far avanzare il turno quando tocca a lui)
+     scontro/attuale/tiri/<id>  → il tiro di un personaggio (lo scrive il suo giocatore o il master)
+
+   stato: "chiuso" → nessuno scontro · "tiri" → si tira l'iniziativa · "in corso" → si gioca a turni.
+   Ogni scontro ha un id nuovo: i tiri rimasti da uno scontro vecchio non contano più. */
+import { PERSONAGGI, PROFILI } from "./personaggi/index.js";
+import { totaleIniziativa, ordina, pariConPrecedente, avanza, indietro } from "./regole/combattimento.js";
+
+const DOC = "scontro/attuale", TIRI = "scontro/attuale/tiri";
+const $ = id => document.getElementById(id);
+function esc(t) { const e = document.createElement("span"); e.textContent = t; return e.innerHTML; }
+const sg = n => (n >= 0 ? "+" : "−") + Math.abs(n);
+
+let arch = null, dm = false, miei = [], info = () => null, toast = () => {};
+let ascolti = [], SC = null, TIRATI = {}, vista = false, rimandato = null, ultimoAvviso = "", inVolo = false;
+
+/* ---------- avvio e arresto (li chiama app.js) ---------- */
+export function avviaScontro({ archivio, profilo, datiIniziativa, avvisa }) {
+  arch = archivio; dm = profilo.id === "dm"; miei = dm ? [] : profilo.personaggi.slice();
+  info = datiIniziativa; toast = avvisa; SC = null; TIRATI = {}; rimandato = null; ultimoAvviso = "";
+  ascolti = [
+    arch.ascolta(DOC, dati => { SC = dati || { stato: "chiuso" }; aggiorna(); },
+      () => toast("Scontro non raggiungibile", 5000), { anchePropri: true }),
+    arch.ascoltaRaccolta(TIRI, lista => {
+      TIRATI = Object.fromEntries(lista.map(t => [t.id, t.dati]));
+      aggiorna();
+    }),
+  ];
+}
+export function fermaScontro() {
+  ascolti.forEach(stop => stop()); ascolti = [];
+  SC = null; mostraVista(false); $("iniVeil").hidden = true;
+}
+
+/** Apre o chiude la vista dello scontro al posto della scheda (la barra dei PF resta). */
+export function mostraVista(si) {
+  vista = !!si;
+  $("vistaScheda").classList.toggle("in-scontro", vista);
+  $("vistaScontro").hidden = !vista;
+  const b = document.querySelector(".switch [data-scontro]");
+  if (b) b.setAttribute("aria-pressed", vista);
+  if (vista) { document.querySelectorAll(".switch [data-char]").forEach(x => x.setAttribute("aria-pressed", "false")); window.scrollTo({ top: 0 }); }
+  disegna();
+}
+
+/* ---------- chi partecipa ---------- */
+/* Tutti i personaggi con scheda; chi non ha ancora la scheda (Petrus, Rex) entra "a mano": il master scrive il totale. */
+function catalogo() {
+  const out = [];
+  for (const p of PROFILI) {
+    if (p.id === "dm") continue;
+    if (p.personaggi.length) p.personaggi.forEach(k => PERSONAGGI[k] && out.push({ id: k, nome: PERSONAGGI[k].name, tipo: "scheda" }));
+    else out.push({ id: p.id, nome: p.nome, tipo: "manuale" });
+  }
+  return out;
+}
+const tiroDi = id => { const t = TIRATI[id]; return t && SC && t.scontro === SC.id ? t : null; };
+const mio = id => miei.includes(id);
+const attivo = () => (SC && SC.stato === "in corso" && SC.ordine && SC.ordine[SC.turno]) || null;
+
+/* ---------- reazioni ai cambiamenti ---------- */
+function aggiorna() {
+  if (!SC) return;
+  const b = document.querySelector(".switch [data-scontro]");
+  if (b) {
+    b.hidden = !dm && SC.stato === "chiuso";
+    b.classList.toggle("avviso", daTirare().length > 0 || !!(attivo() && mio(attivo().id)));
+  }
+  if (!dm && SC.stato === "chiuso" && vista) mostraVista(false);
+
+  /* finestra del tiro: si apre da sola ai giocatori che devono ancora tirare */
+  if (daTirare().length && rimandato !== SC.id) apriTiro();
+  else if (!daTirare().length) $("iniVeil").hidden = true;
+
+  /* inizio dello scontro e "tocca a te" */
+  const a = attivo();
+  if (a) {
+    const chiave = `${SC.id}:${SC.round}:${SC.turno}`;
+    if (chiave !== ultimoAvviso) {
+      const primo = !ultimoAvviso.startsWith(SC.id + ":");
+      ultimoAvviso = chiave;
+      if (primo && !vista) mostraVista(true);
+      if (mio(a.id)) { toast(`Tocca a te: ${a.nome}`, 6000); try { navigator.vibrate && navigator.vibrate([60, 40, 60]); } catch (_) {} }
+    }
+  }
+  disegna();
+}
+/* i miei personaggi in gara che non hanno ancora tirato (per il master: nessuno, tira dalla sua vista) */
+function daTirare() {
+  if (!SC || SC.stato !== "tiri" || dm) return [];
+  return (SC.partecipanti || []).filter(p => mio(p.id) && !tiroDi(p.id));
+}
+
+/* ---------- campi per scrivere un tiro ---------- */
+/* Per un personaggio con scheda: uno o due d20 (due con vantaggio) e l'app aggiunge il modificatore.
+   Per uno "a mano": il master scrive direttamente il totale. */
+function campi(p, dove) {
+  if (p.tipo === "manuale")
+    return `<label class="dado tot"><span class="lbl">Totale</span><input type="number" inputmode="numeric" data-tiro="${p.id}" data-i="0" aria-label="Totale di iniziativa di ${esc(p.nome)}"></label>
+      <output class="somma" data-somma="${p.id}"></output>`;
+  const d = info(p.id); if (!d) return "";
+  const n = d.vantaggio ? 2 : 1, aiuto = d.vantaggio ? "vantaggio: conta il più alto" : "";
+  let h = "";
+  for (let i = 0; i < n; i++) h += `<label class="dado"><span class="lbl">d20${n > 1 ? " " + (i + 1) : ""}</span><input type="number" inputmode="numeric" min="1" max="20" data-tiro="${p.id}" data-i="${i}" aria-label="Dado ${i + 1} di ${esc(p.nome)}"${dove === "veil" && i === 0 ? " data-primo" : ""}></label>`;
+  return h + `<output class="somma" data-somma="${p.id}">${sg(d.mod)}</output>${aiuto ? `<small class="aiuto">${aiuto}</small>` : ""}`;
+}
+function leggiCampi(radice, p) {
+  const vals = [...radice.querySelectorAll(`[data-tiro="${p.id}"]`)].map(i => i.value);
+  if (p.tipo === "manuale") {
+    const t = parseInt(vals[0], 10);
+    return Number.isInteger(t) ? { dadi: [], mod: 0, tot: t, des: null } : null;   // Destrezza sconosciuta
+  }
+  const d = info(p.id);
+  const r = totaleIniziativa({ dadi: vals, mod: d.mod, vantaggio: d.vantaggio });
+  return r && { dadi: r.dadi, usato: r.usato, mod: r.mod, tot: r.tot, des: d.des };
+}
+/* mentre si scrive, mostra il conto: "14 + 1 = 15" */
+function mostraSomma(radice, p) {
+  const out = radice.querySelector(`[data-somma="${p.id}"]`); if (!out) return;
+  const r = leggiCampi(radice, p);
+  if (p.tipo === "manuale") { out.textContent = ""; return; }
+  const d = info(p.id);
+  out.innerHTML = r ? `${r.usato} ${d.mod >= 0 ? "+" : "−"} ${Math.abs(d.mod)} = <b>${r.tot}</b>` : sg(d.mod);
+}
+async function salvaTiro(p, r) {
+  await arch.scrivi(`${TIRI}/${p.id}`, { scontro: SC.id, nome: p.nome, tipo: p.tipo, ...r });
+}
+
+/* ---------- finestra "Tirate l'iniziativa" (giocatori) ---------- */
+function apriTiro() {
+  const v = $("iniVeil"), lista = daTirare();
+  const gia = v.hidden ? null : [...v.querySelectorAll("[data-tiro]")].map(i => [i.dataset.tiro + i.dataset.i, i.value]);
+  $("iniCampi").innerHTML = lista.map(p => `<div class="riga-tiro" data-p="${p.id}"><b>${esc(p.nome)}</b><div class="dadi">${campi(p, "veil")}</div></div>`).join("");
+  if (gia) gia.forEach(([k, val]) => { const i = $("iniCampi").querySelector(`[data-tiro="${k.slice(0, -1)}"][data-i="${k.slice(-1)}"]`); if (i) i.value = val; });
+  lista.forEach(p => mostraSomma($("iniCampi"), p));
+  $("iniMsg").textContent = "";
+  const apri = v.hidden; v.hidden = false;
+  if (apri) { const f = $("iniCampi").querySelector("[data-primo]"); if (f) f.focus(); }
+}
+$("iniCampi").addEventListener("input", e => {
+  const id = e.target.dataset.tiro; if (!id) return;
+  const p = (SC.partecipanti || []).find(x => x.id === id); if (p) mostraSomma($("iniCampi"), p);
+});
+$("iniOk").onclick = async () => {
+  const lista = daTirare(); let salvati = 0, mancano = [];
+  for (const p of lista) {
+    const r = leggiCampi($("iniCampi"), p);
+    if (!r) { mancano.push(p.nome); continue; }
+    try { await salvaTiro(p, r); salvati++; } catch (_) { $("iniMsg").textContent = "Tiro non salvato: controlla la connessione"; return; }
+  }
+  if (mancano.length) $("iniMsg").textContent = `Manca il dado di ${mancano.join(" e ")} (un numero da 1 a 20)`;
+  else { $("iniVeil").hidden = true; toast(salvati > 1 ? "Iniziative inviate" : "Iniziativa inviata"); }
+};
+$("iniDopo").onclick = () => { rimandato = SC && SC.id; $("iniVeil").hidden = true; };
+
+/* ---------- vista dello scontro ---------- */
+function disegna() {
+  if (!vista || !SC) return;
+  const el = $("vistaScontro");
+  /* ridisegnare non deve cancellare quello che il master sta scrivendo o le spunte già tolte */
+  const scritti = [...el.querySelectorAll("[data-tiro]")].map(i => [i.dataset.tiro, i.dataset.i, i.value]);
+  const tolti = [...el.querySelectorAll("[data-part]:not(:checked)")].map(i => i.dataset.part);
+  if (SC.stato === "chiuso") el.innerHTML = dm ? vistaPreparazione() : `<section><h2>Scontro</h2><p class="vuoto">Nessuno scontro in corso.</p></section>`;
+  else if (SC.stato === "tiri") el.innerHTML = vistaTiri();
+  else el.innerHTML = vistaTurni();
+  scritti.forEach(([id, i, v]) => { const x = el.querySelector(`[data-tiro="${id}"][data-i="${i}"]`); if (x) x.value = v; });
+  tolti.forEach(id => { const x = el.querySelector(`[data-part="${id}"]`); if (x) x.checked = false; });
+  (SC.partecipanti || []).forEach(p => el.querySelector(`[data-somma="${p.id}"]`) && mostraSomma(el, p));
+}
+
+function vistaPreparazione() {
+  return `<section><h2>Nuovo scontro</h2>
+    <p class="vuoto">Scegli chi partecipa, poi chiedi l'iniziativa: sui telefoni dei giocatori comparirà la richiesta.</p>
+    <ul class="scelta">${catalogo().map(p => `<li><label><input type="checkbox" data-part="${p.id}" checked>
+      <span>${esc(p.nome)}</span>${p.tipo === "manuale" ? `<small>senza scheda: scrivi tu il totale</small>` : ""}</label></li>`).join("")}</ul>
+    <div class="azioni"><button class="btn up" data-az="chiedi">Tirate l'iniziativa</button></div></section>`;
+}
+
+function vistaTiri() {
+  const parts = SC.partecipanti || [], fatti = parts.filter(p => tiroDi(p.id)).length;
+  const righe = parts.map(p => {
+    const t = tiroDi(p.id);
+    let destra;
+    if (t) destra = `<span class="tot">${t.tot}</span><small>${t.tipo === "manuale" ? "a mano" : `d20 ${t.usato} ${sg(t.mod)}`}</small>`;
+    else if (dm) destra = `<div class="dadi">${campi(p, "dm")}</div><button class="btn" data-az="segna" data-id="${p.id}">Segna</button>`;
+    else if (mio(p.id)) destra = `<button class="btn gold" data-az="tira">Tira</button>`;
+    else destra = `<small>in attesa</small>`;
+    return `<li class="${t ? "fatto" : ""}" data-p="${p.id}"><span class="nome">${esc(p.nome)}</span><span class="stato">${destra}</span></li>`;
+  }).join("");
+  const mancano = parts.filter(p => !tiroDi(p.id)).map(p => p.nome);
+  return `<section><h2>Tirate l'iniziativa <small>${fatti} su ${parts.length}</small></h2>
+    <ul class="tiri">${righe}</ul>
+    ${dm ? `<div class="azioni"><button class="btn link" data-az="chiudi">Annulla lo scontro</button>
+      <button class="btn up" data-az="inizia"${fatti ? "" : " disabled"}>Inizia il round 1</button></div>
+      ${mancano.length && fatti ? `<p class="hint">Chi non ha tirato (${esc(mancano.join(", "))}) resta fuori dall'ordine.</p>` : ""}`
+      : `<p class="hint">Quando avranno tirato tutti, il master avvierà lo scontro.</p>`}</section>`;
+}
+
+function vistaTurni() {
+  const a = attivo(), o = SC.ordine || [];
+  const righe = o.map((v, i) => `<li class="${i === SC.turno ? "attivo" : ""}${mio(v.id) ? " mio" : ""}"${i === SC.turno ? ' aria-current="step"' : ""}>
+      <span class="pos">${i + 1}</span><span class="nome">${esc(v.nome)}</span>
+      ${dm && pariConPrecedente(o, i) ? `<button class="btn link" data-az="scambia" data-i="${i}" aria-label="Metti ${esc(v.nome)} prima">Scambia</button>` : ""}
+      <span class="tot">${v.tot}</span></li>`).join("");
+  const puo = dm || (a && mio(a.id));
+  return `<section><h2>Round ${SC.round} <small>${a ? "di turno: " + esc(a.nome) : ""}</small></h2>
+    ${a && mio(a.id) ? `<p class="tuo">Tocca a te: ${esc(a.nome)}</p>` : ""}
+    <ol class="turni">${righe}</ol>
+    <div class="azioni">
+      ${dm ? `<button class="btn link" data-az="chiudi">Chiudi lo scontro</button><button class="btn" data-az="indietro">Indietro</button>` : ""}
+      ${puo ? `<button class="btn up fine" data-az="fine"${inVolo ? " disabled" : ""}>Fine turno</button>` : ""}
+    </div></section>`;
+}
+
+/* ---------- pulsanti della vista ---------- */
+$("vistaScontro").addEventListener("input", e => {
+  const id = e.target.dataset.tiro; if (!id) return;
+  const p = (SC.partecipanti || []).find(x => x.id === id); if (p) mostraSomma($("vistaScontro"), p);
+});
+$("vistaScontro").addEventListener("click", async e => {
+  const b = e.target.closest("[data-az]"); if (!b || b.disabled) return;
+  const az = b.dataset.az;
+  try {
+    if (az === "chiedi") {
+      const scelti = [...$("vistaScontro").querySelectorAll("[data-part]:checked")].map(i => i.dataset.part);
+      const partecipanti = catalogo().filter(p => scelti.includes(p.id));
+      if (!partecipanti.length) { toast("Scegli almeno un partecipante"); return; }
+      await arch.scrivi(DOC, { stato: "tiri", id: String(Date.now()), partecipanti, ordine: [], turno: 0, round: 1 });
+    } else if (az === "tira") {
+      rimandato = null; apriTiro();
+    } else if (az === "segna") {
+      const p = SC.partecipanti.find(x => x.id === b.dataset.id);
+      const r = leggiCampi(b.closest("li"), p);
+      if (!r) { toast(p.tipo === "manuale" ? "Scrivi il totale" : "Scrivi il d20 (da 1 a 20)"); return; }
+      await salvaTiro(p, r);
+    } else if (az === "inizia") {
+      const voci = SC.partecipanti.filter(p => tiroDi(p.id)).map(p => { const t = tiroDi(p.id); return { id: p.id, nome: p.nome, tot: t.tot, des: t.des ?? null }; });
+      await arch.aggiorna(DOC, { stato: "in corso", ordine: ordina(voci), turno: 0, round: 1 });
+    } else if (az === "fine" || az === "indietro") {
+      inVolo = true; disegna();
+      const n = (SC.ordine || []).length;
+      await arch.aggiorna(DOC, az === "fine" ? avanza(SC, n) : indietro(SC, n));
+    } else if (az === "scambia") {
+      const i = +b.dataset.i, o = SC.ordine.slice();
+      [o[i - 1], o[i]] = [o[i], o[i - 1]];
+      await arch.aggiorna(DOC, { ordine: o });
+    } else if (az === "chiudi") {
+      await arch.scrivi(DOC, { stato: "chiuso" });
+      toast("Scontro chiuso");
+    }
+  } catch (err) {
+    toast(err && err.solaLettura ? "Non è il tuo turno" : "Non salvato: controlla la connessione", 4000);
+  } finally {
+    if (inVolo) { inVolo = false; disegna(); }
+  }
+});

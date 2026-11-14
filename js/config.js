@@ -7,8 +7,12 @@
 
    Nota sulla sicurezza: i valori "firebase" qui sotto NON sono segreti. Finiscono comunque nel
    browser di chiunque apra l'app. A proteggere i dati sono le regole in firestore.rules. */
+/* Aggiungendo ?prova all'indirizzo (http://localhost:8080/?prova) l'app usa la modalità locale
+   con i PIN di prova: comodo per provare senza toccare i dati veri su Firebase. */
+const prova = typeof location !== "undefined" && new URLSearchParams(location.search).has("prova");
+
 export const CONFIG = {
-  modalita: "firebase",
+  modalita: prova ? "locale" : "firebase",
 
   firebase: {
     apiKey: "AIzaSyCa0xYAIHHvK3jRJPmABdwwWpddvxnrWgY",

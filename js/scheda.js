@@ -13,7 +13,7 @@ let arch = null, ids = [], cur = null, C = null, S = null;
 const STATE = {}, LOADED = {};
 let ascolti = [], canWrite = true, editW = false;
 const saving = {}, pending = {}, timers = {};
-let lastMove = null, floatTimer = null, chiediUscita = () => {};
+let lastMove = null, floatTimer = null, chiediUscita = () => {}, onScontro = () => {}, onScheda = () => {};
 
 function D() { return calcola(C, S); }
 
@@ -21,7 +21,7 @@ function showFloat(t, undo, ms) {
   $("floatTxt").textContent = t; $("undoHp").hidden = !undo; $("float").classList.toggle("plain", !undo); $("float").hidden = false;
   clearTimeout(floatTimer); floatTimer = setTimeout(hideLast, ms || (undo ? 8000 : 3200));
 }
-function toast(t, ms) { showFloat(t, false, ms); }
+export function toast(t, ms) { showFloat(t, false, ms); }
 function setSync(state, txt) { const el = $("sync"); el.className = "dot " + state; el.title = txt; $("syncTxt").textContent = txt; }
 
 $("purse").innerHTML = COINS.map(([k, name, steps]) => `<div class="coin${k === "mo" ? " big" : ""}">
@@ -34,7 +34,8 @@ function render() {
   if (!S) return;
   const X = D(), L = X.L;
   document.title = C.name;
-  document.querySelectorAll(".switch button[data-char]").forEach(b => b.setAttribute("aria-pressed", b.dataset.char === cur));
+  const inScontro = $("vistaScheda").classList.contains("in-scontro");
+  document.querySelectorAll(".switch button[data-char]").forEach(b => b.setAttribute("aria-pressed", b.dataset.char === cur && !inScontro));
   $("charName").textContent = C.name; $("klassName").textContent = C.classe; $("subclass").textContent = C.sub;
   if ($("crest").dataset.tipo !== C.stemma) { $("crest").innerHTML = stemma(C.stemma, { piena: true }); $("crest").dataset.tipo = C.stemma; }
   $("tags").innerHTML = C.tags.map(t => `<span>${esc(t)}</span>`).join("");
@@ -115,8 +116,9 @@ async function flush(k) {
 }
 
 /* ---------- apertura e chiusura ---------- */
-export function apriScheda({ archivio, personaggi, onEsci }) {
+export function apriScheda({ archivio, personaggi, onEsci, scontro }) {
   arch = archivio; ids = personaggi.filter(k => PERSONAGGI[k]); chiediUscita = onEsci; canWrite = true;
+  onScontro = (scontro && scontro.apri) || (() => {}); onScheda = (scontro && scontro.chiudi) || (() => {});
   ids.forEach(k => { STATE[k] = clone(PERSONAGGI[k].def); LOADED[k] = false; });
   costruisciSelettore();
   document.body.classList.add("in-scheda");
@@ -144,17 +146,26 @@ export async function chiudiScheda() {
   ascolti.forEach(stop => stop()); ascolti = [];
   $("vistaScheda").hidden = true; document.body.classList.remove("in-scheda");
   hideLast(); S = null; cur = null;
-  try { history.replaceState(null, "", location.pathname); } catch (_) {}
+  try { history.replaceState(null, "", location.pathname + location.search); } catch (_) {}
+}
+
+/** Quello che serve allo scontro per l'iniziativa di un personaggio di questo profilo. */
+export function datiIniziativa(k) {
+  if (!STATE[k] || !PERSONAGGI[k]) return null;
+  const X = calcola(PERSONAGGI[k], STATE[k]);
+  return { mod: X.ini, des: STATE[k].scores.des, vantaggio: !!PERSONAGGI[k].ready(X.L) };
 }
 
 /* ---------- selettore delle schede ---------- */
 function costruisciSelettore() {
   const esci = `<button class="esci" data-esci aria-label="Cambia profilo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h5v16h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 8l-4 4 4 4M6 12h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="nm">Profilo</span></button>`;
-  $("switch").innerHTML = ids.map(k => `<button data-char="${k}" aria-pressed="false" aria-label="${esc(PERSONAGGI[k].name)}">${stemma(PERSONAGGI[k].stemma)}<span class="nm">${esc(PERSONAGGI[k].name)}</span></button>`).join("") + esci;
+  /* "Scontro": due lame incrociate. Nascosto finché lo scontro non lo rende visibile (al master sempre) */
+  const scontro = `<button class="scontro" data-scontro hidden aria-pressed="false" aria-label="Scontro"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4l10 10M4 5l1-1M13 16l3-3M15 18l3-3M17.5 17.5l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M19 4L9 14M20 5l-1-1M11 16l-3-3M9 18l-3-3M6.5 17.5L4 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="nm">Scontro</span></button>`;
+  $("switch").innerHTML = ids.map(k => `<button data-char="${k}" aria-pressed="false" aria-label="${esc(PERSONAGGI[k].name)}">${stemma(PERSONAGGI[k].stemma)}<span class="nm">${esc(PERSONAGGI[k].name)}</span></button>`).join("") + scontro + esci;
 }
 function go(k) {
   if (!ids.includes(k)) k = ids[0];
-  cur = k; C = PERSONAGGI[k]; S = STATE[k]; editW = false; hideLast(); render();
+  cur = k; C = PERSONAGGI[k]; S = STATE[k]; editW = false; hideLast(); onScheda(); render();
   try { if (location.hash !== "#" + k) history.replaceState(null, "", "#" + k); } catch (_) {}
 }
 /* il selettore si apre coi nomi, poi si riduce alle sole icone */
@@ -167,8 +178,10 @@ $("switch").addEventListener("click", e => {
     if (!w.classList.contains("open")) { swOpen(2500); return; }
     chiediUscita(); return;
   }
-  if (!w.classList.contains("open") && b.dataset.char === cur) { swOpen(2500); return; }
-  if (b.dataset.char !== cur) { go(b.dataset.char); window.scrollTo({ top: 0, behavior: "smooth" }); }
+  if (b.hasAttribute("data-scontro")) { onScontro(); swOpen(1400); return; }
+  const inScontro = $("vistaScheda").classList.contains("in-scontro");
+  if (!w.classList.contains("open") && b.dataset.char === cur && !inScontro) { swOpen(2500); return; }
+  if (b.dataset.char !== cur || inScontro) { go(b.dataset.char); window.scrollTo({ top: 0, behavior: "smooth" }); }
   swOpen(1400);
 });
 window.addEventListener("hashchange", () => { if (S) go(location.hash.slice(1)); });

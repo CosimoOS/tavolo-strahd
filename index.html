@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="css/tema.css">
 <link rel="stylesheet" href="css/scheda.css">
 <link rel="stylesheet" href="css/profili.css">
+<link rel="stylesheet" href="css/scontro.css">
 </head>
 <body>
 
@@ -72,6 +73,9 @@
   </div>
   <div class="float" id="float" hidden aria-live="polite"><span id="floatTxt"></span><button class="btn link" id="undoHp" hidden>Annulla</button></div>
 </div>
+
+<!-- Scontro: prende il posto della scheda quando lo si apre dal selettore in basso; la barra dei PF resta -->
+<div class="wrap"><main id="vistaScontro" class="vista-scontro" hidden aria-live="polite"></main></div>
 
 <div class="wrap">
   <div class="grid">
@@ -221,6 +225,16 @@
       <button class="pinaux" id="pinAnnulla" type="button">Annulla</button><button data-n="0">0</button>
       <button class="pinaux" id="pinCanc" type="button" aria-label="Cancella l'ultima cifra"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h11v14H9l-6-7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 9l5 6M17 9l-5 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
+  </div>
+</div>
+
+<div class="veil" id="iniVeil" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="iniTit">
+    <h3 id="iniTit">Tirate l'iniziativa</h3>
+    <p class="intro">Tira il d20 al tavolo e scrivi il numero uscito: il modificatore lo aggiunge l'app.</p>
+    <div id="iniCampi"></div>
+    <p class="pinmsg err" id="iniMsg" aria-live="polite"></p>
+    <div class="foot"><button class="btn" id="iniDopo">Più tardi</button><button class="btn up" id="iniOk">Conferma</button></div>
   </div>
 </div>
 

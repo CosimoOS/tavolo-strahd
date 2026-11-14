@@ -12,7 +12,11 @@ npm start
 
 Poi apri <http://localhost:8080> nel browser. Per fermare il server premi `Ctrl+C` nel Terminale.
 
-La prima volta, per caricare i dati della vecchia scheda, apri <http://localhost:8080/strumenti/importa.html>.
+L'app usa Firebase: entri con i PIN veri e i dati sono quelli condivisi col gruppo.
+
+Per provare senza toccare i dati veri apri <http://localhost:8080/?prova>: i dati restano solo in quel browser
+e i PIN sono quelli di prova scritti in `js/config.js`. Due schede del browser aperte con `?prova` si parlano,
+così puoi fare il master in una e il giocatore nell'altra.
 
 ## Test delle regole
 
@@ -25,12 +29,13 @@ npm test
 | Cartella / file | Cosa contiene |
 |---|---|
 | `index.html` | L'unica pagina dell'app: profili, PIN, scheda |
-| `css/` | Tema Cremesi (`tema.css`), scheda, profili |
+| `css/` | Tema Cremesi (`tema.css`), scheda, profili, scontro |
 | `js/app.js` | Avvio: decide quale schermata mostrare |
 | `js/config.js` | Prova locale o Firebase; PIN di prova |
 | `js/archivio.js` | L'unico file che parla col database |
 | `js/accesso.js` | Schermata dei profili e tastierino del PIN |
 | `js/scheda.js` | La scheda del personaggio |
+| `js/scontro.js` | Iniziativa e turni, condivisi fra i telefoni |
 | `js/personaggi/` | Le regole di ogni personaggio e l'elenco dei profili |
 | `js/regole/` | Conti della 5e, funzioni pure provate dai test |
 | `js/stemmi.js` | Gli stemmi in SVG |
