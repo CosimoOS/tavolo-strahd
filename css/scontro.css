@@ -58,14 +58,12 @@
 .turni .btn.link{padding:6px 8px;font-size:13px;min-height:40px}
 .vista-scontro .fine{min-width:9em}
 
-/* il pulsante "Scontro" nel selettore in basso: un punto cremisi quando serve la tua attenzione */
+/* il pulsante "Scontro" nel selettore in basso: un punto cremisi fermo quando serve la tua attenzione */
 .switch .scontro{position:relative;color:var(--muted)}
 .switch .scontro svg{width:24px;height:24px}
 .switch .scontro.avviso::after{content:"";position:absolute;top:8px;right:10px;width:9px;height:9px;border-radius:50%;
   background:var(--crimson);box-shadow:0 0 0 2px var(--panel)}
 .switch.open .scontro.avviso::after{right:12px}
-@media (prefers-reduced-motion:no-preference){.switch .scontro.avviso::after{animation:richiamo 1.6s ease-in-out infinite}}
-@keyframes richiamo{50%{opacity:.35}}
 
 /* Con il pulsante "Scontro" il selettore aperto non sta più in un telefono stretto:
    lì il nome resta scritto solo sulla voce attiva, le altre mostrano l'icona. */
