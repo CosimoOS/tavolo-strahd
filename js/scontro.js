@@ -9,6 +9,7 @@
    Ogni scontro ha un id nuovo: i tiri rimasti da uno scontro vecchio non contano più. */
 import { PERSONAGGI, PROFILI } from "./personaggi/index.js";
 import { CONFIG } from "./config.js";
+import { avviaNemici, fermaNemici, htmlPreparazione, pannelloAperto, schieraScelte, infoGruppo, htmlTurniMaster, clic as clicNemici, input as inputNemici } from "./nemici.js";
 import { totaleIniziativa, ordina, pariConPrecedente, avanza, indietro } from "./regole/combattimento.js";
 
 const DOC = "scontro/attuale", TIRI = "scontro/attuale/tiri";
@@ -35,9 +36,11 @@ export function avviaScontro({ archivio, profilo, datiIniziativa, avvisa }) {
       aggiorna();
     }),
   ];
+  if (dm) avviaNemici({ archivio, aggiorna: () => disegna(true), avvisa });
 }
 export function fermaScontro() {
   ascolti.forEach(stop => stop()); ascolti = [];
+  if (dm) fermaNemici();
   SC = null; mostraVista(false); $("iniVeil").hidden = true;
 }
 
@@ -64,6 +67,9 @@ function catalogo() {
   }
   return out;
 }
+/* il modificatore d'iniziativa: dalla scheda per i personaggi, dal bestiario (solo il master) per nemici e alleati */
+const nemico = p => p.tipo === "nemico" || p.tipo === "alleato";
+const infoDi = p => nemico(p) ? infoGruppo(p.id) : info(p.id);
 const tiroDi = id => { const t = TIRATI[id]; return t && SC && t.scontro === SC.id ? t : null; };
 const mio = id => miei.includes(id);
 const attivo = () => (SC && SC.stato === "in corso" && SC.ordine && SC.ordine[SC.turno]) || null;
@@ -138,7 +144,7 @@ function campi(p, dove) {
   if (p.tipo === "manuale")
     return `<label class="dado tot"><span class="lbl">Totale</span><input type="number" inputmode="numeric" data-tiro="${p.id}" data-i="0" aria-label="Totale di iniziativa di ${esc(p.nome)}"></label>
       <output class="somma" data-somma="${p.id}"></output>`;
-  const d = info(p.id); if (!d) return "";
+  const d = infoDi(p); if (!d) return "";
   const n = d.vantaggio ? 2 : 1, aiuto = d.vantaggio ? "vantaggio: conta il più alto" : "";
   let h = "";
   for (let i = 0; i < n; i++) h += `<label class="dado"><span class="lbl">d20${n > 1 ? " " + (i + 1) : ""}</span><input type="number" inputmode="numeric" min="1" max="20" data-tiro="${p.id}" data-i="${i}" aria-label="Dado ${i + 1} di ${esc(p.nome)}"${dove === "veil" && i === 0 ? " data-primo" : ""}></label>`;
@@ -150,7 +156,7 @@ function leggiCampi(radice, p) {
     const t = parseInt(vals[0], 10);
     return Number.isInteger(t) ? { dadi: [], mod: 0, tot: t, des: null } : null;   // Destrezza sconosciuta
   }
-  const d = info(p.id);
+  const d = infoDi(p);
   const r = totaleIniziativa({ dadi: vals, mod: d.mod, vantaggio: d.vantaggio });
   return r && { dadi: r.dadi, usato: r.usato, mod: r.mod, tot: r.tot, des: d.des };
 }
@@ -159,7 +165,7 @@ function mostraSomma(radice, p) {
   const out = radice.querySelector(`[data-somma="${p.id}"]`); if (!out) return;
   const r = leggiCampi(radice, p);
   if (p.tipo === "manuale") { out.textContent = ""; return; }
-  const d = info(p.id);
+  const d = infoDi(p);
   out.innerHTML = r ? `${r.usato} ${d.mod >= 0 ? "+" : "−"} ${Math.abs(d.mod)} = <b>${r.tot}</b>` : sg(d.mod);
 }
 /* "inviato" è l'ora d'invio: serve solo a misurare il ritardo con ?misura */
@@ -226,26 +232,32 @@ $("iniOk").onclick = async () => {
 $("iniDopo").onclick = () => { rimandato = SC && SC.id; $("iniVeil").hidden = true; };
 
 /* ---------- vista dello scontro ---------- */
-function disegna() {
+function disegna(forza) {
   if (!vista || !SC || congedo) return;   // durante "Scontro concluso" il riquadro resta fermo
   const el = $("vistaScontro");
+  /* mentre il master scrive un modello del bestiario, gli aggiornamenti dall'archivio non devono cancellarlo */
+  if (!forza && el.querySelector(".modulo")) return;
   /* ridisegnare non deve cancellare quello che il master sta scrivendo o le spunte già tolte */
   const scritti = [...el.querySelectorAll("[data-tiro]")].map(i => [i.dataset.tiro, i.dataset.i, i.value]);
   const tolti = [...el.querySelectorAll("[data-part]:not(:checked)")].map(i => i.dataset.part);
+  const campiLiberi = [...el.querySelectorAll("[data-qta], #nzCreatura, #nzQuanti, #nzModo")].map(i => [i.dataset.qta ? `[data-qta="${i.dataset.qta}"]` : "#" + i.id, i.value]);
   if (SC.stato === "chiuso") el.innerHTML = dm ? vistaPreparazione() : `<section><h2>Scontro</h2><p class="vuoto">Nessuno scontro in corso.</p></section>`;
   else if (SC.stato === "tiri") el.innerHTML = vistaTiri();
   else el.innerHTML = vistaTurni();
+  campiLiberi.forEach(([sel, v]) => { const x = el.querySelector(sel); if (x) x.value = v; });
   scritti.forEach(([id, i, v]) => { const x = el.querySelector(`[data-tiro="${id}"][data-i="${i}"]`); if (x) x.value = v; });
   tolti.forEach(id => { const x = el.querySelector(`[data-part="${id}"]`); if (x) x.checked = false; });
   (SC.partecipanti || []).forEach(p => el.querySelector(`[data-somma="${p.id}"]`) && mostraSomma(el, p));
 }
 
 function vistaPreparazione() {
+  if (pannelloAperto()) return htmlPreparazione();
   return `<section><h2>Nuovo scontro</h2>
     <p class="vuoto">Scegli chi partecipa, poi chiedi l'iniziativa: sui telefoni dei giocatori comparirà la richiesta.</p>
     <ul class="scelta">${catalogo().map(p => `<li><label><input type="checkbox" data-part="${p.id}" checked>
       <span>${esc(p.nome)}</span>${p.tipo === "manuale" ? `<small>senza scheda: scrivi tu il totale</small>` : ""}</label></li>`).join("")}</ul>
-    <div class="azioni"><button class="btn up" data-az="chiedi">Tirate l'iniziativa</button></div></section>`;
+    </section>${htmlPreparazione()}
+    <div class="azioni"><button class="btn up" data-az="chiedi">Tirate l'iniziativa</button></div>`;
 }
 
 function vistaTiri() {
@@ -256,6 +268,7 @@ function vistaTiri() {
     if (t) destra = `<span class="tot">${t.tot}</span><small>${t.tipo === "manuale" ? "a mano" : `d20 ${t.usato} ${sg(t.mod)}`}</small>`;
     else if (dm) destra = `<div class="dadi">${campi(p, "dm")}</div><button class="btn" data-az="segna" data-id="${p.id}">Segna</button>`;
     else if (mio(p.id)) destra = `<button class="btn gold" data-az="tira">Tira</button>`;
+    else if (nemico(p)) destra = `<small>tira il master</small>`;
     else destra = `<small>in attesa</small>`;
     return `<li class="${t ? "fatto" : ""}" data-p="${p.id}"><span class="nome">${esc(p.nome)}</span><span class="stato">${destra}</span></li>`;
   }).join("");
@@ -268,36 +281,53 @@ function vistaTiri() {
       : `<p class="hint">Quando avranno tirato tutti, il master avvierà lo scontro.</p>`}</section>`;
 }
 
+/* sotto il nome di un gruppo del master: come stanno, a parole (o i PF, per gli alleati che lo prevedono) */
+function stato(id) {
+  const m = (SC.campo || []).filter(c => c.gruppo === id); if (!m.length) return "";
+  const testo = m.map(c => (m.length > 1 ? esc(c.nome) + " " : "") + (c.pf != null ? `${c.pf}/${c.max} PF` : c.ferite)).join(" · ");
+  return `<small class="ferite">${testo}</small>`;
+}
 function vistaTurni() {
   const a = attivo(), o = SC.ordine || [];
   const righe = o.map((v, i) => `<li class="${i === SC.turno ? "attivo" : ""}${mio(v.id) ? " mio" : ""}"${i === SC.turno ? ' aria-current="step"' : ""}>
-      <span class="pos">${i + 1}</span><span class="nome">${esc(v.nome)}</span>
+      <span class="pos">${i + 1}</span><span class="nome">${esc(v.nome)}${stato(v.id)}</span>
       ${dm && pariConPrecedente(o, i) ? `<button class="btn link" data-az="scambia" data-i="${i}" aria-label="Metti ${esc(v.nome)} prima">Scambia</button>` : ""}
       <span class="tot">${v.tot}</span></li>`).join("");
   const puo = dm || (a && mio(a.id));
-  return `<section><h2>Round ${SC.round} <small>${a ? "di turno: " + esc(a.nome) : ""}</small></h2>
+  const M = dm ? htmlTurniMaster(SC) : { rapida: "", campo: "" };
+  return `${M.rapida}<section><h2>Round ${SC.round} <small>${a ? "di turno: " + esc(a.nome) : ""}</small></h2>
     ${a && mio(a.id) ? `<p class="tuo">Tocca a te: ${esc(a.nome)}</p>` : ""}
     <ol class="turni">${righe}</ol>
     <div class="azioni">
       ${dm ? `<button class="btn link" data-az="chiudi">Chiudi lo scontro</button><button class="btn" data-az="indietro">Indietro</button>` : ""}
       ${puo ? `<button class="btn up fine" data-az="fine"${inVolo ? " disabled" : ""}>Fine turno</button>` : ""}
-    </div></section>`;
+    </div></section>${M.campo}`;
 }
 
 /* ---------- pulsanti della vista ---------- */
+$("vistaScontro").addEventListener("change", e => { if (dm) inputNemici(e); });
 $("vistaScontro").addEventListener("input", e => {
+  if (dm && inputNemici(e)) return;
   const id = e.target.dataset.tiro; if (!id) return;
   const p = (SC.partecipanti || []).find(x => x.id === id); if (p) mostraSomma($("vistaScontro"), p);
 });
 $("vistaScontro").addEventListener("click", async e => {
+  const n = dm && e.target.closest("[data-nz]");
+  if (n) {
+    try { await clicNemici(n, SC, campi => arch.aggiorna(DOC, { ...campi, ...timbro() })); }
+    catch (_) { toast("Non salvato: controlla la connessione", 4000); }
+    return;
+  }
   const b = e.target.closest("[data-az]"); if (!b || b.disabled) return;
   const az = b.dataset.az;
   try {
     if (az === "chiedi") {
       const scelti = [...$("vistaScontro").querySelectorAll("[data-part]:checked")].map(i => i.dataset.part);
-      const partecipanti = catalogo().filter(p => scelti.includes(p.id));
+      const id = String(Date.now());
+      const nem = await schieraScelte(id);
+      const partecipanti = [...catalogo().filter(p => scelti.includes(p.id)), ...nem.partecipanti];
       if (!partecipanti.length) { toast("Scegli almeno un partecipante"); return; }
-      await arch.scrivi(DOC, { stato: "tiri", id: String(Date.now()), partecipanti, ordine: [], turno: 0, round: 1, ...timbro() });
+      await arch.scrivi(DOC, { stato: "tiri", id, partecipanti, campo: nem.campo, ordine: [], turno: 0, round: 1, ...timbro() });
     } else if (az === "tira") {
       rimandato = null; apriTiro();
     } else if (az === "segna") {

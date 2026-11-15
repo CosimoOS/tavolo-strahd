@@ -24,6 +24,14 @@ Altri interruttori da aggiungere all'indirizzo, anche insieme (`?misura&robusto`
 - `?robusto`: Firebase usa un collegamento più vecchio ma più robusto, utile se un browser
   (per esempio Brave con gli scudi attivi) frena quello normale.
 
+## Il bestiario del master
+
+I modelli dei nemici (CA, PF, attacchi, cosa fanno in combattimento) e i gruppi pronti stanno in
+`privato/bestiario.json`. Quel file non viene mai pubblicato. Per caricarlo:
+entra come **Master**, apri lo Scontro, tocca **Bestiario** e poi **Importa dal file**, scegli `privato/bestiario.json`.
+Da quel momento i modelli sono su Firebase, nella zona che solo il master può leggere, e li ritrova su ogni suo telefono.
+Importarlo di nuovo aggiorna i modelli con lo stesso nome e lascia gli altri.
+
 ## Test delle regole
 
 ```bash
@@ -42,6 +50,8 @@ npm test
 | `js/accesso.js` | Schermata dei profili e tastierino del PIN |
 | `js/scheda.js` | La scheda del personaggio |
 | `js/scontro.js` | Iniziativa e turni, condivisi fra i telefoni |
+| `js/nemici.js` | Nemici e alleati del master: bestiario, scheda rapida di turno, PF |
+| `privato/` | Il bestiario preparato dai manuali. **Non va su git** (è in `.gitignore`): si carica nell'app dal profilo del master |
 | `js/personaggi/` | Le regole di ogni personaggio e l'elenco dei profili |
 | `js/regole/` | Conti della 5e, funzioni pure provate dai test |
 | `js/stemmi.js` | Gli stemmi in SVG |

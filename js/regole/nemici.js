@@ -1,0 +1,104 @@
+/* Regole dei nemici e degli alleati del master. Funzioni pure, provate da test/nemici.test.js.
+   I numeri veri (PF, CA, attacchi) li vede solo il master; ai giocatori arriva una parola. */
+
+/** Come sta una creatura, detto a parole per i giocatori.
+    illeso: PF pieni · ferito: sotto il massimo · in fin di vita: un quarto o meno · sconfitto: 0. */
+export function ferite(pf, max) {
+  if (pf <= 0) return "sconfitto";
+  if (pf >= max) return "illeso";
+  return pf * 4 <= max ? "in fin di vita" : "ferito";
+}
+
+/** Danno e cura: mai sotto 0, mai sopra il massimo. */
+export const danno = (pf, n) => Math.max(0, pf - Math.max(0, n));
+export const cura = (pf, max, n) => Math.min(max, pf + Math.max(0, n));
+
+/** Nomi numerati: "Lupo 1", "Lupo 2"… Se ci sono già dei lupi nello scontro si continua da lì.
+    Con uno solo resta "Lupo" (a meno che ce ne siano già altri). */
+export function nomiNumerati(base, quanti, esistenti = []) {
+  const re = new RegExp("^" + base.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?: (\\d+))?$");
+  let gia = 0;
+  for (const n of esistenti) { const m = n.match(re); if (m) gia = Math.max(gia, m[1] ? +m[1] : 1); }
+  if (quanti === 1 && gia === 0) return [base];
+  return Array.from({ length: quanti }, (_, i) => `${base} ${gia + i + 1}`);
+}
+
+/** Da una scelta del master ("4 lupi, in branco") alle creature in campo e ai gruppi d'iniziativa.
+    scelte:   [{ creatura, quanti, modo }]  modo: "branco" (un tiro per tutti) · "uno" (un tiro a testa)
+    bestiario: { id → creatura }  ·  gia: creature già in campo (per continuare la numerazione)
+    Restituisce { creature: [...], gruppi: [{ id, nome, membri:[id], ini }] }. */
+export function schiera(scelte, bestiario, gia = []) {
+  const creature = [], gruppi = [];
+  let n = gia.length;
+  const nomiGia = () => [...gia, ...creature];
+  for (const { creatura, quanti, modo } of scelte) {
+    const c = bestiario[creatura]; if (!c || !(quanti > 0)) continue;
+    const nomi = nomiNumerati(c.nome, quanti, nomiGia().map(x => x.nome));
+    const visti = nomiNumerati(c.giocatori || c.nome, quanti, nomiGia().map(x => x.giocatori));
+    const nuove = nomi.map((nome, i) => ({
+      id: `n${++n}`, creatura, nome, giocatori: visti[i], tipo: c.tipo || "nemico",
+      pf: c.pf, max: c.pf, ca: c.ca, ini: c.ini ?? 0, pfVisibili: !!c.pfVisibili,
+    }));
+    creature.push(...nuove);
+    if (modo === "branco" && nuove.length > 1) {
+      const plurale = (c.giocatori || c.nome) + " ×" + nuove.length;
+      gruppi.push({ id: "g" + nuove[0].id, nome: plurale, membri: nuove.map(x => x.id), ini: nuove[0].ini, tipo: nuove[0].tipo });
+    } else {
+      nuove.forEach(x => gruppi.push({ id: "g" + x.id, nome: x.giocatori, membri: [x.id], ini: x.ini, tipo: x.tipo }));
+    }
+  }
+  return { creature, gruppi };
+}
+
+/** Toglie dall'ordine dei turni una voce (un nemico sconfitto) senza far saltare il turno a qualcuno.
+    Se si toglie chi sta prima di quello di turno, il segno scende di uno; se si toglie l'ultimo e tocca a lui,
+    si passa al primo del round dopo. */
+export function togliDaOrdine({ ordine, turno, round }, id) {
+  const i = ordine.findIndex(v => v.id === id);
+  if (i < 0) return { ordine, turno, round };
+  const nuovo = ordine.filter((_, k) => k !== i);
+  if (!nuovo.length) return { ordine: nuovo, turno: 0, round };
+  if (i < turno) return { ordine: nuovo, turno: turno - 1, round };
+  if (i === turno && turno >= nuovo.length) return { ordine: nuovo, turno: 0, round: round + 1 };
+  return { ordine: nuovo, turno, round };
+}
+
+/** Danno medio di una formula come "2d6+3 taglienti + 1d6 fulmine" (le alternative tra parentesi non contano).
+    null se non c'è nessun dado. */
+export function media(danni) {
+  const t = String(danni || "").replace(/\([^)]*\)/g, "");
+  let tot = 0, dadi = false;
+  for (const m of t.matchAll(/([+-]?)\s*(\d+)\s*d\s*(\d+)|([+-])\s*(\d+)(?!\s*d)/gi)) {
+    if (m[2]) { dadi = true; tot += (m[1] === "-" ? -1 : 1) * (+m[2] * (+m[3] + 1)) / 2; }
+    else tot += (m[4] === "-" ? -1 : 1) * +m[5];
+  }
+  return dadi ? Math.floor(tot) : null;
+}
+
+/* Le azioni nel modulo del bestiario si scrivono una per riga:
+     Nome | +5 | 2d4+2 perforanti | nota      (attacco)
+     Nome | nota                              (azione senza tiro per colpire)                       */
+export function leggiAzioni(testo) {
+  return String(testo || "").split("\n").map(r => r.trim()).filter(Boolean).map(r => {
+    const p = r.split("|").map(x => x.trim());
+    const bonus = p[1] && /^[+-]?\d+$/.test(p[1]) ? parseInt(p[1], 10) : null;
+    if (bonus === null) return { nome: p[0], ...(p.slice(1).join(" | ") ? { nota: p.slice(1).join(" | ") } : {}) };
+    const a = { nome: p[0], colpire: bonus, danni: p[2] || "" };
+    const m = media(a.danni); if (m !== null) a.medio = m;
+    if (p[3]) a.nota = p.slice(3).join(" | ");
+    return a;
+  });
+}
+export function scriviAzioni(azioni) {
+  return (azioni || []).map(a => a.colpire != null
+    ? [a.nome, (a.colpire >= 0 ? "+" : "") + a.colpire, a.danni || "", a.nota || ""].join(" | ").replace(/ \| $/, "")
+    : [a.nome, a.nota || ""].filter(Boolean).join(" | ")).join("\n");
+}
+/* I tratti: "Nome: testo", uno per riga. */
+export function leggiTratti(testo) {
+  return String(testo || "").split("\n").map(r => r.trim()).filter(Boolean).map(r => {
+    const i = r.indexOf(":");
+    return i > 0 ? { nome: r.slice(0, i).trim(), testo: r.slice(i + 1).trim() } : { nome: r, testo: "" };
+  });
+}
+export const scriviTratti = tratti => (tratti || []).map(t => t.testo ? `${t.nome}: ${t.testo}` : t.nome).join("\n");
