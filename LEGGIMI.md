@@ -50,6 +50,9 @@ npm test
 | `js/accesso.js` | Schermata dei profili e tastierino del PIN |
 | `js/scheda.js` | La scheda del personaggio |
 | `js/scontro.js` | Iniziativa e turni, condivisi fra i telefoni |
+| `js/classi/` | Le classi come dati (Guerriero, Paladino, Ranger, Seguace): cosa arriva e cosa si sceglie a ogni livello |
+| `js/regole/talenti.js`, `stili.js` | Talenti (Manuale del Giocatore e Tasha) e stili di combattimento |
+| `js/campagna.js` | Regole del tavolo decise dal master (opzioni di Tasha) |
 | `js/attacco.js` | Attacco dal telefono: bersaglio, d20, esito deciso dal telefono del master, danni da applicare |
 | `js/nemici.js` | Nemici e alleati del master: bestiario, scheda rapida di turno, PF |
 | `privato/` | Il bestiario preparato dai manuali. **Non va su git** (è in `.gitignore`): si carica nell'app dal profilo del master |

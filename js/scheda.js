@@ -1,6 +1,9 @@
 /* La scheda del personaggio. È la logica della scheda originale, quasi riga per riga:
    cambia solo da dove arrivano i dati (archivio.js) e quali personaggi mostra (dipende dal profilo). */
 import { AB, ABN, STYLES, CONDS, COINS, mod, prof, sg, clone, calcola, attacchiOrdinati, normalizza } from "./regole/base.js";
+import { talento, talentiDisponibili, requisiti } from "./regole/talenti.js";
+import { stiliPer } from "./regole/stili.js";
+import { opzioni, suOpzioni } from "./campagna.js";
 import { PERSONAGGI } from "./personaggi/index.js";
 import { stemma } from "./stemmi.js";
 
@@ -48,7 +51,7 @@ function render() {
   $("dvName").textContent = `Dadi vita d${C.hitDie}`; $("dvTxt").textContent = `Durante un riposo breve · 1d${C.hitDie} ${sg(X.M.cos)} PF ciascuno`;
   $("dvPips").dataset.max = L;
   $("reRow").hidden = C.secondWind === false;
-  $("extraRes").innerHTML = (C.risorse ? C.risorse(L, X) : []).filter(r => r.max > 0).map(r => `<div class="res">
+  $("extraRes").innerHTML = (C.risorse ? C.risorse(L, X, S) : []).filter(r => r.max > 0).map(r => `<div class="res">
       <div class="what"><div>${esc(r.nome)}</div><small>${esc(r.testo)}</small></div>
       <div class="act"><div class="pips" data-res="${r.k}" data-max="${r.max}"></div></div></div>`).join("") + (C.riserva ? (() => {
       const r = C.riserva(L, X), resto = Math.max(0, r.max - (S[r.k] || 0));
@@ -57,14 +60,7 @@ function render() {
     })() : "");
   $("atkNota").hidden = !(C.atkNota && C.atkNota(L)); $("atkNota").textContent = C.atkNota ? C.atkNota(L) : "";
   $("ammoRow").hidden = !S.weapons.some(w => w.ammo);
-  $("spellSec").hidden = !C.incantesimi;
-  if (C.incantesimi) {
-    const [testa, ...resto] = C.magia(L, X).split(" · ");
-    $("spellTxt").textContent = testa + (resto[0] ? " · " + resto[0] : "");
-    $("spellList").innerHTML = (resto[1] ? `<p class="hint">${esc(resto.slice(1).join(" · "))}.</p>` : "") + C.incantesimi.map(i => `<div class="spell"><div class="top"><b>${esc(i.n)}</b></div>
-      <div class="meta"><span class="tag">${i.liv}° livello</span>${i.conc ? `<span class="tag">concentrazione</span>` : ""}${i.giur ? `<span class="tag">giuramento</span>` : ""}</div>
-      <p>${esc(i.t)}</p></div>`).join("");
-  }
+  renderIncantesimi(L, X);
   $("aiRow").hidden = !C.surge; $("aiPips").dataset.max = C.surges(L) || 1;
   $("inspRow").hidden = !C.insp; $("armorSec").hidden = !C.armor;
   $("indRow").hidden = !C.indom(L); $("indPips").dataset.max = C.indom(L) || 1; $("indName").textContent = C.indName;
@@ -84,7 +80,7 @@ function render() {
     <td><span class="val">${a.dice[0]}d${a.dice[1]}${a.mod ? sg(a.mod) : ""}</span></td>${editW ? `<td><button class="x" data-wdel="${a.id}" aria-label="Togli ${esc(a.n)}">×</button></td>` : ""}</tr>`).join("");
   $("wEdit").textContent = editW ? "Fatto" : "Modifica"; $("wForm").hidden = !editW;
 
-  $("feats").innerHTML = C.feats(L, X, S).concat(S.asi.filter(a => a.feat).map(a => [`Talento (livello ${a.level})`, a.feat]))
+  $("feats").innerHTML = C.feats(L, X, S)
     .map(([t, p]) => `<div class="feat"><b>${esc(t)}</b><p>${esc(p)}</p></div>`).join("");
   $("kv").innerHTML = C.kv.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join("");
 
@@ -111,6 +107,39 @@ function render() {
   if (document.activeElement !== $("notes")) $("notes").value = S.notes;
 }
 
+/* ---------- incantesimi ----------
+   Paladino: sceglie ogni giorno i preparati (Car + metà livello) tra tutti quelli della classe; quelli del giuramento sono sempre pronti.
+   Ranger: ha un numero fisso di incantesimi conosciuti, che cambia salendo di livello. "Cambia" apre la lista completa. */
+let editInc = false;
+function statoIncantesimi(L, X) {
+  const max = C.maxLivelloIncantesimi(L), tutti = C.incantesimiClasse().filter(i => i.liv <= max);
+  const preparati = !!C.quantiPreparati, chiave = preparati ? "preparati" : "conosciuti";
+  const limite = preparati ? C.quantiPreparati(L, X) : C.quantiConosciuti(L);
+  const scelti = (S[chiave] || []).filter(n => tutti.some(i => i.n === n));
+  return { max, tutti, preparati, chiave, limite, scelti, fissi: C.incantesimiSottoclasse(L) };
+}
+function renderIncantesimi(L, X) {
+  const ha = !!C.incantesimiClasse && C.magiaDa(L);
+  $("spellSec").hidden = !ha; if (!ha) return;
+  const st = statoIncantesimi(L, X);
+  const card = (i, extra = "") => `<div class="spell"><div class="top"><b>${esc(i.n)}</b>${extra}</div>
+    <div class="meta"><span class="tag">${i.liv}° livello</span>${i.conc ? `<span class="tag">concentrazione</span>` : ""}${i.rituale ? `<span class="tag">rituale</span>` : ""}${i.giur ? `<span class="tag">giuramento</span>` : ""}${i.tasha ? `<span class="tag">Tasha</span>` : ""}</div>
+    <p>${esc(i.t)}</p></div>`;
+  $("spellTxt").textContent = C.magia(L, X);
+  const conta = `${st.scelti.length} su ${st.limite} ${st.preparati ? "preparati" : "conosciuti"}${st.fissi.length ? ` · ${st.fissi.length} del giuramento sempre pronti` : ""}`;
+  if (!editInc) {
+    $("spellList").innerHTML = `<div class="inc-testa"><p class="hint">${conta}</p><button class="btn link" data-inc="apri">${st.preparati ? "Cambia i preparati" : "Cambia"}</button></div>` +
+      st.fissi.map(i => card(i)).join("") + st.tutti.filter(i => st.scelti.includes(i.n)).map(i => card(i)).join("");
+    return;
+  }
+  const pieno = st.scelti.length >= st.limite;
+  $("spellList").innerHTML = `<div class="inc-testa"><p class="hint">${conta}${st.preparati ? ". Si cambiano dopo un riposo lungo." : ""}</p><button class="btn gold" data-inc="chiudi">Fatto</button></div>` +
+    [...Array(st.max)].map((_, k) => `<p class="lbl inc-liv">${k + 1}° livello</p>` + st.tutti.filter(i => i.liv === k + 1).map(i => {
+      const on = st.scelti.includes(i.n);
+      return card(i, `<button class="pip${on ? " on" : ""}" data-inc-n="${esc(i.n)}" aria-pressed="${on}" aria-label="${on ? "Togli" : "Aggiungi"} ${esc(i.n)}"${!on && pieno ? " disabled" : ""}></button>`);
+    }).join("")).join("");
+}
+
 /* ---------- salvataggio ----------
    Ogni modifica ridisegna subito la scheda; il salvataggio parte mezzo secondo dopo l'ultimo tocco,
    così dieci tocchi veloci diventano una sola scrittura. */
@@ -132,6 +161,9 @@ async function flush(k) {
   saving[k] = false;
   if (pending[k]) { pending[k] = false; await flush(k); }
 }
+
+/* se il master cambia le regole del tavolo (Tasha), la scheda si ridisegna */
+suOpzioni(() => { if (S) render(); });
 
 /* ---------- apertura e chiusura ---------- */
 export function apriScheda({ archivio, personaggi, onEsci, scontro }) {
@@ -179,7 +211,7 @@ export function datiIniziativa(k) {
 export function datiAttacco(k) {
   if (!STATE[k] || !PERSONAGGI[k]) return null;
   const P = PERSONAGGI[k], St = STATE[k], X = calcola(P, St);
-  const slot = (P.risorse ? P.risorse(X.L, X) : []).filter(r => /^slot\d$/.test(r.k))
+  const slot = (P.risorse ? P.risorse(X.L, X, St) : []).filter(r => /^slot\d$/.test(r.k))
     .map(r => ({ liv: +r.k.slice(4), liberi: Math.max(0, r.max - (St[r.k] || 0)) }));
   return { nome: P.name, critMin: P.critMin(X.L), attacchi: attacchiOrdinati(X), punizione: !!P.punizione && X.L >= 2, slot };
 }
@@ -246,7 +278,7 @@ $("undoHp").onclick = () => {
 
 /* ---------- riposi ---------- */
 /* le risorse dichiarate dal personaggio (slot, Incanalare divinità…) si ricaricano col riposo indicato */
-const risorseDi = riposi => (C.risorse ? C.risorse(S.level, D()) : []).filter(r => riposi.includes(r.riposo));
+const risorseDi = riposi => (C.risorse ? C.risorse(S.level, D(), S) : []).filter(r => riposi.includes(r.riposo));
 $("shortRest").onclick = () => {
   S.re = 0; S.ai = 0; risorseDi(["breve"]).forEach(r => S[r.k] = 0); change();
   toast(C.surge || C.risorse ? "Riposo breve: risorse ricaricate" : "Riposo breve: Recuperare energie ricaricato");
@@ -258,65 +290,113 @@ $("longRest").onclick = () => {
   hideLast(); change(); toast(`Riposo lungo: PF pieni, ${back} dadi vita recuperati`);
 };
 
-/* ---------- passaggio di livello ---------- */
+/* ---------- passaggio di livello ----------
+   Cosa arriva al nuovo livello (dalla classe) e cosa si sceglie: punteggi o talento, stile di combattimento,
+   opzioni della classe e della sottoclasse, e quelle del Calderone di Tasha se il master le usa. */
 let pick = null;
+const NC = { for: "Forza", des: "Destrezza", cos: "Costituzione", int: "Intelligenza", sag: "Saggezza", car: "Carisma" };
+const pfTalenti = St => (St.asi || []).reduce((n, a) => n + (((talento(a.feat) || {}).effetti || {}).pfLivello || 0), 0);
 function openLevel() {
   const L = S.level + 1, X = D(), P2 = prof(L);
-  pick = { mode: C.asi.includes(L) ? "two" : null, sel: [], feat: "", style: null };
+  pick = { mode: C.asi.includes(L) ? "two" : null, sel: [], feat: "", featAb: null, abilita: [], style: null, scelte: {}, togli: "", metti: "" };
   $("lvTitle").textContent = `${C.name} · livello ${L}`;
-  const rows = [["Punti ferita massimi", `${S.maxhp} → ${S.maxhp + C.hpAvg + X.M.cos}`], ["Dadi vita", `${S.level}d${C.hitDie} → ${L}d${C.hitDie}`]];
+  const rows = [["Punti ferita massimi", `${S.maxhp} → ${S.maxhp + C.hpAvg + X.M.cos + pfTalenti(S)}`], ["Dadi vita", `${S.level}d${C.hitDie} → ${L}d${C.hitDie}`]];
   if (P2 !== X.P) rows.push(["Bonus di competenza", `${sg(X.P)} → ${sg(P2)}`]);
   $("lvChanges").innerHTML = rows.map(([a, b]) => `<li><span>${a}</span><span>${b}</span></li>`).join("") +
-    C.featuresAt(L).map(([a, b]) => `<li class="new"><span>${esc(a)}</span><span style="font-family:var(--f-body);color:var(--muted);max-width:60%">${esc(b)}</span></li>`).join("");
+    C.featuresAt(L).map(([a, b]) => `<li class="new"><span>${esc(a)}</span><span class="nuovo-t">${esc(b)}</span></li>`).join("");
   renderChoice(); $("veil").hidden = false; $("lvOk").focus();
 }
+const seg = (attr, voci, attivo) => `<div class="seg">${voci.map(([v, t, dis]) => `<button ${attr}="${esc(v)}" aria-pressed="${attivo === v}"${dis ? " disabled" : ""}>${esc(t)}</button>`).join("")}</div>`;
+function sezioneTalento(L) {
+  const presi = S.asi.filter(a => a.feat).map(a => a.feat);
+  const lista = talentiDisponibili({ scores: S.scores, presi, magia: C.magiaDa(L), armature: C.armature || [], tasha: opzioni().tasha });
+  const t = talento(pick.feat);
+  let h = `<select id="featSel" class="sel-talento" aria-label="Talento"><option value="">Scegli un talento…</option>
+    ${["PHB", "Tasha"].map(f => { const v = lista.filter(x => x.fonte === f); return v.length ? `<optgroup label="${f === "PHB" ? "Manuale del Giocatore" : "Calderone di Tasha"}">${v.map(x => `<option value="${x.id}"${x.id === pick.feat ? " selected" : ""}>${esc(x.nome)}</option>`).join("")}</optgroup>` : ""; }).join("")}</select>`;
+  if (t) {
+    h += `<p class="desc-talento">${esc(t.testo)}${requisiti(t) ? `<small>Requisiti: ${esc(requisiti(t))}</small>` : ""}</p>`;
+    if (t.piu1 && t.piu1.length > 1) h += `<div class="lbl">+1 a quale caratteristica?</div>` + seg("data-fab", t.piu1.map(k => [k, `${NC[k]} ${S.scores[k]}`, S.scores[k] >= 20]), pick.featAb);
+    const nAb = (t.effetti || {}).abilita;
+    if (nAb) {
+      const X = D(), libere = X.skills.filter(x => !x.p).map(x => x.n);
+      h += `<div class="lbl">Competenza in ${nAb === 1 ? "un'abilità" : nAb + " abilità"} (${pick.abilita.length}/${nAb})</div><div class="seg">${libere.map(n => `<button data-fsk="${esc(n)}" aria-pressed="${pick.abilita.includes(n)}"${!pick.abilita.includes(n) && pick.abilita.length >= nAb ? " disabled" : ""}>${esc(n)}</button>`).join("")}</div>`;
+    }
+  }
+  return h;
+}
 function renderChoice() {
-  const L = S.level + 1; let h = "";
+  const L = S.level + 1, opz = opzioni(); let h = "";
   if (C.asi.includes(L)) {
-    h += `<div class="choice"><div class="lbl">Aumento dei punteggi</div><div class="seg">
-      <button data-mode="two" aria-pressed="${pick.mode === "two"}">+1 a due</button>
-      <button data-mode="one" aria-pressed="${pick.mode === "one"}">+2 a una</button>
-      <button data-mode="feat" aria-pressed="${pick.mode === "feat"}">Talento</button></div>`;
-    if (pick.mode === "feat") h += `<input id="featName" placeholder="Nome e effetto del talento" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel)" value="${esc(pick.feat)}"><div class="hint">Il talento finisce tra i privilegi; se cambia dei numeri dimmelo e li collego.</div>`;
+    h += `<div class="choice"><div class="lbl">Aumento dei punteggi o talento</div>` +
+      seg("data-mode", [["two", "+1 a due"], ["one", "+2 a una"], ["feat", "Talento"]], pick.mode);
+    if (pick.mode === "feat") h += sezioneTalento(L);
     else {
       const need = pick.mode === "one" ? 1 : 2, step = pick.mode === "one" ? 2 : 1;
       h += `<div class="abpick">${AB.map(k => {
         const sc = S.scores[k], on = pick.sel.includes(k), dis = !on && (sc + step > 20 || pick.sel.length >= need);
         return `<button data-ab="${k}" aria-pressed="${on}" ${dis ? "disabled" : ""}>${ABN[k]} ${sc}${on ? " → " + (sc + step) : ""}</button>`;
-      }).join("")}</div>
-        <div class="hint">${pick.mode === "one" ? "Scegli una caratteristica." : "Scegli due caratteristiche diverse."} Massimo 20.</div>`;
+      }).join("")}</div><div class="hint">${pick.mode === "one" ? "Scegli una caratteristica." : "Scegli due caratteristiche diverse."} Massimo 20.</div>`;
     }
     h += `</div>`;
   }
-  if (C.styleAt && L === C.styleAt) {
-    h += `<div class="choice"><div class="lbl">Secondo stile di combattimento</div><div class="seg">${Object.keys(STYLES).filter(s => !S.styles.includes(s)).map(s => `<button data-style="${s}" aria-pressed="${pick.style === s}">${s}</button>`).join("")}</div>
-      <div class="hint">${pick.style ? esc(STYLES[pick.style]) : "Scegline uno."}</div></div>`;
+  if ((C.styleAt && L === C.styleAt) || (C.stileExtraAl && L === C.stileExtraAl)) {
+    const v = stiliPer(C.classeId, S.styles, opz.tasha);
+    h += `<div class="choice"><div class="lbl">${S.styles.length ? "Stile di combattimento aggiuntivo" : "Stile di combattimento"}</div>` +
+      seg("data-style", v.map(x => [x.nome, x.nome + (x.fonte === "Tasha" ? " ·T" : "")]), pick.style) +
+      `<div class="hint">${pick.style ? esc(STYLES[pick.style]) : "Scegline uno."}</div></div>`;
   }
+  C.scelte(L, S).forEach(c => {
+    if (c.tipo === "cambio-stile") {
+      const nuovi = stiliPer(C.classeId, S.styles, opz.tasha);
+      h += `<div class="choice"><div class="lbl">${esc(c.titolo)} <small>facoltativo</small></div>
+        <div class="due-sel"><select id="stTogli" aria-label="Stile da togliere"><option value="">Non cambiare</option>${S.styles.map(x => `<option${pick.togli === x ? " selected" : ""}>${esc(x)}</option>`).join("")}</select>
+        <select id="stMetti" aria-label="Stile nuovo"${pick.togli ? "" : " disabled"}><option value="">…con</option>${nuovi.map(x => `<option${pick.metti === x.nome ? " selected" : ""}>${esc(x.nome)}</option>`).join("")}</select></div></div>`;
+      return;
+    }
+    const v = pick.scelte[c.id], o = c.opzioni.find(x => x.id === v);
+    h += `<div class="choice"><div class="lbl">${esc(c.titolo)}</div>` + seg(`data-sc-${c.id}`, c.opzioni.map(x => [x.id, x.nome]), v) +
+      (o && o.testo ? `<div class="hint">${esc(o.testo)}</div>` : "") + `</div>`;
+  });
+  if (opz.tasha === false && C.asi.includes(L)) h += `<p class="hint">Le opzioni del Calderone di Tasha sono spente: le accende il master.</p>`;
   $("lvChoice").innerHTML = h; $("lvOk").disabled = !choiceDone();
-  const fi = $("featName"); if (fi) fi.addEventListener("input", e => { pick.feat = e.target.value; $("lvOk").disabled = !choiceDone(); });
 }
 function choiceDone() {
   const L = S.level + 1;
-  if (C.asi.includes(L)) { if (pick.mode === "feat") { if (!pick.feat.trim()) return false; } else if (pick.sel.length !== (pick.mode === "one" ? 1 : 2)) return false; }
-  if (C.styleAt && L === C.styleAt && !pick.style) return false;
+  if (C.asi.includes(L)) {
+    if (pick.mode === "feat") {
+      const t = talento(pick.feat); if (!t) return false;
+      if (t.piu1 && t.piu1.length > 1 && !pick.featAb) return false;
+      if ((t.effetti || {}).abilita && pick.abilita.length !== t.effetti.abilita) return false;
+    } else if (pick.sel.length !== (pick.mode === "one" ? 1 : 2)) return false;
+  }
+  if (((C.styleAt && L === C.styleAt) || (C.stileExtraAl && L === C.stileExtraAl)) && !pick.style) return false;
+  if (C.scelte(L, S).some(c => c.tipo !== "cambio-stile" && !pick.scelte[c.id])) return false;
+  if (pick.togli && !pick.metti) return false;
   return true;
 }
 function confirmLevel() {
   if (!choiceDone()) return;
-  const before = { level: S.level, maxhp: S.maxhp, scores: clone(S.scores), styles: clone(S.styles), asi: clone(S.asi) };
-  const L = S.level + 1, oldCon = mod(S.scores.cos);
+  const before = { level: S.level, maxhp: S.maxhp, scores: clone(S.scores), styles: clone(S.styles), asi: clone(S.asi), scelte: clone(S.scelte || []) };
+  const L = S.level + 1, oldCon = mod(S.scores.cos), pfPrima = pfTalenti(S);
   if (C.asi.includes(L)) {
-    if (pick.mode === "feat") S.asi.push({ level: L, feat: pick.feat.trim() });
-    else { const step = pick.mode === "one" ? 2 : 1; pick.sel.forEach(k => S.scores[k] = Math.min(20, S.scores[k] + step)); S.asi.push({ level: L, abil: pick.sel, step }); }
+    if (pick.mode === "feat") {
+      const t = talento(pick.feat), ab = t.piu1 ? (t.piu1.length === 1 ? t.piu1[0] : pick.featAb) : null;
+      if (ab) S.scores[ab] = Math.min(20, S.scores[ab] + 1);
+      S.asi.push({ level: L, feat: t.id, ...(ab ? { scelta: ab } : {}), ...(pick.abilita.length ? { abilita: pick.abilita.slice() } : {}) });
+    } else { const step = pick.mode === "one" ? 2 : 1; pick.sel.forEach(k => S.scores[k] = Math.min(20, S.scores[k] + step)); S.asi.push({ level: L, abil: pick.sel, step }); }
   }
-  if (C.styleAt && L === C.styleAt && pick.style) S.styles.push(pick.style);
-  const newCon = mod(S.scores.cos), gain = C.hpAvg + newCon + (newCon - oldCon) * S.level;
+  if (pick.style) S.styles.push(pick.style);
+  if (pick.togli && pick.metti) S.styles = S.styles.map(x => x === pick.togli ? pick.metti : x);
+  S.scelte = [...(S.scelte || []), ...Object.entries(pick.scelte).map(([id, valore]) => ({ livello: L, id, valore }))];
+  /* PF: media del dado + Costituzione; se la Costituzione è salita conta anche per i livelli passati; Robusto idem */
+  const newCon = mod(S.scores.cos), pfDopo = pfTalenti(S);
+  const gain = C.hpAvg + newCon + (newCon - oldCon) * S.level + pfDopo + (pfDopo - pfPrima) * S.level;
   S.level = L; S.maxhp += gain; S.hp += gain; S.history = [...S.history, before].slice(-10);
   $("veil").hidden = true; change(); toast(`Livello ${L}: +${gain} PF massimi`);
 }
 function undoLevel() {
   const b = S.history[S.history.length - 1]; if (!b) return; const lost = S.maxhp - b.maxhp;
-  Object.assign(S, { level: b.level, maxhp: b.maxhp, scores: b.scores, styles: b.styles, asi: b.asi });
+  Object.assign(S, { level: b.level, maxhp: b.maxhp, scores: b.scores, styles: b.styles, asi: b.asi, scelte: b.scelte || [] });
   S.hp = Math.max(0, Math.min(S.maxhp, S.hp - lost)); S.dv = Math.min(S.dv, S.level); S.history = S.history.slice(0, -1);
   change(); toast(`${C.femminile ? "Tornata" : "Tornato"} al livello ${S.level}`);
 }
@@ -330,10 +410,20 @@ $("undoLv").onclick = () => {
   if (u.dataset.armed) { delete u.dataset.armed; u.textContent = "Annulla l'ultimo"; undoLevel(); }
   else { u.dataset.armed = "1"; u.textContent = `Tocca di nuovo per tornare al ${b.level}`; setTimeout(() => { delete u.dataset.armed; u.textContent = "Annulla l'ultimo"; }, 4000); }
 };
+$("lvChoice").addEventListener("change", e => {
+  if (e.target.id === "featSel") { pick.feat = e.target.value; pick.featAb = null; pick.abilita = []; renderChoice(); }
+  if (e.target.id === "stTogli") { pick.togli = e.target.value; if (!pick.togli) pick.metti = ""; renderChoice(); }
+  if (e.target.id === "stMetti") { pick.metti = e.target.value; renderChoice(); }
+});
 $("lvChoice").addEventListener("click", e => {
-  const m = e.target.closest("[data-mode]"); if (m) { pick.mode = m.dataset.mode; pick.sel = []; renderChoice(); return; }
-  const a = e.target.closest("[data-ab]"); if (a && !a.disabled) { const k = a.dataset.ab; pick.sel = pick.sel.includes(k) ? pick.sel.filter(x => x !== k) : [...pick.sel, k]; renderChoice(); return; }
-  const s = e.target.closest("[data-style]"); if (s) { pick.style = s.dataset.style; renderChoice(); }
+  const b = e.target.closest("button"); if (!b || b.disabled) return;
+  if (b.dataset.mode) { pick.mode = b.dataset.mode; pick.sel = []; }
+  else if (b.dataset.ab) { const k = b.dataset.ab; pick.sel = pick.sel.includes(k) ? pick.sel.filter(x => x !== k) : [...pick.sel, k]; }
+  else if (b.dataset.style) pick.style = b.dataset.style;
+  else if (b.dataset.fab) pick.featAb = b.dataset.fab;
+  else if (b.dataset.fsk) { const n = b.dataset.fsk; pick.abilita = pick.abilita.includes(n) ? pick.abilita.filter(x => x !== n) : [...pick.abilita, n]; }
+  else { const a = [...b.attributes].find(x => x.name.startsWith("data-sc-")); if (!a) return; pick.scelte[a.name.slice(8)] = a.value; }
+  renderChoice();
 });
 
 /* ---------- armi ---------- */
@@ -357,6 +447,13 @@ $("vistaScheda").addEventListener("click", e => {
   if (dp) { const k = dp.dataset.dk, i = +dp.dataset.i; S[k] = (i < S[k]) ? i : i + 1; change(); return; }
   const c = e.target.closest(".chip[data-c]");
   if (c) { const n = c.dataset.c; S.conds = S.conds.includes(n) ? S.conds.filter(x => x !== n) : [...S.conds, n]; change(); return; }
+  const ic = e.target.closest("[data-inc]");
+  if (ic) { editInc = ic.dataset.inc === "apri"; render(); return; }
+  const icn = e.target.closest("[data-inc-n]");
+  if (icn && !icn.disabled) {
+    const st = statoIncantesimi(S.level, D()), n = icn.dataset.incN;
+    S[st.chiave] = st.scelti.includes(n) ? st.scelti.filter(x => x !== n) : [...st.scelti, n].slice(0, st.limite); change(); return;
+  }
   const po = e.target.closest("[data-pool]");
   if (po) { const k = po.dataset.pool; S[k] = Math.max(0, Math.min(+po.dataset.max, (S[k] || 0) - +po.dataset.n)); change(); return; }
   const ex = e.target.closest("[data-exh]");

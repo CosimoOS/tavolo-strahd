@@ -4,14 +4,8 @@
 export const AB = ["for", "des", "cos", "int", "sag", "car"];
 export const ABN = { for: "For", des: "Des", cos: "Cos", int: "Int", sag: "Sag", car: "Car" };
 
-export const STYLES = {
-  "Difesa": "+1 alla CA quando indossa un'armatura.",
-  "Tiro": "+2 ai tiri per colpire con armi a distanza.",
-  "Duellare": "+2 ai danni con un'arma da mischia in una mano e nessun'altra arma.",
-  "Combattere con armi grandi": "Ritira 1 e 2 sui dadi del danno con armi a due mani o versatili impugnate a due mani.",
-  "Protezione": "Con uno scudo, reazione per dare svantaggio a un attacco contro un alleato entro 1,5 m.",
-  "Combattere con due armi": "Aggiunge il modificatore al danno del secondo attacco.",
-};
+export { STYLES } from "./stili.js";
+import { talento } from "./talenti.js";
 
 export const CONDS = ["Accecato", "Affascinato", "Afferrato", "Assordato", "Avvelenato", "Incapacitato", "Invisibile",
   "Paralizzato", "Pietrificato", "Prono", "Spaventato", "Stordito", "Trattenuto"];
@@ -40,18 +34,24 @@ export const dannoMedio = a => a.dice[0] * (a.dice[1] + 1) / 2 + a.mod;
  */
 export function calcola(C, S) {
   const L = S.level, P = prof(L), M = {};
+  /* effetti dei talenti presi: competenze nei tiri salvezza e nelle abilità, iniziativa, Percezione passiva */
+  const tal = (S.asi || []).filter(a => a.feat).map(a => ({ a, t: talento(a.feat) })).filter(x => x.t);
+  const tsExtra = tal.filter(x => x.t.effetti && x.t.effetti.ts && x.a.scelta).map(x => x.a.scelta);
+  const abExtra = tal.flatMap(x => x.a.abilita || []);
+  const somma = k => tal.reduce((n, x) => n + ((x.t.effetti || {})[k] || 0), 0);
   AB.forEach(k => M[k] = mod(S.scores[k]));
   const half = Math.ceil(P / 2), ath = C.athlete(L);
   const saves = {};
   const aura = C.saveBonus ? C.saveBonus(L, M) : 0;   // es. Aura di protezione del paladino
-  AB.forEach(k => saves[k] = M[k] + (C.saves.includes(k) ? P : 0) + aura);
+  AB.forEach(k => saves[k] = M[k] + (C.saves.includes(k) || tsExtra.includes(k) ? P : 0) + aura);
   const skills = SK.map(([n, a]) => {
-    const p = C.skills.includes(n);
+    const p = C.skills.includes(n) || abExtra.includes(n);
     let v = M[a] + (p ? P : 0);
     if (!p && ath && ["for", "des", "cos"].includes(a)) v += half;
     return { n, a, p, v };
   });
-  const ini = M.des + (ath ? half : 0), pp = 10 + M.sag;
+  const ini = M.des + (ath ? half : 0) + somma("ini");
+  const pp = 10 + M.sag + (C.skills.includes("Percezione") || abExtra.includes("Percezione") ? P : 0) + somma("pp");
   const atk = S.weapons.map(a => {
     const m = a.ab === "fin" ? Math.max(M.for, M.des) : M[a.ab], g = +a.magic || 0;
     return {

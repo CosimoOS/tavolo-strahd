@@ -64,6 +64,12 @@ service cloud.firestore {
       allow delete: if dm();
     }
 
+    // Regole del tavolo (es. opzioni di Tasha): le leggono tutti, le decide il master.
+    match /campagna/{documento} {
+      allow read: if entrato();
+      allow write: if dm();
+    }
+
     // Tutto il resto è chiuso.
     match /{tutto=**} {
       allow read, write: if false;

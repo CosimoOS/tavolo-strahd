@@ -9,6 +9,7 @@
    Ogni scontro ha un id nuovo: i tiri rimasti da uno scontro vecchio non contano più. */
 import { PERSONAGGI, PROFILI } from "./personaggi/index.js";
 import { CONFIG } from "./config.js";
+import { opzioni } from "./campagna.js";
 import { avviaNemici, fermaNemici, htmlPreparazione, pannelloAperto, schieraScelte, infoGruppo, htmlTurniMaster, clic as clicNemici, input as inputNemici } from "./nemici.js";
 import { avviaAttacchi, fermaAttacchi, aggiornaScontro, htmlGiocatore, htmlMaster, clic as clicAttacco, input as inputAttacco } from "./attacco.js";
 import { totaleIniziativa, ordina, pariConPrecedente, avanza, indietro } from "./regole/combattimento.js";
@@ -266,6 +267,10 @@ function vistaPreparazione() {
     <ul class="scelta">${catalogo().map(p => `<li><label><input type="checkbox" data-part="${p.id}" checked>
       <span>${esc(p.nome)}</span>${p.tipo === "manuale" ? `<small>senza scheda: scrivi tu il totale</small>` : ""}</label></li>`).join("")}</ul>
     </section>${htmlPreparazione()}
+    <details class="regole-tavolo"><summary>Regole del tavolo</summary>
+      <label class="spunta"><input type="checkbox" data-az="tasha"${opzioni().tasha ? " checked" : ""}> Privilegi opzionali e talenti del Calderone di Tasha</label>
+      <p class="hint">Valgono per tutti: nel passaggio di livello compaiono anche le opzioni di Tasha (stili nuovi, Versatilità marziale, Nemico favorito…).</p>
+    </details>
     <div class="azioni"><button class="btn up" data-az="chiedi">Tirate l'iniziativa</button></div>`;
 }
 
@@ -375,6 +380,9 @@ $("vistaScontro").addEventListener("click", async e => {
       const i = +b.dataset.i, o = SC.ordine.slice();
       [o[i - 1], o[i]] = [o[i], o[i - 1]];
       await arch.aggiorna(DOC, { ordine: o, ...timbro() });
+    } else if (az === "tasha") {
+      await arch.scrivi("campagna/impostazioni", { ...opzioni(), tasha: b.checked });
+      toast(b.checked ? "Opzioni di Tasha accese" : "Opzioni di Tasha spente");
     } else if (az === "chiudi") {
       /* "fine" serve ai giocatori per il messaggio "Scontro concluso · durato N round" */
       await arch.scrivi(DOC, { stato: "chiuso", fine: { round: SC.round || 1, giocato: SC.stato === "in corso" }, ...timbro() });

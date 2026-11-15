@@ -3,8 +3,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mod, prof, calcola, attacchiOrdinati, normalizza, clone } from "../js/regole/base.js";
-import rombosogliola from "../js/personaggi/rombosogliola.js";
-import ireena from "../js/personaggi/ireena.js";
+import { PERSONAGGI } from "../js/personaggi/index.js";
+const { rombosogliola, ireena, rex } = PERSONAGGI;
 
 test("modificatori delle caratteristiche", () => {
   assert.equal(mod(10), 0);
@@ -67,7 +67,7 @@ test("normalizza: i campi mancanti prendono il valore di partenza", () => {
   assert.equal(s.weapons.length, 2);
 });
 
-import rex, { slotPaladino } from "../js/personaggi/rex.js";
+import { slotMezzo as slotPaladino } from "../js/classi/comune.js";
 
 test("Rex: i numeri della sua scheda, con l'Aura di protezione nei tiri salvezza", () => {
   const X = calcola(rex, rex.def);
@@ -78,7 +78,8 @@ test("Rex: i numeri della sua scheda, con l'Aura di protezione nei tiri salvezza
   assert.equal(X.atk[0].mod, 4);
   assert.equal(X.skills.find(s => s.n === "Atletica").v, 7);
   assert.equal(X.skills.find(s => s.n === "Religione").v, 2);
-  assert.equal(rex.magia(6, X), "CD 14 · +6 per colpire · 6 incantesimi preparati più quelli del giuramento");
+  assert.equal(rex.magia(6, X), "CD 14 · +6 per colpire");
+  assert.equal(rex.quantiPreparati(6, X), 6);
 });
 
 test("Rex: slot del paladino e risorse al 6° livello", () => {

@@ -7,15 +7,20 @@ import { apriScheda, chiudiScheda, datiIniziativa, datiAttacco, spendiSlot, toas
 import { avviaScontro, fermaScontro, mostraVista } from "./scontro.js";
 import { profilo } from "./personaggi/index.js";
 import { stemma } from "./stemmi.js";
+import { impostaOpzioni } from "./campagna.js";
 
 const $ = id => document.getElementById(id);
 const arch = await creaArchivio(CONFIG);
 let attivo = null;
 
+let stopRegole = null;
 function entraCome(id) {
   const p = profilo(id);
   if (!p) return mostraProfili(arch, entraCome);
   attivo = p; nascondiProfili();
+  /* regole del tavolo decise dal master (per ora: opzioni del Calderone di Tasha) */
+  if (stopRegole) stopRegole();
+  stopRegole = arch.ascolta("campagna/impostazioni", d => impostaOpzioni(d), null, { anchePropri: true });
   if (p.personaggi.length) {
     apriScheda({ archivio: arch, personaggi: p.personaggi, onEsci: chiediUscita,
       scontro: { apri: () => mostraVista(true), chiudi: () => mostraVista(false) } });

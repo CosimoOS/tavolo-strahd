@@ -6,12 +6,14 @@
    Strategia: per i file dell'app prima la rete (così un aggiornamento arriva subito) e, se la rete manca,
    la copia salvata. Le librerie di Firebase e i caratteri di Google hanno l'indirizzo con la versione,
    quindi non cambiano mai: per quelli prima la copia. I dati (Firestore) non passano mai di qui. */
-const VERSIONE = "tavolo-v1";
+const VERSIONE = "tavolo-v2";
 const FILE = [
   "./", "index.html", "manifest.webmanifest",
   "css/tema.css", "css/scheda.css", "css/profili.css", "css/scontro.css", "css/nemici.css", "css/attacco.css",
   "js/app.js", "js/config.js", "js/archivio.js", "js/accesso.js", "js/scheda.js", "js/scontro.js", "js/nemici.js",
-  "js/attacco.js", "js/stemmi.js", "js/personaggi/index.js", "js/personaggi/rombosogliola.js", "js/personaggi/ireena.js",
+  "js/attacco.js", "js/stemmi.js", "js/campagna.js",
+  "js/classi/index.js", "js/classi/componi.js", "js/classi/comune.js", "js/classi/guerriero.js", "js/classi/paladino.js",
+  "js/classi/ranger.js", "js/classi/seguace-guerriero.js", "js/regole/talenti.js", "js/regole/stili.js", "js/personaggi/index.js", "js/personaggi/rombosogliola.js", "js/personaggi/ireena.js",
   "js/personaggi/rex.js", "js/regole/base.js", "js/regole/combattimento.js", "js/regole/nemici.js", "js/regole/attacco.js",
   "icone/icona-192.png", "icone/icona-512.png", "icone/apple-touch-icon.png",
 ];
