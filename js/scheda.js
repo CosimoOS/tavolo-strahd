@@ -47,11 +47,29 @@ function render() {
   $("reTxt").textContent = `Azione bonus · 1d10 + ${L} PF · ${C.reUses(L) > 1 ? "2 usi per riposo" : "riposo breve"}`; $("rePips").dataset.max = C.reUses(L);
   $("dvName").textContent = `Dadi vita d${C.hitDie}`; $("dvTxt").textContent = `Durante un riposo breve · 1d${C.hitDie} ${sg(X.M.cos)} PF ciascuno`;
   $("dvPips").dataset.max = L;
+  $("reRow").hidden = C.secondWind === false;
+  $("extraRes").innerHTML = (C.risorse ? C.risorse(L, X) : []).filter(r => r.max > 0).map(r => `<div class="res">
+      <div class="what"><div>${esc(r.nome)}</div><small>${esc(r.testo)}</small></div>
+      <div class="act"><div class="pips" data-res="${r.k}" data-max="${r.max}"></div></div></div>`).join("") + (C.riserva ? (() => {
+      const r = C.riserva(L, X), resto = Math.max(0, r.max - (S[r.k] || 0));
+      return `<div class="res riserva"><div class="what"><div>${esc(r.nome)} <b class="num">${resto}</b><small class="di"> / ${r.max}</small></div><small>${esc(r.testo)}</small></div>
+        <div class="act">${[-5, -1, 1].map(n => `<button class="btn step" data-pool="${r.k}" data-n="${n}" data-max="${r.max}" aria-label="${n < 0 ? "Spendi" : "Restituisci"} ${Math.abs(n)}">${n < 0 ? "−" : "+"}${Math.abs(n)}</button>`).join("")}</div></div>`;
+    })() : "");
+  $("atkNota").hidden = !(C.atkNota && C.atkNota(L)); $("atkNota").textContent = C.atkNota ? C.atkNota(L) : "";
+  $("ammoRow").hidden = !S.weapons.some(w => w.ammo);
+  $("spellSec").hidden = !C.incantesimi;
+  if (C.incantesimi) {
+    const [testa, ...resto] = C.magia(L, X).split(" · ");
+    $("spellTxt").textContent = testa + (resto[0] ? " · " + resto[0] : "");
+    $("spellList").innerHTML = (resto[1] ? `<p class="hint">${esc(resto.slice(1).join(" · "))}.</p>` : "") + C.incantesimi.map(i => `<div class="spell"><div class="top"><b>${esc(i.n)}</b></div>
+      <div class="meta"><span class="tag">${i.liv}° livello</span>${i.conc ? `<span class="tag">concentrazione</span>` : ""}${i.giur ? `<span class="tag">giuramento</span>` : ""}</div>
+      <p>${esc(i.t)}</p></div>`).join("");
+  }
   $("aiRow").hidden = !C.surge; $("aiPips").dataset.max = C.surges(L) || 1;
   $("inspRow").hidden = !C.insp; $("armorSec").hidden = !C.armor;
   $("indRow").hidden = !C.indom(L); $("indPips").dataset.max = C.indom(L) || 1; $("indName").textContent = C.indName;
   const cm = C.critMin(L);
-  $("atkTxt").textContent = `Critico ${cm}–20 · ${["", "un attacco", "due attacchi", "tre attacchi", "quattro attacchi"][C.attacks(L)]}`;
+  $("atkTxt").textContent = `${cm === 20 ? "Critico con 20" : `Critico ${cm}–20`} · ${["", "un attacco", "due attacchi", "tre attacchi", "quattro attacchi"][C.attacks(L)]}`;
 
   $("hpNow").textContent = S.hp; $("miniHp").textContent = S.hp; $("hpMax").textContent = S.maxhp; $("miniMax").textContent = " / " + S.maxhp;
   const pct = Math.max(0, Math.min(1, S.hp / S.maxhp));
@@ -210,9 +228,15 @@ $("undoHp").onclick = () => {
 };
 
 /* ---------- riposi ---------- */
-$("shortRest").onclick = () => { S.re = 0; S.ai = 0; change(); toast(C.surge ? "Riposo breve: risorse ricaricate" : "Riposo breve: Recuperare energie ricaricato"); };
+/* le risorse dichiarate dal personaggio (slot, Incanalare divinità…) si ricaricano col riposo indicato */
+const risorseDi = riposi => (C.risorse ? C.risorse(S.level, D()) : []).filter(r => riposi.includes(r.riposo));
+$("shortRest").onclick = () => {
+  S.re = 0; S.ai = 0; risorseDi(["breve"]).forEach(r => S[r.k] = 0); change();
+  toast(C.surge || C.risorse ? "Riposo breve: risorse ricaricate" : "Riposo breve: Recuperare energie ricaricato");
+};
 $("longRest").onclick = () => {
   const back = Math.max(1, Math.floor(S.level / 2));
+  risorseDi(["breve", "lungo"]).forEach(r => S[r.k] = 0); if (C.riserva) S[C.riserva(S.level).k] = 0;
   S.hp = S.maxhp; S.temp = 0; S.re = 0; S.ai = 0; S.ind = 0; S.dv = Math.max(0, S.dv - back); S.dardo = 0; S.fulmine = 0; S.deathS = 0; S.deathF = 0; if (S.exh > 0) S.exh--;
   hideLast(); change(); toast(`Riposo lungo: PF pieni, ${back} dadi vita recuperati`);
 };
@@ -316,6 +340,8 @@ $("vistaScheda").addEventListener("click", e => {
   if (dp) { const k = dp.dataset.dk, i = +dp.dataset.i; S[k] = (i < S[k]) ? i : i + 1; change(); return; }
   const c = e.target.closest(".chip[data-c]");
   if (c) { const n = c.dataset.c; S.conds = S.conds.includes(n) ? S.conds.filter(x => x !== n) : [...S.conds, n]; change(); return; }
+  const po = e.target.closest("[data-pool]");
+  if (po) { const k = po.dataset.pool; S[k] = Math.max(0, Math.min(+po.dataset.max, (S[k] || 0) - +po.dataset.n)); change(); return; }
   const ex = e.target.closest("[data-exh]");
   if (ex) { S.exh = Math.max(0, Math.min(6, S.exh + +ex.dataset.exh)); change(); return; }
   const am = e.target.closest("[data-ammo]");

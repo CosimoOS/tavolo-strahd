@@ -84,7 +84,7 @@
 
       <section>
         <h2>Risorse <small id="bcV">BC +3</small></h2>
-        <div class="res">
+        <div class="res" id="reRow">
           <div class="what"><div>Recuperare energie</div><small id="reTxt">Azione bonus · 1d10 + 6 PF · riposo breve</small></div>
           <div class="act"><div class="pips" data-res="re" data-max="1" id="rePips"></div></div>
         </div>
@@ -96,6 +96,7 @@
           <div class="what"><div id="dvName">Dadi vita d10</div><small id="dvTxt">Durante un riposo breve · 1d10 + 2 PF ciascuno</small></div>
           <div class="act"><div class="pips" data-res="dv" data-max="6" id="dvPips"></div></div>
         </div>
+        <div id="extraRes"></div>
         <div class="res" id="indRow" hidden>
           <div class="what"><div id="indName">Indomito</div><small>Ripeti un tiro salvezza fallito · riposo lungo</small></div>
           <div class="act"><div class="pips" data-res="ind" data-max="1" id="indPips"></div></div>
@@ -129,11 +130,17 @@
           <div class="wf-checks"><label><input type="checkbox" id="wRanged"> A distanza</label><label id="wAmmoWrap" hidden><input type="checkbox" id="wAmmo" checked> Usa munizioni</label></div>
           <button class="btn gold" type="submit">Aggiungi l'arma</button>
         </form>
-        <div class="ammo"><span>Munizioni</span>
+        <p class="hint" id="atkNota" hidden></p>
+        <div class="ammo" id="ammoRow"><span>Munizioni</span>
           <button class="btn step" data-ammo="-1" aria-label="Togli una munizione">−</button>
           <b class="num" id="ammo">20</b>
           <button class="btn step" data-ammo="1" aria-label="Aggiungi una munizione">+</button>
         </div>
+      </section>
+
+      <section id="spellSec" hidden>
+        <h2>Incantesimi <small id="spellTxt"></small></h2>
+        <div id="spellList"></div>
       </section>
 
       <section class="armor" id="armorSec">

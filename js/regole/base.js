@@ -43,7 +43,8 @@ export function calcola(C, S) {
   AB.forEach(k => M[k] = mod(S.scores[k]));
   const half = Math.ceil(P / 2), ath = C.athlete(L);
   const saves = {};
-  AB.forEach(k => saves[k] = M[k] + (C.saves.includes(k) ? P : 0));
+  const aura = C.saveBonus ? C.saveBonus(L, M) : 0;   // es. Aura di protezione del paladino
+  AB.forEach(k => saves[k] = M[k] + (C.saves.includes(k) ? P : 0) + aura);
   const skills = SK.map(([n, a]) => {
     const p = C.skills.includes(n);
     let v = M[a] + (p ? P : 0);

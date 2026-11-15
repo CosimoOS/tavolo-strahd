@@ -313,3 +313,9 @@ body.in-scheda{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))}
 .attnote{text-transform:none;letter-spacing:.02em;font-family:var(--f-body);font-size:12px}
 .att-mini{display:inline-block;width:8px;height:8px;border:1.3px solid currentColor;transform:rotate(45deg);margin:0 3px 1px;vertical-align:middle}
 @media (max-width:420px){.coin.big{grid-template-columns:44px 1fr}.coin.big .act{grid-column:1 / -1;justify-content:flex-end}}
+
+/* riserva di punti (Imposizione delle mani): quanti ne restano e tre pulsanti per spenderli */
+.riserva .act{display:flex;gap:6px;flex:none}
+.riserva .what .num{font-family:var(--f-num);color:var(--gold);margin-left:6px}
+.riserva .what .di{font-family:var(--f-num)}
+#extraRes .res:first-of-type{border-top:1px solid var(--line);padding-top:10px}

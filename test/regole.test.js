@@ -66,3 +66,25 @@ test("normalizza: i campi mancanti prendono il valore di partenza", () => {
   assert.deepEqual(s.conds, ["Prono"]);
   assert.equal(s.weapons.length, 2);
 });
+
+import rex, { slotPaladino } from "../js/personaggi/rex.js";
+
+test("Rex: i numeri della sua scheda, con l'Aura di protezione nei tiri salvezza", () => {
+  const X = calcola(rex, rex.def);
+  assert.equal(X.P, 3);
+  assert.equal(X.ini, 0);
+  assert.deepEqual([X.saves.for, X.saves.des, X.saves.cos, X.saves.int, X.saves.sag, X.saves.car], [7, 3, 5, 2, 6, 9]);
+  assert.equal(X.atk[0].hit, 7);
+  assert.equal(X.atk[0].mod, 4);
+  assert.equal(X.skills.find(s => s.n === "Atletica").v, 7);
+  assert.equal(X.skills.find(s => s.n === "Religione").v, 2);
+  assert.equal(rex.magia(6, X), "CD 14 · +6 per colpire · 6 incantesimi preparati più quelli del giuramento");
+});
+
+test("Rex: slot del paladino e risorse al 6° livello", () => {
+  assert.deepEqual(slotPaladino(6), [4, 2]);
+  assert.deepEqual(slotPaladino(9), [4, 3, 2]);
+  const X = calcola(rex, rex.def), r = rex.risorse(6, X);
+  assert.deepEqual(r.map(x => [x.k, x.max]), [["slot1", 4], ["slot2", 2], ["canale", 1], ["senso", 4]]);
+  assert.equal(rex.riserva(6).max, 30);
+});
