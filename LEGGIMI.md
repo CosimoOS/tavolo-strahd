@@ -2,6 +2,12 @@
 
 Schede e combattimento per la campagna di D&D del gruppo. L'app fa i conti; i dadi si tirano sempre al tavolo.
 
+## Dove si trova online
+
+L'app è pubblicata su <https://cosimoos.github.io/tavolo-strahd/> (GitHub Pages, gratuito).
+Per mandare online una modifica salvata con git basta un comando: `git push`. In un minuto arriva sui telefoni.
+Le cartelle `privato/` (bestiario) e `originali/` restano solo su questo computer.
+
 ## Provarla sul computer
 
 Apri il Terminale nella cartella del progetto e scrivi:
