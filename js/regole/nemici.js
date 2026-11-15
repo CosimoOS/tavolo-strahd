@@ -102,3 +102,34 @@ export function leggiTratti(testo) {
   });
 }
 export const scriviTratti = tratti => (tratti || []).map(t => t.testo ? `${t.nome}: ${t.testo}` : t.nome).join("\n");
+
+/* ---------- testi più chiari per la scheda del master ---------- */
+const CAR = { For: "Forza", Des: "Destrezza", Cos: "Costituzione", Int: "Intelligenza", Sag: "Saggezza", Car: "Carisma" };
+/** Scioglie le abbreviazioni dei manuali: "TS Sag CD 14" → "tiro salvezza su Saggezza CD 14", "For CD 12" → "Forza CD 12". */
+export function chiaro(testo) {
+  return String(testo || "")
+    .replace(/\bTS (For|Des|Cos|Int|Sag|Car)\b/g, (_, k) => "tiro salvezza su " + CAR[k])
+    .replace(/\bTS\b/g, "tiri salvezza")
+    .replace(/\b(For|Des|Cos|Int|Sag|Car)(?= CD\b)/g, k => CAR[k]);
+}
+const LIBRI = { CoS: "Maledizione di Strahd", MM: "Manuale dei Mostri", PHB: "Manuale del Giocatore" };
+/** "CoS p.231" → "Maledizione di Strahd, pagina 231"; "PHB app. D" → "Manuale del Giocatore, appendice D". */
+export function fonteChiara(f) {
+  return String(f || "").split("/").map(x => x.trim()).filter(Boolean).map(x => x
+    .replace(/^(CoS|MM|PHB)\b/, k => LIBRI[k] + ",")
+    .replace(/\bp\.\s*(\d+)/, "pagina $1").replace(/\bapp\.\s*/, "appendice ")).join(" · ");
+}
+/** Separa il testo degli incantesimi in righe: { intro, livelli:[{ livello: 0 per i trucchetti o 1..9, elenco }] }.
+    Accetta sia "1° (4): dardo incantato" sia "1°: dardo incantato" sia "Trucchetti: luce". */
+export function incantesimi(testo) {
+  const t = String(testo || "");
+  const re = /(Trucchetti|(\d)°(?:\s*\(\d+\))?)\s*:\s*/g;
+  const pezzi = [...t.matchAll(re)];
+  if (!pezzi.length) return { intro: t.trim(), livelli: [] };
+  const intro = t.slice(0, pezzi[0].index).trim().replace(/[.\s]+$/, "");
+  const livelli = pezzi.map((m, i) => ({
+    livello: m[2] ? +m[2] : 0,
+    elenco: t.slice(m.index + m[0].length, i + 1 < pezzi.length ? pezzi[i + 1].index : t.length).trim().replace(/[.\s]+$/, ""),
+  }));
+  return { intro, livelli };
+}

@@ -75,3 +75,21 @@ test("azioni scritte una per riga e rilette uguali", () => {
   const t = leggiTratti("Tattiche di branco: vantaggio se un alleato è vicino");
   assert.deepEqual(leggiTratti(scriviTratti(t)), t);
 });
+
+import { chiaro, fonteChiara, incantesimi } from "../js/regole/nemici.js";
+
+test("abbreviazioni sciolte per il master", () => {
+  assert.equal(chiaro("TS Sag CD 14 o affascinato"), "tiro salvezza su Saggezza CD 14 o affascinato");
+  assert.equal(chiaro("Fuga con For CD 12"), "Fuga con Forza CD 12");
+  assert.equal(chiaro("Vantaggio ai TS contro incantesimi"), "Vantaggio ai tiri salvezza contro incantesimi");
+  assert.equal(fonteChiara("CoS p.231"), "Maledizione di Strahd, pagina 231");
+  assert.equal(fonteChiara("MM p.341 / PHB app. D"), "Manuale dei Mostri, pagina 341 · Manuale del Giocatore, appendice D");
+});
+
+test("incantesimi divisi per livello", () => {
+  const r = incantesimi("Maga di 7° livello, CD 14, +6. Trucchetti: dardo di fuoco, luce. 1° (4): scudo, dardo incantato. 4° (1): invisibilità superiore.");
+  assert.equal(r.intro, "Maga di 7° livello, CD 14, +6");
+  assert.deepEqual(r.livelli.map(l => l.livello), [0, 1, 4]);
+  assert.equal(r.livelli[1].elenco, "scudo, dardo incantato");
+  assert.equal(incantesimi("1°: sonno. 2°: invisibilità").livelli[1].elenco, "invisibilità");
+});

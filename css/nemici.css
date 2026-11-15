@@ -36,23 +36,51 @@
 
 /* scheda rapida di chi è di turno */
 .rapida{border-color:var(--gold-deep)}
-.modello .dati{margin:0 0 10px;font-family:var(--f-num);color:var(--muted);font-size:14px}
-.modello .tattica{margin:0 0 6px;padding:10px 12px;border-left:3px solid var(--gold);background:var(--gold-soft);border-radius:0 8px 8px 0;line-height:1.45}
-.modello .tattica b{display:block;font-family:var(--f-display);letter-spacing:.08em;font-size:12px;text-transform:uppercase;color:var(--gold);margin-bottom:2px}
-.azioni-m,.tratti{list-style:none;margin:0;padding:0}
-.azioni-m li{padding:8px 0;border-top:1px solid var(--line)}
-.azioni-m li:first-child{border-top:0}
-.azioni-m b{font-size:16px}
-.azioni-m .tiro{font-family:var(--f-num);font-weight:600;color:var(--gold);margin-left:6px}
-.azioni-m .danni{font-family:var(--f-num);margin-left:8px}
-.azioni-m .danni small{color:var(--muted)}
-.azioni-m .portata{display:block;color:var(--muted);font-size:13px;margin-top:2px}
-.azioni-m p,.modello .testo{margin:4px 0 0;color:var(--muted);font-size:14px;line-height:1.45}
-.tratti li{padding:6px 0;font-size:14px;line-height:1.45;color:var(--muted)}
-.tratti b{color:var(--ink)}
-.modello details{margin-top:12px}
-.modello summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-family:var(--f-display);letter-spacing:.08em;color:var(--gold)}
-.modello .fonte{margin:10px 0 0;font-size:12px;color:var(--muted)}
+.modello{display:flex;flex-direction:column;gap:14px}
+.modello .cifre{display:grid;grid-template-columns:repeat(auto-fit,minmax(64px,1fr));border:1px solid var(--line);border-radius:10px;padding:8px 0;text-align:center}
+.modello .cifre .stat{padding:4px 6px}
+.modello .dati{margin:-4px 0 0;color:var(--muted);font-size:14px}
+.modello .tattica{padding:12px 14px;border-left:3px solid var(--gold);background:var(--gold-soft);border-radius:0 10px 10px 0}
+.modello .tattica b{display:block;font-family:var(--f-display);letter-spacing:.12em;font-size:12px;text-transform:uppercase;color:var(--gold);margin-bottom:4px}
+.modello .tattica p{margin:0;line-height:1.5}
+.sez-m{margin:6px 0 -4px;font-family:var(--f-display);font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);
+  display:flex;align-items:center;gap:10px}
+.sez-m::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--gold-deep),transparent)}
+
+/* un'azione: nome e portata, poi i tre numeri in caselle, poi la nota */
+.azioni-m{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.az{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--panel2)}
+.az-testa{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.az-testa b{font-size:17px}
+.az .portata{color:var(--muted);font-size:13px}
+.az-numeri{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.az .num{display:flex;flex-direction:column;gap:2px;padding:8px 12px;border-radius:8px;background:var(--bg);min-width:0}
+.az .num small{font-family:var(--f-display);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.az .num b{font-family:var(--f-num);font-size:18px;font-weight:600}
+.az .num b.oro{color:var(--gold)}
+.az .num.danni{grid-column:1/-1}
+.az .num.danni b{font-size:16px;line-height:1.35}
+.az .nota{margin:10px 0 0;color:var(--muted);font-size:14px;line-height:1.5}
+
+/* incantesimi: una riga per livello, con le losanghe degli slot (piena = usato) */
+.inc{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:10px}
+.inc li{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:6px 12px;padding:10px 14px;border-top:1px solid var(--line)}
+.inc li:first-child{border-top:0}
+.inc .liv{font-family:var(--f-display);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)}
+.inc .pips{justify-content:flex-end;padding:4px 6px}
+.inc .elenco{grid-column:1/-1;font-size:15px;line-height:1.45}
+.inc span.pip{display:inline-block}
+.modello .testo{margin:0;color:var(--muted);font-size:14px;line-height:1.5}
+
+/* reazioni, leggendarie, tratti: nome sopra, spiegazione sotto */
+.tratti{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.tratti li{display:flex;flex-direction:column;gap:2px;font-size:15px;line-height:1.5}
+.tratti li span{color:var(--muted)}
+.tratti-tutti{border:1px solid var(--line);border-radius:10px;padding:0 14px}
+.tratti-tutti summary{min-height:48px;display:flex;align-items:center;gap:8px;cursor:pointer;font-family:var(--f-display);font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
+.tratti-tutti summary small{font-family:var(--f-num);color:var(--muted);letter-spacing:0}
+.tratti-tutti[open]{padding-bottom:14px}
+.modello .fonte{margin:0;font-size:13px;color:var(--muted)}
 
 /* bestiario e modulo di modifica */
 .bestiario{list-style:none;margin:14px 0 0;padding:0}
@@ -69,5 +97,12 @@
 .spunta input{width:22px;height:22px;accent-color:var(--gold)}
 .btn.link.rosso{color:var(--crimson)}
 
-/* giocatori: come stanno i nemici, sotto il nome nell'ordine dei turni */
-.turni .nome .ferite{display:block;font-size:13px;font-weight:400;color:var(--muted);white-space:normal}
+/* come stanno le creature del master, nell'ordine dei turni (lo vedono tutti) */
+.turni li{flex-wrap:wrap}
+.stato-c{flex:none;padding:3px 10px;border-radius:999px;border:1px solid var(--line);font-size:13px;line-height:1.4;color:var(--muted);white-space:nowrap}
+.stato-c[data-s="ferito"]{border-color:#c97d22;color:#f2b45a;background:color-mix(in srgb,#c97d22 14%,transparent)}
+.stato-c[data-s="in fin di vita"]{border-color:var(--crimson);color:var(--ink);background:var(--crimson-soft)}
+.stato-c[data-s="sconfitto"]{text-decoration:line-through}
+.membri{flex-basis:100%;list-style:none;margin:2px 0 4px;padding:0 0 0 calc(1.5em + 12px);display:flex;flex-direction:column;gap:6px}
+.membri li{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:32px;padding:0;border:0;background:none;border-radius:0;font-size:15px}
+.membri li.giu span:first-child{color:var(--muted);text-decoration:line-through}

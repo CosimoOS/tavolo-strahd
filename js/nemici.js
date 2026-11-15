@@ -4,7 +4,7 @@
 
      dm/bestiario → { creature:[...], gruppi:[...] }   i modelli, importati dal file privato o scritti a mano
      dm/campo     → { scontro, creature:[...], gruppi:[...] }   chi è in campo adesso, con i PF veri          */
-import { ferite, danno, cura, schiera, togliDaOrdine, leggiAzioni, scriviAzioni, leggiTratti, scriviTratti } from "./regole/nemici.js";
+import { ferite, danno, cura, schiera, togliDaOrdine, leggiAzioni, scriviAzioni, leggiTratti, scriviTratti, chiaro, fonteChiara, incantesimi } from "./regole/nemici.js";
 
 const BEST = "dm/bestiario", CAMPO = "dm/campo";
 const $ = id => document.getElementById(id);
@@ -76,7 +76,7 @@ export function infoGruppo(id) {
 }
 
 /* ---------- durante i turni: in campo e scheda rapida ---------- */
-/** Vista del master durante i turni: la scheda di chi agisce ora (va in cima) e tutte le creature in campo con i PF (in fondo). */
+/** Vista del master durante i turni: sotto l'ordine dei turni la scheda di chi agisce ora, poi tutte le creature in campo con i PF. */
 export function htmlTurniMaster(SC) {
   if (!C.creature.length || C.scontro !== SC.id) return { rapida: "", campo: "" };
   const P = perId(), voce = SC.ordine && SC.ordine[SC.turno];
@@ -86,7 +86,7 @@ export function htmlTurniMaster(SC) {
     const membri = C.creature.filter(c => g.membri.includes(c.id));
     const modello = P[membri[0]?.creatura];
     rapida = `<section class="rapida"><h2>Di turno: ${esc(membri.length > 1 ? `${modello?.nome || ""} ×${membri.filter(m => m.pf > 0).length}` : membri[0]?.nome)}</h2>
-      ${modello ? schedaModello(modello) : ""}</section>`;
+      ${modello ? schedaModello(modello, membri.length === 1 ? membri[0] : null) : ""}</section>`;
   }
   const righe = C.creature.map(c => {
     const st = ferite(c.pf, c.max), aperta = aperte.has(c.id), m = P[c.creatura];
@@ -99,28 +99,54 @@ export function htmlTurniMaster(SC) {
         <input type="number" inputmode="numeric" min="0" placeholder="0" data-qta="${c.id}" aria-label="Quantità per ${esc(c.nome)}">
         <button class="btn dmg" data-nz="danno" data-id="${c.id}">Danno</button>
         <button class="btn heal" data-nz="cura" data-id="${c.id}">Cura</button></div>
-      ${aperta && m ? `<div class="dettaglio">${schedaModello(m)}</div>` : ""}</li>`;
+      ${aperta && m ? `<div class="dettaglio">${schedaModello(m, c)}</div>` : ""}</li>`;
   }).join("");
   return { rapida, campo: `<section><h2>In campo</h2><ul class="campo">${righe}</ul></section>` };
 }
 
-/* La scheda di un modello: prima "cosa fa" (la tattica), poi le azioni con i numeri pronti, poi i tratti. */
-function schedaModello(m) {
-  const azione = a => `<li><b>${esc(a.nome)}</b>${a.colpire != null ? ` <span class="tiro">${sg(a.colpire)}</span>` : ""}
-    ${a.danni ? `<span class="danni">${esc(a.danni)}${a.medio != null ? ` <small>(${a.medio})</small>` : ""}</span>` : ""}
-    ${a.portata ? `<small class="portata">${esc(a.portata)}</small>` : ""}${a.nota ? `<p>${esc(a.nota)}</p>` : ""}</li>`;
-  const lista = (t, v) => v && v.length ? `<p class="lbl-sez">${t}</p><ul class="azioni-m">${v.map(azione).join("")}</ul>` : "";
-  const slot = m.slot ? Object.entries(m.slot).map(([l, n]) => `${l}° ×${n}`).join(" · ") : "";
+/* La scheda di un modello, per il master:
+   cifre principali → "cosa fa" → azioni (ognuna con per colpire, danni e media ben separati) → incantesimi con gli slot
+   → reazioni, leggendarie, tana → tratti. Le abbreviazioni dei manuali sono sciolte.
+   c è la creatura in campo (se è una sola): serve per segnare gli slot usati. */
+function schedaModello(m, c) {
+  const T = x => esc(chiaro(x));
+  const azione = a => `<li class="az">
+      <div class="az-testa"><b>${esc(a.nome)}</b>${a.portata ? `<span class="portata">${esc(a.portata)}</span>` : ""}</div>
+      ${a.colpire != null || a.danni ? `<div class="az-numeri">
+        ${a.colpire != null ? `<span class="num"><small>Per colpire</small><b class="oro">${sg(a.colpire)}</b></span>` : ""}
+        ${a.medio != null ? `<span class="num"><small>Danno medio</small><b>${a.medio}</b></span>` : ""}
+        ${a.danni ? `<span class="num danni"><small>Danni</small><b>${esc(a.danni)}</b></span>` : ""}</div>` : ""}
+      ${a.nota ? `<p class="nota">${T(a.nota)}</p>` : ""}</li>`;
+  const blocco = (titolo, voci) => voci && voci.length ? `<h3 class="sez-m">${titolo}</h3><ul class="azioni-m">${voci.map(azione).join("")}</ul>` : "";
+  const testi = (titolo, voci) => voci && voci.length ? `<h3 class="sez-m">${titolo}</h3><ul class="tratti">${voci.map(t =>
+    `<li><b>${esc(t.nome)}</b><span>${T(t.testo || t.nota || "")}</span></li>`).join("")}</ul>` : "";
+  /* incantesimi: il tratto che li elenca diventa una tabellina per livello, con le losanghe degli slot */
+  const trInc = (m.tratti || []).find(t => /incantesimi/i.test(t.nome) && /Trucchetti|\d°/.test(t.testo));
+  let inc = "";
+  if (trInc) {
+    const { intro, livelli } = incantesimi(trInc.testo), usati = (c && c.slotUsati) || {};
+    inc = `<h3 class="sez-m">${esc(trInc.nome)}</h3>${intro ? `<p class="testo">${T(intro)}</p>` : ""}
+      <ul class="inc">${livelli.map(l => {
+        const n = (m.slot || {})[l.livello] || 0, u = usati[l.livello] || 0;
+        const pips = n ? `<span class="pips">${Array.from({ length: n }, (_, i) =>
+          c ? `<button class="pip${i < u ? " on" : ""}" data-nz="slot" data-id="${c.id}" data-l="${l.livello}" data-i="${i}" aria-label="Slot di ${l.livello}° livello ${i + 1}${i < u ? ", usato" : ""}"></button>`
+            : `<span class="pip"></span>`).join("")}</span>` : "";
+        return `<li><span class="liv">${l.livello ? `${l.livello}° livello` : "Trucchetti"}</span>${pips}<span class="elenco">${esc(l.elenco)}</span></li>`;
+      }).join("")}</ul>`;
+  }
+  const altri = (m.tratti || []).filter(t => t !== trInc);
+  const cifra = (v, l, cls = "") => v != null && v !== "" ? `<div class="stat${cls}"><b>${esc(String(v))}</b><span>${l}</span></div>` : "";
   return `<div class="modello">
-    <p class="dati">CA ${m.ca} · PF ${m.pf}${m.dadiPf ? ` (${esc(m.dadiPf)})` : ""} · Iniz. ${sg(m.ini ?? 0)} · ${esc(m.vel || "")}${m.gs ? ` · GS ${esc(m.gs)}` : ""}</p>
-    ${m.tattica ? `<p class="tattica"><b>Cosa fa</b> ${esc(m.tattica)}</p>` : ""}
-    ${lista("Azioni", m.azioni)}${lista("Azioni bonus", m.azioniBonus)}
-    ${m.reazioni && m.reazioni.length ? `<p class="lbl-sez">Reazioni</p><ul class="tratti">${m.reazioni.map(r => `<li><b>${esc(r.nome)}</b> ${esc(r.testo || r.nota || "")}</li>`).join("")}</ul>` : ""}
-    ${m.leggendarie ? `<p class="lbl-sez">Azioni leggendarie (${m.leggendarie.quante} per round)</p><ul class="tratti">${m.leggendarie.azioni.map(r => `<li><b>${esc(r.nome)}</b> ${esc(r.nota || "")}</li>`).join("")}</ul>` : ""}
-    ${m.tana ? `<p class="lbl-sez">Azioni di tana</p><p class="testo">${esc(m.tana)}</p>` : ""}
-    ${slot ? `<p class="lbl-sez">Slot incantesimo</p><p class="testo">${slot}</p>` : ""}
-    ${m.tratti && m.tratti.length ? `<details><summary>Tratti</summary><ul class="tratti">${m.tratti.map(t => `<li><b>${esc(t.nome)}</b> ${esc(t.testo)}</li>`).join("")}</ul></details>` : ""}
-    ${m.fonte ? `<p class="fonte">${esc(m.fonte)}</p>` : ""}</div>`;
+    <div class="cifre">${cifra(m.ca, "CA", " ca")}${cifra(m.pf, "PF")}${cifra(sg(m.ini ?? 0), "Iniziativa")}${cifra(m.gs, "Sfida")}</div>
+    ${m.vel || m.dadiPf ? `<p class="dati">${m.vel ? `Velocità ${esc(m.vel)}` : ""}${m.vel && m.dadiPf ? " · " : ""}${m.dadiPf ? `Dadi vita ${esc(m.dadiPf)}` : ""}</p>` : ""}
+    ${m.tattica ? `<div class="tattica"><b>Cosa fa</b><p>${T(m.tattica)}</p></div>` : ""}
+    ${blocco("Azioni", m.azioni)}${blocco("Azioni bonus", m.azioniBonus)}
+    ${inc}
+    ${testi("Reazioni", m.reazioni)}
+    ${m.leggendarie ? testi(`Azioni leggendarie · ${m.leggendarie.quante} per round, alla fine del turno di un altro`, m.leggendarie.azioni) : ""}
+    ${m.tana ? `<h3 class="sez-m">Azioni di tana</h3><p class="testo">${T(m.tana)}</p>` : ""}
+    ${altri.length ? `<details class="tratti-tutti"><summary>Tratti e capacità <small>${altri.length}</small></summary>${testi("", altri).replace('<h3 class="sez-m"></h3>', "")}</details>` : ""}
+    ${m.fonte ? `<p class="fonte">Dal manuale: ${esc(fonteChiara(m.fonte))}</p>` : ""}</div>`;
 }
 
 /** Danno o cura a una creatura in campo. Aggiorna i PF veri (dm/campo) e la parola per i giocatori (scontro).
@@ -246,6 +272,17 @@ export async function clic(b, SC, scrivi) {
       if (!vecchio) { let id = slug(c.nome), n = 2; while (B.creature.some(x => x.id === id)) id = `${slug(c.nome)}-${n++}`; c.id = id; }
       await salvaBestiario(vecchio ? B.creature.map(x => x.id === c.id ? c : x) : [...B.creature, c]);
       pannello = "bestiario"; toast("Modello salvato"); break;
+    }
+    case "slot": {
+      /* tocco su una losanga: piena = slot usato. Toccare l'ultima piena la libera, una vuota la riempie fin lì */
+      const id = b.dataset.id, l = b.dataset.l, i = +b.dataset.i;
+      const creature = C.creature.map(c => {
+        if (c.id !== id) return c;
+        const u = (c.slotUsati || {})[l] || 0;
+        return { ...c, slotUsati: { ...(c.slotUsati || {}), [l]: i < u ? i : i + 1 } };
+      });
+      await arch.aggiorna(CAMPO, { creature });
+      break;
     }
     case "apri": { const id = b.dataset.id; aperte.has(id) ? aperte.delete(id) : aperte.add(id); break; }
     case "danno": case "cura": {

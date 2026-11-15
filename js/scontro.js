@@ -281,27 +281,33 @@ function vistaTiri() {
       : `<p class="hint">Quando avranno tirato tutti, il master avvierà lo scontro.</p>`}</section>`;
 }
 
-/* sotto il nome di un gruppo del master: come stanno, a parole (o i PF, per gli alleati che lo prevedono) */
+/* Come stanno le creature del master, per tutti: un'etichetta colorata con la parola
+   (o i PF veri, per gli alleati che lo prevedono). Un gruppo mostra una riga per creatura. */
+const etichetta = c => `<span class="stato-c" data-s="${c.ferite}">${c.pf != null && c.ferite !== "sconfitto" ? `${c.pf}/${c.max} PF` : c.ferite}</span>`;
+function membri(id) { return (SC.campo || []).filter(c => c.gruppo === id); }
 function stato(id) {
-  const m = (SC.campo || []).filter(c => c.gruppo === id); if (!m.length) return "";
-  const testo = m.map(c => (m.length > 1 ? esc(c.nome) + " " : "") + (c.pf != null ? `${c.pf}/${c.max} PF` : c.ferite)).join(" · ");
-  return `<small class="ferite">${testo}</small>`;
+  const m = membri(id);
+  return m.length === 1 ? etichetta(m[0]) : "";
+}
+function righeMembri(id) {
+  const m = membri(id); if (m.length < 2) return "";
+  return `<ul class="membri">${m.map(c => `<li${c.ferite === "sconfitto" ? ' class="giu"' : ""}><span>${esc(c.nome)}</span>${etichetta(c)}</li>`).join("")}</ul>`;
 }
 function vistaTurni() {
   const a = attivo(), o = SC.ordine || [];
   const righe = o.map((v, i) => `<li class="${i === SC.turno ? "attivo" : ""}${mio(v.id) ? " mio" : ""}"${i === SC.turno ? ' aria-current="step"' : ""}>
-      <span class="pos">${i + 1}</span><span class="nome">${esc(v.nome)}${stato(v.id)}</span>
+      <span class="pos">${i + 1}</span><span class="nome">${esc(v.nome)}</span>${stato(v.id)}
       ${dm && pariConPrecedente(o, i) ? `<button class="btn link" data-az="scambia" data-i="${i}" aria-label="Metti ${esc(v.nome)} prima">Scambia</button>` : ""}
-      <span class="tot">${v.tot}</span></li>`).join("");
+      <span class="tot">${v.tot}</span>${righeMembri(v.id)}</li>`).join("");
   const puo = dm || (a && mio(a.id));
   const M = dm ? htmlTurniMaster(SC) : { rapida: "", campo: "" };
-  return `${M.rapida}<section><h2>Round ${SC.round} <small>${a ? "di turno: " + esc(a.nome) : ""}</small></h2>
+  return `<section><h2>Round ${SC.round} <small>${a ? "di turno: " + esc(a.nome) : ""}</small></h2>
     ${a && mio(a.id) ? `<p class="tuo">Tocca a te: ${esc(a.nome)}</p>` : ""}
     <ol class="turni">${righe}</ol>
     <div class="azioni">
       ${dm ? `<button class="btn link" data-az="chiudi">Chiudi lo scontro</button><button class="btn" data-az="indietro">Indietro</button>` : ""}
       ${puo ? `<button class="btn up fine" data-az="fine"${inVolo ? " disabled" : ""}>Fine turno</button>` : ""}
-    </div></section>${M.campo}`;
+    </div></section>${M.rapida}${M.campo}`;
 }
 
 /* ---------- pulsanti della vista ---------- */
