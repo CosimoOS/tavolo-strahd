@@ -336,3 +336,16 @@ body.in-scheda{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))}
 .choice .lbl small{color:var(--muted);text-transform:none;letter-spacing:0}
 #lvChanges li.new .nuovo-t{font-family:var(--f-body);font-size:14px;text-align:right;line-height:1.4}
 .seg button:disabled{opacity:.4;cursor:not-allowed}
+
+/* durata delle condizioni e concentrazione */
+.chip small{opacity:.85;font-family:var(--f-num);margin-left:4px}
+.durata{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;padding:10px 12px;border:1px solid var(--crimson);border-radius:10px;background:var(--crimson-soft)}
+.durata span{flex-basis:100%;font-weight:600}
+.durata .btn{min-height:44px}
+.conc-riga{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;min-height:44px}
+.conc-riga .hint{margin:0}
+.conc-on b{color:var(--gold)}
+.conc-btn{margin-left:auto;font-size:13px}
+.conc-cd{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;padding:12px 14px;border:1px solid var(--gold-deep);border-radius:10px;background:var(--gold-soft);margin:6px 0 4px}
+.conc-cd b{font-family:var(--f-num);font-size:26px;color:var(--gold)}
+.conc-cd small{flex-basis:100%;color:var(--muted)}

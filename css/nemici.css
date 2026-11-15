@@ -134,3 +134,5 @@
 .rinforzi summary{min-height:48px;display:flex;align-items:center;cursor:pointer;font-family:var(--f-display);font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
 .rinforzi .aggiungi{margin-top:8px}
 .rinforzi .hint{margin:10px 0 0}
+.attacca-pg{margin-left:auto;min-height:40px;padding:6px 14px}
+.az-testa{align-items:center}

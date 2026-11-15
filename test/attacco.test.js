@@ -39,3 +39,17 @@ test("il master sceglie: pieni, metà, doppi, nulli", () => {
   assert.equal(danniFinali(9, "doppio"), 18);
   assert.equal(danniFinali(9, "nulla"), 0);
 });
+
+import { partiFormula, conResistenze } from "../js/regole/attacco.js";
+
+test("formule di danno del bestiario lette a pezzi", () => {
+  assert.deepEqual(partiFormula("2d4+2 perforanti"), [{ n: 2, f: 4, mod: 2, tipo: "perforanti" }]);
+  assert.deepEqual(partiFormula("2d6+3 taglienti + 1d6 fulmine"), [{ n: 2, f: 6, mod: 3, tipo: "taglienti" }, { n: 1, f: 6, mod: 0, tipo: "fulmine" }]);
+  assert.deepEqual(partiFormula("1d8+4 contundenti (1d10+4 a due mani)"), [{ n: 1, f: 8, mod: 4, tipo: "contundenti" }]);
+  assert.deepEqual(partiFormula("trattenuto"), []);
+});
+
+test("resistenze del personaggio: quel tipo di danno si dimezza", () => {
+  assert.deepEqual(conResistenze({ taglienti: 9, fulmine: 7 }, ["Fulmine"]), { tot: 12, dimezzati: ["fulmine"] });
+  assert.deepEqual(conResistenze({ perforanti: 7 }, []), { tot: 7, dimezzati: [] });
+});

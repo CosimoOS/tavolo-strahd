@@ -94,7 +94,13 @@ function render() {
     for (let i = 0; i < 3; i++) h += `<button class="pip${i < S[k] ? " mark" : ""}" data-dk="${k}" data-i="${i}" aria-label="Tiro contro morte ${i + 1}"></button>`;
     el.innerHTML = h;
   });
-  $("conds").innerHTML = CONDS.map(c => `<button class="chip${S.conds.includes(c) ? " on" : ""}" data-c="${c}" aria-pressed="${S.conds.includes(c)}">${c}</button>`).join("");
+  const dur = S.durate || {};
+  $("conds").innerHTML = CONDS.map(c => `<button class="chip${S.conds.includes(c) ? " on" : ""}" data-c="${c}" aria-pressed="${S.conds.includes(c)}">${c}${S.conds.includes(c) && dur[c] ? ` <small>${dur[c]} ${dur[c] === 1 ? "round" : "round"}</small>` : ""}</button>`).join("");
+  $("durata").hidden = !scegliDurata;
+  if (scegliDurata) $("durata").innerHTML = `<span>${esc(scegliDurata)}: per quanto?</span>` + [[0, "Senza durata"], [1, "Fino al suo prossimo turno"], [10, "1 minuto (10 round)"]]
+    .map(([n, t]) => `<button class="btn" data-dur="${n}">${t}</button>`).join("");
+  $("concRiga").innerHTML = S.conc ? `<span class="conc-on">Concentrazione: <b>${esc(S.conc)}</b></span><button class="btn link" data-conc-fine>Termina</button>`
+    : `<span class="hint">Nessuna concentrazione in corso${C.incantesimiClasse ? ": si attiva dal pulsante sull'incantesimo" : ""}.</span>`;
   $("exh").textContent = S.exh; $("ammo").textContent = S.ammo;
   COINS.forEach(([k]) => { const el = $("c_" + k); if (document.activeElement !== el) el.value = S.coins[k] || 0; });
   const full = S.attuned.length >= 3;
@@ -122,7 +128,7 @@ function renderIncantesimi(L, X) {
   const ha = !!C.incantesimiClasse && C.magiaDa(L);
   $("spellSec").hidden = !ha; if (!ha) return;
   const st = statoIncantesimi(L, X);
-  const card = (i, extra = "") => `<div class="spell"><div class="top"><b>${esc(i.n)}</b>${extra}</div>
+  const card = (i, extra = "") => `<div class="spell"><div class="top"><b>${esc(i.n)}</b>${extra || (i.conc ? `<button class="btn link conc-btn" data-conc="${esc(i.n)}"${S.conc === i.n ? " disabled" : ""}>${S.conc === i.n ? "In corso" : "Concentrati"}</button>` : "")}</div>
     <div class="meta"><span class="tag">${i.liv}° livello</span>${i.conc ? `<span class="tag">concentrazione</span>` : ""}${i.rituale ? `<span class="tag">rituale</span>` : ""}${i.giur ? `<span class="tag">giuramento</span>` : ""}${i.tasha ? `<span class="tag">Tasha</span>` : ""}</div>
     <p>${esc(i.t)}</p></div>`;
   $("spellTxt").textContent = C.magia(L, X);
@@ -165,11 +171,13 @@ async function flush(k) {
 /* se il master cambia le regole del tavolo (Tasha), la scheda si ridisegna */
 suOpzioni(() => { if (S) render(); });
 
+const VISTO = {};   // prima lettura di ogni scheda: non è un colpo appena ricevuto
+
 /* ---------- apertura e chiusura ---------- */
 export function apriScheda({ archivio, personaggi, onEsci, scontro }) {
   arch = archivio; ids = personaggi.filter(k => PERSONAGGI[k]); chiediUscita = onEsci; canWrite = true;
   onScontro = (scontro && scontro.apri) || (() => {}); onScheda = (scontro && scontro.chiudi) || (() => {});
-  ids.forEach(k => { STATE[k] = clone(PERSONAGGI[k].def); LOADED[k] = false; });
+  ids.forEach(k => { STATE[k] = clone(PERSONAGGI[k].def); LOADED[k] = false; VISTO[k] = false; });
   costruisciSelettore();
   document.body.classList.add("in-scheda");
   $("vistaScheda").hidden = false;
@@ -181,7 +189,15 @@ export function apriScheda({ archivio, personaggi, onEsci, scontro }) {
     if (dati === null && info.daCache) return;            // cache vuota: aspetto il server prima di decidere
     LOADED[k] = true; if (k === cur) clearTimeout(lento);
     if (timers[k] || saving[k]) return;                    // ho modifiche mie in arrivo: non le sovrascrivo
+    const prima = STATE[k] && STATE[k].colpito && STATE[k].colpito.t, primaVolta = !VISTO[k]; VISTO[k] = true;
     if (dati) STATE[k] = normalizza(PERSONAGGI[k].def, dati);
+    /* colpito da un attacco del master: avviso, e tiro di concentrazione se serve */
+    const c = STATE[k].colpito;
+    if (!primaVolta && c && c.t !== prima && Date.now() - c.t < 60000) {
+      toast(`${PERSONAGGI[k].name}: −${c.n} PF da ${c.da}`, 6000);
+      try { navigator.vibrate && navigator.vibrate([120, 60, 120]); } catch (_) {}
+      if (k === cur) { S = STATE[k]; controllaConcentrazione(c.n); }
+    }
     if (k === cur) { S = STATE[k]; render(); setSync("ok", dati ? "Sincronizzata" : "Pronta"); }
   }, () => {
     clearTimeout(lento); canWrite = false; setSync("err", "Non salvata");
@@ -214,6 +230,20 @@ export function datiAttacco(k) {
   const slot = (P.risorse ? P.risorse(X.L, X, St) : []).filter(r => /^slot\d$/.test(r.k))
     .map(r => ({ liv: +r.k.slice(4), liberi: Math.max(0, r.max - (St[r.k] || 0)) }));
   return { nome: P.name, critMin: P.critMin(X.L), attacchi: attacchiOrdinati(X), punizione: !!P.punizione && X.L >= 2, slot };
+}
+/** Per gli attacchi del master: nome, CA e resistenze di un personaggio (il telefono del master ha tutte le schede). */
+export function bersaglioPg(k) {
+  const St = STATE[k], P = PERSONAGGI[k]; if (!St || !P) return null;
+  return { id: k, nome: P.name, ca: St.ca + P.caBonus(St.level), res: St.res || [], hp: St.hp, maxhp: St.maxhp };
+}
+/** Il master colpisce un personaggio: tolti i PF (prima quelli temporanei) e salvato.
+    "colpito" avvisa il telefono del giocatore, che mostra chi l'ha colpito e chiede la concentrazione. */
+export function colpisciPg(k, n, da) {
+  const St = STATE[k]; if (!St) return null;
+  const t = Math.min(St.temp, n); St.temp -= t; St.hp = Math.max(0, St.hp - (n - t));
+  St.colpito = { n, da, t: Date.now() };
+  if (k === cur) change(); else { clearTimeout(timers[k]); timers[k] = setTimeout(() => flush(k), 300); }
+  return St.hp;
 }
 /** Segna uno slot usato (per la Punizione divina) e salva la scheda. */
 export function spendiSlot(k, liv) {
@@ -261,6 +291,7 @@ const amt = () => Math.max(0, parseInt($("amt").value, 10) || 0);
 $("bDmg").onclick = () => {
   const n = amt(); if (!n || !S) return; const prima = snap();
   const t = Math.min(S.temp, n); S.temp -= t; S.hp = Math.max(0, S.hp - (n - t)); $("amt").value = ""; change(); remember(`−${n} PF`, prima);
+  controllaConcentrazione(n);
 };
 $("bHeal").onclick = () => {
   const n = amt(); if (!n || !S) return; const prima = snap();
@@ -276,6 +307,38 @@ $("undoHp").onclick = () => {
   Object.assign(S, { hp: lastMove.hp, temp: lastMove.temp, deathS: lastMove.deathS, deathF: lastMove.deathF }); hideLast(); change(); toast("Annullato");
 };
 
+/* ---------- concentrazione ----------
+   Chi si concentra su un incantesimo e subisce danni fa un tiro salvezza su Costituzione: CD 10 o metà dei danni, se di più.
+   A 0 PF la concentrazione finisce da sola. */
+let scegliDurata = null;
+function controllaConcentrazione(n) {
+  if (!S || !S.conc || n <= 0) return;
+  if (S.hp === 0) { const era = S.conc; S.conc = ""; change(); toast(`A 0 PF: concentrazione su ${era} persa`, 5000); return; }
+  const X = D(), cd = Math.max(10, Math.floor(n / 2));
+  const guerra = (S.asi || []).some(a => a.feat === "incantatore-guerra");
+  $("concTxt").textContent = `${C.name} ha subito ${n} danni mentre si concentra su ${S.conc}.`;
+  $("concCd").textContent = `CD ${cd}`;
+  $("concTs").textContent = `il tuo tiro: d20 ${sg(X.saves.cos)}${guerra ? ", con vantaggio (Incantatore da guerra)" : ""}`;
+  $("concVeil").hidden = false; $("concTenuta").focus();
+}
+$("concTenuta").onclick = () => { $("concVeil").hidden = true; };
+$("concPersa").onclick = () => { $("concVeil").hidden = true; const era = S.conc; S.conc = ""; change(); toast(`Concentrazione su ${era} persa`); };
+
+/** Inizio del turno di un personaggio (lo chiama lo scontro sul telefono di chi lo gioca):
+    le condizioni con una durata scendono di un round; quelle arrivate a zero finiscono. Restituisce i nomi finiti. */
+export function inizioTurno(k, chiave) {
+  const St = STATE[k]; if (!St || !St.durate || !Object.keys(St.durate).length) return [];
+  if (chiave && St.turnoContato === chiave) return [];   // già contato (per esempio dopo aver ricaricato la pagina)
+  St.turnoContato = chiave || "";
+  const finite = [];
+  const durate = {};
+  for (const [c, n] of Object.entries(St.durate)) { if (n - 1 <= 0) finite.push(c); else durate[c] = n - 1; }
+  St.durate = durate;
+  if (finite.length) St.conds = St.conds.filter(c => !finite.includes(c));
+  if (k === cur) change(); else { clearTimeout(timers[k]); timers[k] = setTimeout(() => flush(k), 500); }
+  return finite;
+}
+
 /* ---------- riposi ---------- */
 /* le risorse dichiarate dal personaggio (slot, Incanalare divinità…) si ricaricano col riposo indicato */
 const risorseDi = riposi => (C.risorse ? C.risorse(S.level, D(), S) : []).filter(r => riposi.includes(r.riposo));
@@ -285,7 +348,7 @@ $("shortRest").onclick = () => {
 };
 $("longRest").onclick = () => {
   const back = Math.max(1, Math.floor(S.level / 2));
-  risorseDi(["breve", "lungo"]).forEach(r => S[r.k] = 0); if (C.riserva) S[C.riserva(S.level).k] = 0;
+  risorseDi(["breve", "lungo"]).forEach(r => S[r.k] = 0); if (C.riserva) S[C.riserva(S.level).k] = 0; S.conc = "";
   S.hp = S.maxhp; S.temp = 0; S.re = 0; S.ai = 0; S.ind = 0; S.dv = Math.max(0, S.dv - back); S.dardo = 0; S.fulmine = 0; S.deathS = 0; S.deathF = 0; if (S.exh > 0) S.exh--;
   hideLast(); change(); toast(`Riposo lungo: PF pieni, ${back} dadi vita recuperati`);
 };
@@ -446,7 +509,17 @@ $("vistaScheda").addEventListener("click", e => {
   const dp = e.target.closest(".pip[data-dk]");
   if (dp) { const k = dp.dataset.dk, i = +dp.dataset.i; S[k] = (i < S[k]) ? i : i + 1; change(); return; }
   const c = e.target.closest(".chip[data-c]");
-  if (c) { const n = c.dataset.c; S.conds = S.conds.includes(n) ? S.conds.filter(x => x !== n) : [...S.conds, n]; change(); return; }
+  if (c) {
+    const n = c.dataset.c;
+    if (S.conds.includes(n)) { S.conds = S.conds.filter(x => x !== n); if (S.durate) delete S.durate[n]; scegliDurata = null; change(); }
+    else { S.conds = [...S.conds, n]; scegliDurata = n; change(); }
+    return;
+  }
+  const du = e.target.closest("[data-dur]");
+  if (du && scegliDurata) { const n = +du.dataset.dur; S.durate = { ...(S.durate || {}) }; if (n) S.durate[scegliDurata] = n; else delete S.durate[scegliDurata]; scegliDurata = null; change(); return; }
+  if (e.target.closest("[data-conc-fine]")) { S.conc = ""; change(); toast("Concentrazione terminata"); return; }
+  const cc = e.target.closest("[data-conc]");
+  if (cc) { S.conc = cc.dataset.conc; change(); toast(`Concentrazione: ${S.conc}`); return; }
   const ic = e.target.closest("[data-inc]");
   if (ic) { editInc = ic.dataset.inc === "apri"; render(); return; }
   const icn = e.target.closest("[data-inc-n]");

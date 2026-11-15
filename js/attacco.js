@@ -8,8 +8,8 @@
    Nell'archivio: scontro/attuale/attacchi/<id> → { scontro, pg, pgNome, bersaglio, bersaglioNome, arma, tipo,
      tiro, stato: "colpire" | "colpito" | "mancato" | "danni" | "applicato", danni?, applicati? }
    La CA non viene mai scritta lì: il giocatore vede solo "colpito" o "mancato". */
-import { tiroPerColpire, esito, dadiDanno, sommaDanni, danniFinali } from "./regole/attacco.js";
-import { creaturaInCampo, ferisci } from "./nemici.js";
+import { tiroPerColpire, esito, dadiDanno, sommaDanni, danniFinali, partiFormula, conResistenze } from "./regole/attacco.js";
+import { creaturaInCampo, ferisci, azioneDi } from "./nemici.js";
 
 const ATT = "scontro/attuale/attacchi";
 const $ = id => document.getElementById(id);
@@ -22,8 +22,10 @@ let A = [], SC = null, risolti = new Set(), statoMio = "";
 let B = nuovaBozza(), mio = null;
 function nuovaBozza() { return { bersaglio: null, arma: 0, modo: "normale", d20: ["", ""], extraTiro: "", dadi: [], punizione: 0, nonMorto: false, extra: "" }; }
 
-export function avviaAttacchi({ archivio, master, avvisa, aggiorna, datiAttacco, spendiSlot }) {
+let bersaglioPg = () => null, colpisciPg = () => null, MA = null;
+export function avviaAttacchi({ archivio, master, avvisa, aggiorna, datiAttacco, spendiSlot, bersaglio, colpisci }) {
   arch = archivio; dm = master; toast = avvisa; ridisegna = aggiorna; dati = datiAttacco; spendi = spendiSlot;
+  bersaglioPg = bersaglio || (() => null); colpisciPg = colpisci || (() => null); MA = null;
   A = []; risolti = new Set(); B = nuovaBozza(); mio = null;
   ascolto = arch.ascoltaRaccolta(ATT, lista => {
     A = lista.map(x => ({ id: x.id, ...x.dati }));
@@ -48,7 +50,7 @@ export function fermaAttacchi() { if (ascolto) ascolto(); ascolto = null; }
 /** Lo scontro è cambiato (nuovo turno, nuovo scontro…): la bozza vale solo per il turno in cui è nata. */
 export function aggiornaScontro(nuovo) {
   const chiave = s => s ? `${s.id}:${s.round}:${s.turno}` : "";
-  if (chiave(nuovo) !== chiave(SC)) { B = nuovaBozza(); mio = null; statoMio = ""; }
+  if (chiave(nuovo) !== chiave(SC)) { B = nuovaBozza(); mio = null; statoMio = ""; MA = null; }
   SC = nuovo;
 }
 
@@ -62,11 +64,40 @@ async function risolvi(a) {
 }
 
 /** Le richieste che aspettano il master, in cima alla sua vista. scrivi(campi) aggiorna lo scontro. */
+/* ---------- master: una sua creatura attacca un personaggio ----------
+   Il telefono del master conosce la CA dei personaggi (ha tutte le schede): confronta da solo,
+   poi il master scrive i dadi dei danni e li applica alla scheda del giocatore, resistenze comprese. */
+function htmlAttaccoMaster() {
+  if (!MA) return "";
+  const az = azioneDi(MA.gruppo, MA.i); if (!az) return "";
+  const a = az.azione, pg = (SC.ordine || []).map(v => bersaglioPg(v.id)).filter(Boolean);
+  const t = tiroPerColpire({ dadi: MA.d20, modo: MA.modo, bonus: a.colpire }), b = pg.find(x => x.id === MA.bersaglio);
+  const es = t && b ? esito(t, b.ca) : null;
+  let h = `<p class="chi"><b>${esc(az.chi)}</b> · ${esc(a.nome)} <span class="tiro-r">${sg(a.colpire)} · ${esc(a.danni || "")}</span></p>
+    <p class="lbl-sez">Bersaglio</p><div class="scelte">${pg.map(x => `<button class="btn" data-at="m-pg" data-id="${x.id}" aria-pressed="${MA.bersaglio === x.id}">${esc(x.nome)}<small>CA ${x.ca} · ${x.hp}/${x.maxhp} PF</small></button>`).join("")}</div>
+    <div class="seg modo">${["normale", "vantaggio", "svantaggio"].map(m => `<button data-at="m-modo" data-m="${m}" aria-pressed="${MA.modo === m}">${m[0].toUpperCase() + m.slice(1)}</button>`).join("")}</div>
+    <div class="dadi">${Array.from({ length: MA.modo === "normale" ? 1 : 2 }, (_, i) => `<label class="dado"><span class="lbl">d20</span><input type="number" inputmode="numeric" min="1" max="20" data-ma-d20="${i}" data-foco="ma${i}" value="${esc(MA.d20[i] || "")}"></label>`).join("")}
+      <span class="somma">${t ? `${t.usato} ${sg(a.colpire)} = <b>${t.tot}</b>${b ? ` contro CA ${b.ca}` : ""}` : sg(a.colpire)}</span></div>`;
+  if (es) h += `<div class="esito-b ${es === "mancato" ? "mancato" : t.critico ? "critico" : "colpito"}"><b>${es === "mancato" ? "Mancato" : t.critico ? "Critico!" : "Colpito"}</b><span>${esc(b.nome)}</span></div>`;
+  if (es === "colpito") {
+    const parti = partiFormula(a.danni).map((p, k) => ({ ...p, n: t.critico ? p.n * 2 : p.n, k }));
+    const somma = sommaDanni(parti.map(p => ({ valori: Array.from({ length: p.n }, (_, i) => (MA.dadi[p.k] || [])[i] ?? ""), facce: p.f, mod: p.mod, tipo: p.tipo || "danni" })));
+    const fin = somma ? conResistenze(somma.perTipo, b.res) : null;
+    h += parti.map(p => `<div class="riga-tiro"><b>${p.n}d${p.f}${p.mod ? sg(p.mod) : ""} ${esc(p.tipo)}</b><div class="dadi">${Array.from({ length: p.n }, (_, i) =>
+      `<label class="dado"><span class="lbl">d${p.f}</span><input type="number" inputmode="numeric" min="1" max="${p.f}" data-ma-dado="${p.k}" data-i="${i}" data-foco="mad${p.k}-${i}" value="${esc((MA.dadi[p.k] || [])[i] ?? "")}"></label>`).join("")}</div></div>`).join("") +
+      (!parti.length ? `<p class="attesa">Questa azione non ha dadi di danno: applica l'effetto a voce.</p>` : "") +
+      (fin ? `<p class="somma-tot">Totale <b>${fin.tot}</b>${fin.dimezzati.length ? ` · ${esc(b.nome)} resiste: ${fin.dimezzati.join(", ")} dimezzati` : ""}</p>` : "") +
+      `<div class="azioni"><button class="btn" data-at="m-annulla">Annulla</button><button class="btn up" data-at="m-colpisci"${fin ? "" : " disabled"}>Applica ${fin ? fin.tot : ""} a ${esc(b.nome)}</button></div>`;
+  } else h += `<div class="azioni"><button class="btn" data-at="m-annulla">${es === "mancato" ? "Chiudi" : "Annulla"}</button></div>`;
+  return `<section class="richieste attacco-master"><h2>Attacco del master</h2>${h}</section>`;
+}
+
 export function htmlMaster() {
   if (!SC) return "";
+  const mio = htmlAttaccoMaster();
   const aperte = A.filter(a => a.scontro === SC.id && (a.stato === "danni" || a.stato === "colpito" || a.stato === "colpire"));
-  if (!aperte.length) return "";
-  return `<section class="richieste"><h2>Attacchi dei giocatori</h2>${aperte.map(a => {
+  if (!aperte.length) return mio;
+  return mio + `<section class="richieste"><h2>Attacchi dei giocatori</h2>${aperte.map(a => {
     const c = creaturaInCampo(a.bersaglio), t = a.tiro;
     const riga = `<p class="chi"><b>${esc(a.pgNome)}</b> → <b>${esc(c ? c.nome : a.bersaglioNome)}</b> · ${esc(a.arma)}</p>
       <p class="tiro-r">${t.tot} per colpire${c ? ` contro CA ${c.ca}` : ""}${t.critico ? " · <b>critico</b>" : ""}${t.fallimento ? " · 1 naturale" : ""}</p>`;
@@ -181,7 +212,22 @@ export async function clic(b, pg, scrivi) {
       if (B.punizione) spendi(pg.id, B.punizione);
       break;
     }
-    /* master */
+    /* master che attacca */
+    case "m-nuovo": MA = { gruppo: b.dataset.g, i: +b.dataset.i, bersaglio: null, modo: "normale", d20: [], dadi: {} }; window.scrollTo({ top: 0, behavior: "smooth" }); break;
+    case "m-pg": MA.bersaglio = b.dataset.id; break;
+    case "m-modo": MA.modo = b.dataset.m; break;
+    case "m-annulla": MA = null; break;
+    case "m-colpisci": {
+      const az = azioneDi(MA.gruppo, MA.i), bb = bersaglioPg(MA.bersaglio);
+      const t = tiroPerColpire({ dadi: MA.d20, modo: MA.modo, bonus: az.azione.colpire });
+      const parti = partiFormula(az.azione.danni).map((p, k) => ({ valori: Array.from({ length: t.critico ? p.n * 2 : p.n }, (_, i) => (MA.dadi[k] || [])[i] ?? ""), facce: p.f, mod: p.mod, tipo: p.tipo || "danni" }));
+      const somma = sommaDanni(parti); if (!somma) return true;
+      const fin = conResistenze(somma.perTipo, bb.res);
+      const resta = colpisciPg(bb.id, fin.tot, az.chi);
+      toast(`${bb.nome}: −${fin.tot} PF (ora ${resta})`);
+      MA = null; break;
+    }
+    /* master: richieste dei giocatori */
     case "m-manca": await arch.aggiorna(`${ATT}/${b.dataset.id}`, { stato: "mancato" }); break;
     case "m-applica": {
       const a = A.find(x => x.id === b.dataset.id); if (!a) return true;
@@ -198,6 +244,8 @@ export async function clic(b, pg, scrivi) {
 }
 export function input(e) {
   const t = e.target;
+  if (MA && t.dataset.maD20 !== undefined) { MA.d20[+t.dataset.maD20] = t.value; ridisegna(); return true; }
+  if (MA && t.dataset.maDado !== undefined) { const k = +t.dataset.maDado; MA.dadi[k] = (MA.dadi[k] || []).slice(); MA.dadi[k][+t.dataset.i] = t.value; ridisegna(); return true; }
   if (t.dataset.atD20 !== undefined) { B.d20[+t.dataset.atD20] = t.value; ridisegna(); return true; }
   if (t.dataset.atCampo) { B[t.dataset.atCampo] = t.value; ridisegna(); return true; }
   if (t.dataset.atDado) {

@@ -86,7 +86,7 @@ export function htmlTurniMaster(SC) {
     const membri = C.creature.filter(c => g.membri.includes(c.id));
     const modello = P[membri[0]?.creatura];
     rapida = `<section class="rapida"><h2>Di turno: ${esc(membri.length > 1 ? `${modello?.nome || ""} ×${membri.filter(m => m.pf > 0).length}` : membri[0]?.nome)}</h2>
-      ${modello ? schedaModello(modello, membri.length === 1 ? membri[0] : null) : ""}</section>`;
+      ${modello ? schedaModello(modello, membri.length === 1 ? membri[0] : null, g.id) : ""}</section>`;
   }
   const ordinate = B.creature.slice().sort((a, b) => a.nome.localeCompare(b.nome, "it"));
   const righe = C.creature.map(c => {
@@ -124,16 +124,17 @@ export function htmlTurniMaster(SC) {
    cifre principali → "cosa fa" → azioni (ognuna con per colpire, danni e media ben separati) → incantesimi con gli slot
    → reazioni, leggendarie, tana → tratti. Le abbreviazioni dei manuali sono sciolte.
    c è la creatura in campo (se è una sola): serve per segnare gli slot usati. */
-function schedaModello(m, c) {
+function schedaModello(m, c, gruppo) {
   const T = x => esc(chiaro(x));
-  const azione = a => `<li class="az">
-      <div class="az-testa"><b>${esc(a.nome)}</b>${a.portata ? `<span class="portata">${esc(a.portata)}</span>` : ""}</div>
+  const azione = (a, i, lista) => `<li class="az">
+      <div class="az-testa"><b>${esc(a.nome)}</b>${a.portata ? `<span class="portata">${esc(a.portata)}</span>` : ""}
+        ${gruppo && a.colpire != null && lista === m.azioni ? `<button class="btn gold attacca-pg" data-at="m-nuovo" data-g="${gruppo}" data-i="${i}">Attacca</button>` : ""}</div>
       ${a.colpire != null || a.danni ? `<div class="az-numeri">
         ${a.colpire != null ? `<span class="num"><small>Per colpire</small><b class="oro">${sg(a.colpire)}</b></span>` : ""}
         ${a.medio != null ? `<span class="num"><small>Danno medio</small><b>${a.medio}</b></span>` : ""}
         ${a.danni ? `<span class="num danni"><small>Danni</small><b>${esc(a.danni)}</b></span>` : ""}</div>` : ""}
       ${a.nota ? `<p class="nota">${T(a.nota)}</p>` : ""}</li>`;
-  const blocco = (titolo, voci) => voci && voci.length ? `<h3 class="sez-m">${titolo}</h3><ul class="azioni-m">${voci.map(azione).join("")}</ul>` : "";
+  const blocco = (titolo, voci) => voci && voci.length ? `<h3 class="sez-m">${titolo}</h3><ul class="azioni-m">${voci.map((a, i) => azione(a, i, voci)).join("")}</ul>` : "";
   const testi = (titolo, voci) => voci && voci.length ? `<h3 class="sez-m">${titolo}</h3><ul class="tratti">${voci.map(t =>
     `<li><b>${esc(t.nome)}</b><span>${T(t.testo || t.nota || "")}</span></li>`).join("")}</ul>` : "";
   /* incantesimi: il tratto che li elenca diventa una tabellina per livello, con le losanghe degli slot */
@@ -188,6 +189,13 @@ export function creaturaInCampo(id) {
   const m = perId()[c.creatura] || {};
   const difese = (m.tratti || []).filter(t => /immun|resist|vulnerab|difese/i.test(t.nome + " " + t.testo)).map(t => chiaro(t.testo));
   return { ...c, difese };
+}
+/** Un attacco del bestiario usato dal master: chi attacca (nome vero) e l'azione scelta. */
+export function azioneDi(gruppoId, i) {
+  const g = C.gruppi.find(x => x.id === gruppoId); if (!g) return null;
+  const membri = C.creature.filter(c => g.membri.includes(c.id) && c.pf > 0), m = perId()[(membri[0] || {}).creatura];
+  if (!m || !m.azioni || !m.azioni[i]) return null;
+  return { chi: membri.length > 1 ? m.nome : membri[0].nome, azione: m.azioni[i] };
 }
 /** Danno deciso dal master su una richiesta d'attacco: stessi effetti del pulsante Danno. */
 export const ferisci = (id, n, SC) => colpisci(id, n, false, SC);

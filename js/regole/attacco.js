@@ -52,3 +52,23 @@ export function danniFinali(tot, come) {
   if (come === "nulla") return 0;
   return tot;
 }
+
+/** Le parti di una formula di danno del bestiario: "2d6+3 taglienti + 1d6 fulmine" →
+    [{ n: 2, f: 6, mod: 3, tipo: "taglienti" }, { n: 1, f: 6, mod: 0, tipo: "fulmine" }].
+    Le alternative tra parentesi ("1d10+4 a due mani") non contano. */
+export function partiFormula(danni) {
+  const t = String(danni || "").replace(/\([^)]*\)/g, "");
+  return [...t.matchAll(/(\d+)\s*d\s*(\d+)\s*([+-]\s*\d+(?!\s*d))?\s*([a-zàèéìòù]+)?/gi)].map(m => ({
+    n: +m[1], f: +m[2], mod: m[3] ? parseInt(m[3].replace(/\s/g, ""), 10) : 0, tipo: (m[4] || "").toLowerCase(),
+  }));
+}
+
+/** Resistenze del personaggio (es. ["Fulmine"]): i danni di quel tipo si dimezzano, per difetto. */
+export function conResistenze(perTipo, resistenze = []) {
+  const r = resistenze.map(x => x.toLowerCase());
+  let tot = 0; const dimezzati = [];
+  for (const [tipo, n] of Object.entries(perTipo)) {
+    if (r.includes(tipo)) { tot += Math.floor(n / 2); dimezzati.push(tipo); } else tot += n;
+  }
+  return { tot, dimezzati };
+}

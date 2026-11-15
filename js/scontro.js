@@ -21,11 +21,13 @@ const sg = n => (n >= 0 ? "+" : "−") + Math.abs(n);
 
 let arch = null, dm = false, miei = [], info = () => null, toast = () => {};
 let ascolti = [], SC = null, TIRATI = {}, vista = false, rimandato = null, ultimoAvviso = "", inVolo = false;
+let inizioTurno = () => [];
 let chiSono = "", inviando = false, prec = null, congedo = null, visti = new Set();
 const secondi = ms => (ms / 1000).toFixed(1).replace(".", ",") + " s";
 
 /* ---------- avvio e arresto (li chiama app.js) ---------- */
-export function avviaScontro({ archivio, profilo, datiIniziativa, datiAttacco, spendiSlot, avvisa }) {
+export function avviaScontro({ archivio, profilo, datiIniziativa, datiAttacco, spendiSlot, inizioTurno: iniziaTurno, bersaglioPg, colpisciPg, avvisa }) {
+  inizioTurno = iniziaTurno || (() => []);
   arch = archivio; dm = profilo.id === "dm"; miei = dm ? [] : profilo.personaggi.slice();
   info = datiIniziativa; toast = avvisa; SC = null; TIRATI = {}; rimandato = null; ultimoAvviso = "";
   chiSono = profilo.id; inviando = false; prec = null; clearTimeout(congedo); congedo = null; visti = new Set(); ultimoTimbro = 0;
@@ -39,7 +41,7 @@ export function avviaScontro({ archivio, profilo, datiIniziativa, datiAttacco, s
     }),
   ];
   if (dm) avviaNemici({ archivio, aggiorna: () => disegna(true), avvisa });
-  avviaAttacchi({ archivio, master: dm, avvisa, aggiorna: () => disegna(true), datiAttacco, spendiSlot });
+  avviaAttacchi({ archivio, master: dm, avvisa, aggiorna: () => disegna(true), datiAttacco, spendiSlot, bersaglio: bersaglioPg, colpisci: colpisciPg });
 }
 export function fermaScontro() {
   ascolti.forEach(stop => stop()); ascolti = [];
@@ -109,7 +111,10 @@ function aggiorna() {
       const primo = !ultimoAvviso.startsWith(SC.id + ":");
       ultimoAvviso = chiave;
       if (primo && !vista) mostraVista(true);
-      if (mio(a.id)) { toast(`Tocca a te: ${a.nome}`, 6000); try { navigator.vibrate && navigator.vibrate([60, 40, 60]); } catch (_) {} }
+      if (mio(a.id)) {
+        /* sul telefono di chi gioca: le condizioni con durata scendono di un round */
+        const finite = inizioTurno(a.id, chiave);
+        toast(`Tocca a te: ${a.nome}${finite.length ? ` · finito: ${finite.join(", ").toLowerCase()}` : ""}`, 6000); try { navigator.vibrate && navigator.vibrate([60, 40, 60]); } catch (_) {} }
     }
   }
   disegna();

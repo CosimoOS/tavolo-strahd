@@ -173,6 +173,8 @@
       <section>
         <h2>Condizioni</h2>
         <div class="chips" id="conds"></div>
+        <div class="durata" id="durata" hidden></div>
+        <div class="conc-riga" id="concRiga"></div>
         <div class="row2 death">
           <div class="ok"><div class="lbl">Successi contro morte</div><div class="pips" data-death="s"></div></div>
           <div class="ko"><div class="lbl">Fallimenti</div><div class="pips" data-death="f"></div></div>
@@ -251,6 +253,15 @@
     <div id="iniCampi"></div>
     <p class="pinmsg err" id="iniMsg" aria-live="polite"></p>
     <div class="foot"><button class="btn" id="iniDopo">Più tardi</button><button class="btn up" id="iniOk">Conferma</button></div>
+  </div>
+</div>
+
+<div class="veil" id="concVeil" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="concTit">
+    <h3 id="concTit">Concentrazione</h3>
+    <p class="intro" id="concTxt"></p>
+    <div class="conc-cd"><span>Tiro salvezza su Costituzione</span><b id="concCd">CD 10</b><small id="concTs"></small></div>
+    <div class="foot"><button class="btn" id="concPersa">Persa</button><button class="btn up" id="concTenuta">Mantenuta</button></div>
   </div>
 </div>
 

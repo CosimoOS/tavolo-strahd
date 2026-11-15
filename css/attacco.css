@@ -1,27 +1,27 @@
 /* Attacco dal telefono del giocatore e richieste al master. */
 .attacco{margin:0 0 16px;padding:14px;border:1px solid var(--gold-deep);border-radius:12px;background:var(--panel2);display:flex;flex-direction:column;gap:10px}
-.attacco .sez-m{margin:0}
-.attacco .sez-m small{font-family:var(--f-body);font-weight:400;letter-spacing:0;text-transform:none;color:var(--muted);font-size:13px}
-.attacco .lbl-sez{margin:6px 0 0}
-.attacco .scelte{display:flex;flex-wrap:wrap;gap:8px}
-.attacco .scelte .btn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:52px;text-align:left}
-.attacco .scelte .btn small{font-family:var(--f-num);font-size:13px;color:var(--muted);font-weight:400}
-.attacco .scelte .btn[aria-pressed="true"]{border-color:var(--gold);background:var(--gold-soft);color:var(--gold)}
-.attacco .seg{margin:0}
-.attacco .seg button{min-height:44px;padding:8px 14px}
-.attacco .dado.piccolo input{width:60px}
-.attacco .aiuto{color:var(--muted);font-size:13px}
-.attacco .azioni{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin:0}
-.attacco .azioni .btn{min-height:48px;padding:10px 20px}
-.attacco .riga-tiro{padding:0;border:0}
-.attacco .extra input{max-width:8em;font-family:var(--f-num);text-align:center}
-.attacco .attesa{margin:0;color:var(--muted);line-height:1.5}
-.attacco .esito{margin:0;font-family:var(--f-display);font-weight:700;font-size:20px;letter-spacing:.06em}
-.attacco .esito.colpito{color:var(--gold)}
-.attacco .esito.mancato{color:var(--muted)}
-.attacco .somma-tot{margin:0;font-family:var(--f-num);font-size:16px;color:var(--muted)}
-.attacco .somma-tot b{font-size:26px;color:var(--gold)}
-.attacco .spunta{margin-top:6px}
+.attacco .sez-m,.attacco-master .sez-m{margin:0}
+.attacco .sez-m small,.attacco-master .sez-m small{font-family:var(--f-body);font-weight:400;letter-spacing:0;text-transform:none;color:var(--muted);font-size:13px}
+.attacco .lbl-sez,.attacco-master .lbl-sez{margin:6px 0 0}
+.attacco .scelte,.attacco-master .scelte{display:flex;flex-wrap:wrap;gap:8px}
+.attacco .scelte .btn,.attacco-master .scelte .btn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:52px;text-align:left}
+.attacco .scelte .btn small,.attacco-master .scelte .btn small{font-family:var(--f-num);font-size:13px;color:var(--muted);font-weight:400}
+.attacco .scelte .btn[aria-pressed="true"],.attacco-master .scelte .btn[aria-pressed="true"]{border-color:var(--gold);background:var(--gold-soft);color:var(--gold)}
+.attacco .seg,.attacco-master .seg{margin:0}
+.attacco .seg button,.attacco-master .seg button{min-height:44px;padding:8px 14px}
+.attacco .dado.piccolo input,.attacco-master .dado.piccolo input{width:60px}
+.attacco .aiuto,.attacco-master .aiuto{color:var(--muted);font-size:13px}
+.attacco .azioni,.attacco-master .azioni{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin:0}
+.attacco .azioni .btn,.attacco-master .azioni .btn{min-height:48px;padding:10px 20px}
+.attacco .riga-tiro,.attacco-master .riga-tiro{padding:0;border:0}
+.attacco .extra input,.attacco-master .extra input{max-width:8em;font-family:var(--f-num);text-align:center}
+.attacco .attesa,.attacco-master .attesa{margin:0;color:var(--muted);line-height:1.5}
+.attacco .esito,.attacco-master .esito{margin:0;font-family:var(--f-display);font-weight:700;font-size:20px;letter-spacing:.06em}
+.attacco .esito.colpito,.attacco-master .esito.colpito{color:var(--gold)}
+.attacco .esito.mancato,.attacco-master .esito.mancato{color:var(--muted)}
+.attacco .somma-tot,.attacco-master .somma-tot{margin:0;font-family:var(--f-num);font-size:16px;color:var(--muted)}
+.attacco .somma-tot b,.attacco-master .somma-tot b{font-size:26px;color:var(--gold)}
+.attacco .spunta,.attacco-master .spunta{margin-top:6px}
 
 /* richieste al master: in cima alla sua vista durante i turni */
 .richieste{border-color:var(--crimson)}
@@ -49,7 +49,11 @@
 .esito-b.mancato{border-color:var(--crimson);background:var(--crimson-soft)}
 .esito-b.mancato b{color:var(--ink)}
 .esito-b.attesa b{font-size:20px;color:var(--muted)}
-.attacco .poi{margin:0;line-height:1.5}
-.attacco .poi b{color:var(--gold)}
+.attacco .poi,.attacco-master .poi{margin:0;line-height:1.5}
+.attacco .poi b,.attacco-master .poi b{color:var(--gold)}
 @media (prefers-reduced-motion:no-preference){.esito-b:not(.attesa){animation:esito-entra .3s ease-out}
   @keyframes esito-entra{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}}
+
+.attacco-master{display:flex;flex-direction:column;gap:10px}
+.attacco-master .chi,.attacco-master p{margin:0}
+.somma{gap:6px}
