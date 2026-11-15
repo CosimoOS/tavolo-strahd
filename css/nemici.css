@@ -106,3 +106,31 @@
 .membri{flex-basis:100%;list-style:none;margin:2px 0 4px;padding:0 0 0 calc(1.5em + 12px);display:flex;flex-direction:column;gap:6px}
 .membri li{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:32px;padding:0;border:0;background:none;border-radius:0;font-size:15px}
 .membri li.giu span:first-child{color:var(--muted);text-decoration:line-through}
+
+/* schieramenti nell'ordine dei turni: striscia a sinistra (oro il gruppo, verde gli alleati, cremisi i nemici) */
+.turni > li{position:relative}
+.turni > li::before{content:"";position:absolute;left:-1px;top:10px;bottom:10px;width:4px;border-radius:0 4px 4px 0;background:var(--line)}
+.turni > li.lato-gruppo::before{background:var(--gold)}
+.turni > li.lato-alleato::before{background:var(--ok)}
+.turni > li.lato-nemico::before{background:var(--crimson)}
+.turni > li.lato-misto::before{background:linear-gradient(180deg,var(--ok),var(--crimson))}
+.membri li{position:relative;padding-left:12px}
+.membri li::before{content:"";position:absolute;left:0;top:50%;width:6px;height:6px;margin-top:-3px;transform:rotate(45deg)}
+.membri li.lato-alleato::before{background:var(--ok)}
+.membri li.lato-nemico::before{background:var(--crimson)}
+.legenda{display:flex;flex-wrap:wrap;gap:6px 16px;margin:0 0 10px;font-size:13px;color:var(--muted)}
+.legenda span{display:inline-flex;align-items:center;gap:6px}
+.legenda span::before{content:"";width:4px;height:14px;border-radius:2px}
+.legenda .l-gruppo::before{background:var(--gold)}
+.legenda .l-alleato::before{background:var(--ok)}
+.legenda .l-nemico::before{background:var(--crimson)}
+
+/* master: cambio di schieramento, trasformazione, rinforzi */
+.campo .cambi{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.campo .cambi .btn{min-height:48px;align-self:flex-start}
+.campo li.alleato{border-color:color-mix(in srgb,var(--ok) 60%,var(--line))}
+.rinforzi{border:1px solid var(--line);border-radius:10px;padding:0 14px;margin-bottom:12px}
+.rinforzi[open]{padding-bottom:14px}
+.rinforzi summary{min-height:48px;display:flex;align-items:center;cursor:pointer;font-family:var(--f-display);font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
+.rinforzi .aggiungi{margin-top:8px}
+.rinforzi .hint{margin:10px 0 0}

@@ -133,3 +133,21 @@ export function incantesimi(testo) {
   }));
   return { intro, livelli };
 }
+
+/** Inserisce nell'ordine dei turni chi arriva a scontro iniziato (rinforzi), al posto giusto per iniziativa.
+    A parità entra dopo chi c'era già. Se entra prima di chi sta giocando, il segno del turno scivola di uno
+    così il turno resta a chi lo aveva. */
+export function inserisciInOrdine({ ordine, turno }, voce) {
+  let i = ordine.findIndex(v => v.tot < voce.tot);
+  if (i < 0) i = ordine.length;
+  const nuovo = [...ordine.slice(0, i), voce, ...ordine.slice(i)];
+  return { ordine: nuovo, turno: i <= turno ? turno + 1 : turno };
+}
+
+/** Una creatura che cambia modello (il popolano che si rivela lupo mannaro): prende CA, PF massimi e nome
+    del nuovo modello, ma conserva le ferite già subite (mai sotto 1 PF) e lo schieramento. */
+export function trasforma(c, m) {
+  const max = m.pf, persi = Math.max(0, c.max - c.pf);
+  return { ...c, creatura: m.id, nome: m.nome, giocatori: m.giocatori || m.nome, ca: m.ca, ini: m.ini ?? c.ini,
+    max, pf: Math.max(1, max - persi) };
+}

@@ -93,3 +93,24 @@ test("incantesimi divisi per livello", () => {
   assert.equal(r.livelli[1].elenco, "scudo, dardo incantato");
   assert.equal(incantesimi("1°: sonno. 2°: invisibilità").livelli[1].elenco, "invisibilità");
 });
+
+import { inserisciInOrdine, trasforma } from "../js/regole/nemici.js";
+
+test("rinforzi a scontro iniziato: entrano al posto giusto e il turno resta a chi lo aveva", () => {
+  const o = [{ id: "a", tot: 20 }, { id: "b", tot: 15 }, { id: "c", tot: 10 }];
+  const r = inserisciInOrdine({ ordine: o, turno: 2 }, { id: "x", tot: 15 });
+  assert.deepEqual(r.ordine.map(v => v.id), ["a", "b", "x", "c"]);
+  assert.equal(r.turno, 3);                                   // tocca ancora a "c"
+  assert.equal(inserisciInOrdine({ ordine: o, turno: 0 }, { id: "y", tot: 5 }).turno, 0);
+  assert.deepEqual(inserisciInOrdine({ ordine: o, turno: 0 }, { id: "z", tot: 25 }).ordine[0].id, "z");
+});
+
+test("trasformazione: nuovo modello, ferite conservate", () => {
+  const civile = { id: "n7", creatura: "popolano", nome: "Popolano", giocatori: "Popolano", tipo: "alleato", pf: 2, max: 4, ca: 10, ini: 0 };
+  const lupo = { id: "lupo-mannaro", nome: "Lupo mannaro", giocatori: "Uomo lupo", pf: 58, ca: 12, ini: 1 };
+  const t = trasforma(civile, lupo);
+  assert.equal(t.pf, 56); assert.equal(t.max, 58); assert.equal(t.ca, 12);
+  assert.equal(t.tipo, "alleato");                             // lo schieramento si cambia a parte
+  assert.equal(t.id, "n7");
+  assert.equal(trasforma({ ...civile, pf: 0, max: 100 }, lupo).pf, 1);
+});

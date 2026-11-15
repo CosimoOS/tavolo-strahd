@@ -4,7 +4,7 @@
 
      dm/bestiario → { creature:[...], gruppi:[...] }   i modelli, importati dal file privato o scritti a mano
      dm/campo     → { scontro, creature:[...], gruppi:[...] }   chi è in campo adesso, con i PF veri          */
-import { ferite, danno, cura, schiera, togliDaOrdine, leggiAzioni, scriviAzioni, leggiTratti, scriviTratti, chiaro, fonteChiara, incantesimi } from "./regole/nemici.js";
+import { ferite, danno, cura, schiera, togliDaOrdine, inserisciInOrdine, trasforma, leggiAzioni, scriviAzioni, leggiTratti, scriviTratti, chiaro, fonteChiara, incantesimi } from "./regole/nemici.js";
 
 const BEST = "dm/bestiario", CAMPO = "dm/campo";
 const $ = id => document.getElementById(id);
@@ -13,7 +13,7 @@ const sg = n => (n >= 0 ? "+" : "−") + Math.abs(n);
 
 let arch = null, ridisegna = () => {}, toast = () => {}, ascolti = [];
 let B = { creature: [], gruppi: [] }, C = { scontro: null, creature: [], gruppi: [] };
-let scelte = [], pannello = null, cerca = "", aperte = new Set(), daEliminare = null;
+let scelte = [], pannello = null, cerca = "", aperte = new Set(), daEliminare = null, apriRinforzi = false;
 const perId = () => Object.fromEntries(B.creature.map(c => [c.id, c]));
 
 export function avviaNemici({ archivio, aggiorna, avvisa }) {
@@ -88,6 +88,7 @@ export function htmlTurniMaster(SC) {
     rapida = `<section class="rapida"><h2>Di turno: ${esc(membri.length > 1 ? `${modello?.nome || ""} ×${membri.filter(m => m.pf > 0).length}` : membri[0]?.nome)}</h2>
       ${modello ? schedaModello(modello, membri.length === 1 ? membri[0] : null) : ""}</section>`;
   }
+  const ordinate = B.creature.slice().sort((a, b) => a.nome.localeCompare(b.nome, "it"));
   const righe = C.creature.map(c => {
     const st = ferite(c.pf, c.max), aperta = aperte.has(c.id), m = P[c.creatura];
     return `<li class="${c.pf <= 0 ? "giu" : ""}${c.tipo === "alleato" ? " alleato" : ""}" data-c="${c.id}">
@@ -99,9 +100,24 @@ export function htmlTurniMaster(SC) {
         <input type="number" inputmode="numeric" min="0" placeholder="0" data-qta="${c.id}" aria-label="Quantità per ${esc(c.nome)}">
         <button class="btn dmg" data-nz="danno" data-id="${c.id}">Danno</button>
         <button class="btn heal" data-nz="cura" data-id="${c.id}">Cura</button></div>
-      ${aperta && m ? `<div class="dettaglio">${schedaModello(m, c)}</div>` : ""}</li>`;
+      ${aperta ? `<div class="dettaglio">
+        <div class="cambi">
+          <button class="btn" data-nz="lato" data-id="${c.id}">${c.tipo === "alleato" ? "Passa ai nemici" : "Passa agli alleati"}</button>
+          <div class="aggiungi"><select data-trasf="${c.id}" aria-label="Nuovo modello per ${esc(c.nome)}">${ordinate.map(x => `<option value="${esc(x.id)}"${x.id === c.creatura ? " selected" : ""}>${esc(x.nome)}</option>`).join("")}</select>
+            <button class="btn" data-nz="trasforma" data-id="${c.id}">Trasforma</button></div>
+        </div>${m ? schedaModello(m, c) : ""}</div>` : ""}</li>`;
   }).join("");
-  return { rapida, campo: `<section><h2>In campo</h2><ul class="campo">${righe}</ul></section>` };
+  const rinforzi = `<details class="rinforzi"${apriRinforzi ? " open" : ""}><summary data-nz="rinf-apri">Arrivano rinforzi</summary>
+    <div class="aggiungi">
+      <select id="nzRCreatura" aria-label="Creatura">${ordinate.map(x => `<option value="${esc(x.id)}">${esc(x.nome)}${x.tipo === "alleato" ? " (alleato)" : ""}</option>`).join("")}</select>
+      <input id="nzRQuanti" type="number" inputmode="numeric" min="1" max="30" value="1" aria-label="Quanti">
+      <select id="nzRModo" aria-label="Iniziativa"><option value="branco">in branco</option><option value="uno">uno per uno</option></select>
+    </div>
+    <div class="aggiungi"><label class="dado"><span class="lbl">d20 iniziativa</span><input id="nzRD20" type="number" inputmode="numeric" min="1" max="20" aria-label="d20 d'iniziativa dei rinforzi"></label>
+      <button class="btn gold" data-nz="rinforzi">Entrano in campo</button></div>
+    <p class="hint">Un d20 per tutti quelli che entrano: per tiri separati aggiungili uno alla volta. L'app somma il loro modificatore e li mette al posto giusto nei turni.</p>
+  </details>`;
+  return { rapida, campo: `<section><h2>In campo</h2>${rinforzi}<ul class="campo">${righe}</ul></section>` };
 }
 
 /* La scheda di un modello, per il master:
@@ -293,6 +309,45 @@ export async function clic(b, SC, scrivi) {
         return { ...c, slotUsati: { ...(c.slotUsati || {}), [l]: i < u ? i : i + 1 } };
       });
       await arch.aggiorna(CAMPO, { creature });
+      break;
+    }
+    case "rinf-apri": apriRinforzi = !apriRinforzi; break;
+    case "lato": {
+      const creature = C.creature.map(c => c.id !== b.dataset.id ? c : { ...c, tipo: c.tipo === "alleato" ? "nemico" : "alleato" });
+      await arch.aggiorna(CAMPO, { creature });
+      const c = creature.find(x => x.id === b.dataset.id);
+      toast(`${c.nome}: ora ${c.tipo === "alleato" ? "alleato" : "nemico"}`);
+      await scrivi({ campo: pubblico(creature, C.gruppi) });
+      break;
+    }
+    case "trasforma": {
+      const sel = $("vistaScontro").querySelector(`[data-trasf="${b.dataset.id}"]`), m = perId()[sel && sel.value];
+      if (!m) break;
+      const creature = C.creature.map(c => c.id !== b.dataset.id ? c : trasforma(c, m));
+      const nuova = creature.find(c => c.id === b.dataset.id);
+      /* se era da sola nel suo gruppo, cambia nome anche nell'ordine dei turni */
+      const gruppi = C.gruppi.map(g => g.membri.length === 1 && g.membri[0] === nuova.id ? { ...g, nome: nuova.giocatori, ini: nuova.ini } : g);
+      const g = gruppi.find(x => x.membri.includes(nuova.id));
+      await arch.aggiorna(CAMPO, { creature, gruppi });
+      toast(`Trasformato: ${m.nome}`);
+      await scrivi({ campo: pubblico(creature, gruppi),
+        ...(g && g.membri.length === 1 ? { ordine: (SC.ordine || []).map(v => v.id === g.id ? { ...v, nome: g.nome } : v) } : {}) });
+      break;
+    }
+    case "rinforzi": {
+      const d20 = parseInt($("nzRD20").value, 10);
+      if (!(d20 >= 1 && d20 <= 20)) { toast("Scrivi il d20 d'iniziativa (da 1 a 20)"); return true; }
+      const q = Math.min(30, Math.max(1, parseInt($("nzRQuanti").value, 10) || 1));
+      const nuovi = schiera([{ creatura: $("nzRCreatura").value, quanti: q, modo: $("nzRModo").value }], perId(), C.creature);
+      if (!nuovi.creature.length) break;
+      const creature = [...C.creature, ...nuovi.creature], gruppi = [...C.gruppi, ...nuovi.gruppi];
+      await arch.aggiorna(CAMPO, { creature, gruppi });
+      let st = { ordine: SC.ordine || [], turno: SC.turno || 0 };
+      for (const g of nuovi.gruppi) st = inserisciInOrdine(st, { id: g.id, nome: g.nome, tot: d20 + (g.ini ?? 0), des: null });
+      await scrivi({ ...st, campo: pubblico(creature, gruppi),
+        partecipanti: [...(SC.partecipanti || []), ...nuovi.gruppi.map(g => ({ id: g.id, nome: g.nome, tipo: g.tipo === "alleato" ? "alleato" : "nemico" }))] });
+      $("nzRD20").value = ""; apriRinforzi = false;
+      toast(`In campo: ${nuovi.creature.length > 1 ? nuovi.creature.length + " " : ""}${nuovi.creature[0].nome.replace(/ \d+$/, "")}`);
       break;
     }
     case "apri": { const id = b.dataset.id; aperte.has(id) ? aperte.delete(id) : aperte.add(id); break; }

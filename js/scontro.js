@@ -246,7 +246,8 @@ function disegna(forza) {
   const scritti = [...el.querySelectorAll("[data-tiro]")].map(i => [i.dataset.tiro, i.dataset.i, i.value]);
   const tolti = [...el.querySelectorAll("[data-part]:not(:checked)")].map(i => i.dataset.part);
   const foco = document.activeElement && el.contains(document.activeElement) && document.activeElement.dataset.foco;
-  const campiLiberi = [...el.querySelectorAll("[data-qta], #nzCreatura, #nzQuanti, #nzModo")].map(i => [i.dataset.qta ? `[data-qta="${i.dataset.qta}"]` : "#" + i.id, i.value]);
+  const campiLiberi = [...el.querySelectorAll("[data-qta], [data-trasf], #nzCreatura, #nzQuanti, #nzModo, #nzRCreatura, #nzRQuanti, #nzRModo, #nzRD20")]
+    .map(i => [i.dataset.qta ? `[data-qta="${i.dataset.qta}"]` : i.dataset.trasf ? `[data-trasf="${i.dataset.trasf}"]` : "#" + i.id, i.value]);
   if (SC.stato === "chiuso") el.innerHTML = dm ? vistaPreparazione() : `<section><h2>Scontro</h2><p class="vuoto">Nessuno scontro in corso.</p></section>`;
   else if (SC.stato === "tiri") el.innerHTML = vistaTiri();
   else el.innerHTML = vistaTurni();
@@ -299,11 +300,18 @@ function stato(id) {
 }
 function righeMembri(id) {
   const m = membri(id); if (m.length < 2) return "";
-  return `<ul class="membri">${m.map(c => `<li${c.ferite === "sconfitto" ? ' class="giu"' : ""}><span>${esc(c.nome)}</span>${etichetta(c)}</li>`).join("")}</ul>`;
+  return `<ul class="membri">${m.map(c => `<li class="lato-${c.tipo === "alleato" ? "alleato" : "nemico"}${c.ferite === "sconfitto" ? " giu" : ""}"><span>${esc(c.nome)}</span>${etichetta(c)}</li>`).join("")}</ul>`;
 }
+/* da che parte sta una voce dei turni: il gruppo dei giocatori, gli alleati del master o i nemici */
+function lato(id) {
+  const m = membri(id); if (!m.length) return "gruppo";
+  const tipi = new Set(m.filter(c => c.ferite !== "sconfitto").map(c => c.tipo === "alleato" ? "alleato" : "nemico"));
+  return tipi.size === 1 ? [...tipi][0] : tipi.size ? "misto" : (m[0].tipo === "alleato" ? "alleato" : "nemico");
+}
+const legenda = () => (SC.campo || []).length ? `<p class="legenda"><span class="l-gruppo">Il gruppo</span><span class="l-alleato">Alleati</span><span class="l-nemico">Nemici</span></p>` : "";
 function vistaTurni() {
   const a = attivo(), o = SC.ordine || [];
-  const righe = o.map((v, i) => `<li class="${i === SC.turno ? "attivo" : ""}${mio(v.id) ? " mio" : ""}"${i === SC.turno ? ' aria-current="step"' : ""}>
+  const righe = o.map((v, i) => `<li class="lato-${lato(v.id)}${i === SC.turno ? " attivo" : ""}${mio(v.id) ? " mio" : ""}"${i === SC.turno ? ' aria-current="step"' : ""}>
       <span class="pos">${i + 1}</span><span class="nome">${esc(v.nome)}</span>${stato(v.id)}
       ${dm && pariConPrecedente(o, i) ? `<button class="btn link" data-az="scambia" data-i="${i}" aria-label="Metti ${esc(v.nome)} prima">Scambia</button>` : ""}
       <span class="tot">${v.tot}</span>${righeMembri(v.id)}</li>`).join("");
@@ -311,7 +319,7 @@ function vistaTurni() {
   const M = dm ? htmlTurniMaster(SC) : { rapida: "", campo: "" };
   return `${dm ? htmlMaster() : ""}<section><h2>Round ${SC.round} <small>${a ? "di turno: " + esc(a.nome) : ""}</small></h2>
     ${a && mio(a.id) ? `<p class="tuo">Tocca a te: ${esc(a.nome)}</p>${htmlGiocatore(a)}` : ""}
-    <ol class="turni">${righe}</ol>
+    ${legenda()}<ol class="turni">${righe}</ol>
     <div class="azioni">
       ${dm ? `<button class="btn link" data-az="chiudi">Chiudi lo scontro</button><button class="btn" data-az="indietro">Indietro</button>` : ""}
       ${puo ? `<button class="btn up fine" data-az="fine"${inVolo ? " disabled" : ""}>Fine turno</button>` : ""}
