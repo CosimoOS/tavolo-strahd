@@ -50,6 +50,7 @@ npm test
 | `js/accesso.js` | Schermata dei profili e tastierino del PIN |
 | `js/scheda.js` | La scheda del personaggio |
 | `js/scontro.js` | Iniziativa e turni, condivisi fra i telefoni |
+| `js/attacco.js` | Attacco dal telefono: bersaglio, d20, esito deciso dal telefono del master, danni da applicare |
 | `js/nemici.js` | Nemici e alleati del master: bestiario, scheda rapida di turno, PF |
 | `privato/` | Il bestiario preparato dai manuali. **Non va su git** (è in `.gitignore`): si carica nell'app dal profilo del master |
 | `js/personaggi/` | Le regole di ogni personaggio e l'elenco dei profili |

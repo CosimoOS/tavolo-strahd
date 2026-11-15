@@ -10,6 +10,7 @@
 import { PERSONAGGI, PROFILI } from "./personaggi/index.js";
 import { CONFIG } from "./config.js";
 import { avviaNemici, fermaNemici, htmlPreparazione, pannelloAperto, schieraScelte, infoGruppo, htmlTurniMaster, clic as clicNemici, input as inputNemici } from "./nemici.js";
+import { avviaAttacchi, fermaAttacchi, aggiornaScontro, htmlGiocatore, htmlMaster, clic as clicAttacco, input as inputAttacco } from "./attacco.js";
 import { totaleIniziativa, ordina, pariConPrecedente, avanza, indietro } from "./regole/combattimento.js";
 
 const DOC = "scontro/attuale", TIRI = "scontro/attuale/tiri";
@@ -23,12 +24,12 @@ let chiSono = "", inviando = false, prec = null, congedo = null, visti = new Set
 const secondi = ms => (ms / 1000).toFixed(1).replace(".", ",") + " s";
 
 /* ---------- avvio e arresto (li chiama app.js) ---------- */
-export function avviaScontro({ archivio, profilo, datiIniziativa, avvisa }) {
+export function avviaScontro({ archivio, profilo, datiIniziativa, datiAttacco, spendiSlot, avvisa }) {
   arch = archivio; dm = profilo.id === "dm"; miei = dm ? [] : profilo.personaggi.slice();
   info = datiIniziativa; toast = avvisa; SC = null; TIRATI = {}; rimandato = null; ultimoAvviso = "";
   chiSono = profilo.id; inviando = false; prec = null; clearTimeout(congedo); congedo = null; visti = new Set(); ultimoTimbro = 0;
   ascolti = [
-    arch.ascolta(DOC, dati => { SC = dati || { stato: "chiuso" }; if (CONFIG.misura && !dm) misuraMaster(); aggiorna(); },
+    arch.ascolta(DOC, dati => { SC = dati || { stato: "chiuso" }; aggiornaScontro(SC); if (CONFIG.misura && !dm) misuraMaster(); aggiorna(); },
       () => toast("Scontro non raggiungibile", 5000), { anchePropri: true }),
     arch.ascoltaRaccolta(TIRI, lista => {
       TIRATI = Object.fromEntries(lista.map(t => [t.id, t.dati]));
@@ -37,10 +38,12 @@ export function avviaScontro({ archivio, profilo, datiIniziativa, avvisa }) {
     }),
   ];
   if (dm) avviaNemici({ archivio, aggiorna: () => disegna(true), avvisa });
+  avviaAttacchi({ archivio, master: dm, avvisa, aggiorna: () => disegna(true), datiAttacco, spendiSlot });
 }
 export function fermaScontro() {
   ascolti.forEach(stop => stop()); ascolti = [];
   if (dm) fermaNemici();
+  fermaAttacchi();
   SC = null; mostraVista(false); $("iniVeil").hidden = true;
 }
 
@@ -240,6 +243,7 @@ function disegna(forza) {
   /* ridisegnare non deve cancellare quello che il master sta scrivendo o le spunte già tolte */
   const scritti = [...el.querySelectorAll("[data-tiro]")].map(i => [i.dataset.tiro, i.dataset.i, i.value]);
   const tolti = [...el.querySelectorAll("[data-part]:not(:checked)")].map(i => i.dataset.part);
+  const foco = document.activeElement && el.contains(document.activeElement) && document.activeElement.dataset.foco;
   const campiLiberi = [...el.querySelectorAll("[data-qta], #nzCreatura, #nzQuanti, #nzModo")].map(i => [i.dataset.qta ? `[data-qta="${i.dataset.qta}"]` : "#" + i.id, i.value]);
   if (SC.stato === "chiuso") el.innerHTML = dm ? vistaPreparazione() : `<section><h2>Scontro</h2><p class="vuoto">Nessuno scontro in corso.</p></section>`;
   else if (SC.stato === "tiri") el.innerHTML = vistaTiri();
@@ -248,6 +252,8 @@ function disegna(forza) {
   scritti.forEach(([id, i, v]) => { const x = el.querySelector(`[data-tiro="${id}"][data-i="${i}"]`); if (x) x.value = v; });
   tolti.forEach(id => { const x = el.querySelector(`[data-part="${id}"]`); if (x) x.checked = false; });
   (SC.partecipanti || []).forEach(p => el.querySelector(`[data-somma="${p.id}"]`) && mostraSomma(el, p));
+  /* chi stava scrivendo in un campo continua a scriverci anche dopo il ridisegno */
+  if (foco) { const f = el.querySelector(`[data-foco="${foco}"]`); if (f) { f.focus({ preventScroll: true }); try { const n = f.value.length; f.setSelectionRange(n, n); } catch (_) {} } }
 }
 
 function vistaPreparazione() {
@@ -301,8 +307,8 @@ function vistaTurni() {
       <span class="tot">${v.tot}</span>${righeMembri(v.id)}</li>`).join("");
   const puo = dm || (a && mio(a.id));
   const M = dm ? htmlTurniMaster(SC) : { rapida: "", campo: "" };
-  return `<section><h2>Round ${SC.round} <small>${a ? "di turno: " + esc(a.nome) : ""}</small></h2>
-    ${a && mio(a.id) ? `<p class="tuo">Tocca a te: ${esc(a.nome)}</p>` : ""}
+  return `${dm ? htmlMaster() : ""}<section><h2>Round ${SC.round} <small>${a ? "di turno: " + esc(a.nome) : ""}</small></h2>
+    ${a && mio(a.id) ? `<p class="tuo">Tocca a te: ${esc(a.nome)}</p>${htmlGiocatore(a)}` : ""}
     <ol class="turni">${righe}</ol>
     <div class="azioni">
       ${dm ? `<button class="btn link" data-az="chiudi">Chiudi lo scontro</button><button class="btn" data-az="indietro">Indietro</button>` : ""}
@@ -313,11 +319,18 @@ function vistaTurni() {
 /* ---------- pulsanti della vista ---------- */
 $("vistaScontro").addEventListener("change", e => { if (dm) inputNemici(e); });
 $("vistaScontro").addEventListener("input", e => {
+  if (inputAttacco(e)) return;
   if (dm && inputNemici(e)) return;
   const id = e.target.dataset.tiro; if (!id) return;
   const p = (SC.partecipanti || []).find(x => x.id === id); if (p) mostraSomma($("vistaScontro"), p);
 });
 $("vistaScontro").addEventListener("click", async e => {
+  const at = e.target.closest("[data-at]");
+  if (at && !at.disabled) {
+    try { await clicAttacco(at, attivo(), campi => arch.aggiorna(DOC, { ...campi, ...timbro() })); }
+    catch (_) { toast("Non salvato: controlla la connessione", 4000); }
+    return;
+  }
   const n = dm && e.target.closest("[data-nz]");
   if (n) {
     try { await clicNemici(n, SC, campi => arch.aggiorna(DOC, { ...campi, ...timbro() })); }

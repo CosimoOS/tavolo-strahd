@@ -174,6 +174,23 @@ export function datiIniziativa(k) {
   return { mod: X.ini, des: STATE[k].scores.des, vantaggio: !!PERSONAGGI[k].ready(X.L) };
 }
 
+/** Quello che serve per attaccare dal telefono: armi con bonus e danni, da che numero è critico,
+    e gli slot liberi per la Punizione divina (se il personaggio ce l'ha). */
+export function datiAttacco(k) {
+  if (!STATE[k] || !PERSONAGGI[k]) return null;
+  const P = PERSONAGGI[k], St = STATE[k], X = calcola(P, St);
+  const slot = (P.risorse ? P.risorse(X.L, X) : []).filter(r => /^slot\d$/.test(r.k))
+    .map(r => ({ liv: +r.k.slice(4), liberi: Math.max(0, r.max - (St[r.k] || 0)) }));
+  return { nome: P.name, critMin: P.critMin(X.L), attacchi: attacchiOrdinati(X), punizione: !!P.punizione && X.L >= 2, slot };
+}
+/** Segna uno slot usato (per la Punizione divina) e salva la scheda. */
+export function spendiSlot(k, liv) {
+  const St = STATE[k]; if (!St) return;
+  St["slot" + liv] = (St["slot" + liv] || 0) + 1;
+  if (k === cur) change();
+  else { clearTimeout(timers[k]); timers[k] = setTimeout(() => flush(k), 500); }
+}
+
 /* ---------- selettore delle schede ---------- */
 function costruisciSelettore() {
   const esci = `<button class="esci" data-esci aria-label="Cambia profilo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h5v16h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 8l-4 4 4 4M6 12h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="nm">Profilo</span></button>`;

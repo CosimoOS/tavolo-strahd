@@ -3,7 +3,7 @@
 import { CONFIG } from "./config.js";
 import { creaArchivio } from "./archivio.js";
 import { mostraProfili, nascondiProfili } from "./accesso.js";
-import { apriScheda, chiudiScheda, datiIniziativa, toast } from "./scheda.js";
+import { apriScheda, chiudiScheda, datiIniziativa, datiAttacco, spendiSlot, toast } from "./scheda.js";
 import { avviaScontro, fermaScontro, mostraVista } from "./scontro.js";
 import { profilo } from "./personaggi/index.js";
 import { stemma } from "./stemmi.js";
@@ -19,7 +19,7 @@ function entraCome(id) {
   if (p.personaggi.length) {
     apriScheda({ archivio: arch, personaggi: p.personaggi, onEsci: chiediUscita,
       scontro: { apri: () => mostraVista(true), chiudi: () => mostraVista(false) } });
-    avviaScontro({ archivio: arch, profilo: p, datiIniziativa, avvisa: toast });
+    avviaScontro({ archivio: arch, profilo: p, datiIniziativa, datiAttacco, spendiSlot, avvisa: toast });
   } else {
     $("aStemma").innerHTML = stemma(p.stemma, { piena: true });
     $("aNome").textContent = p.nome;

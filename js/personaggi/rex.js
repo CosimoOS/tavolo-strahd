@@ -16,6 +16,7 @@ export default {
   critMin: l => 20, athlete: l => false, ready: l => false, caBonus: l => 0, indName: "",
   /* Aura di protezione: dal 6° livello +Car (minimo +1) a tutti i tiri salvezza, suoi e degli alleati entro 3 m (9 m dal 18°) */
   saveBonus: (l, M) => l >= 6 ? Math.max(1, M.car) : 0,
+  punizione: true,   // Punizione divina: nell'attacco dal telefono si può aggiungere spendendo uno slot
 
   /* risorse con le losanghe: si azzerano col riposo indicato */
   risorse(L, X) {

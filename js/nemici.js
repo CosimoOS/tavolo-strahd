@@ -165,6 +165,17 @@ async function colpisci(id, n, comeCura, SC) {
   return campi;
 }
 
+/* ---------- per l'attacco dal telefono dei giocatori (attacco.js) ---------- */
+/** La creatura in campo e il suo modello: CA vera, nome vero, difese da ricordare al master. */
+export function creaturaInCampo(id) {
+  const c = C.creature.find(x => x.id === id); if (!c) return null;
+  const m = perId()[c.creatura] || {};
+  const difese = (m.tratti || []).filter(t => /immun|resist|vulnerab|difese/i.test(t.nome + " " + t.testo)).map(t => chiaro(t.testo));
+  return { ...c, difese };
+}
+/** Danno deciso dal master su una richiesta d'attacco: stessi effetti del pulsante Danno. */
+export const ferisci = (id, n, SC) => colpisci(id, n, false, SC);
+
 /* ---------- bestiario ---------- */
 function htmlBestiario() {
   const q = cerca.trim().toLowerCase();
