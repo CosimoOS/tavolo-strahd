@@ -52,6 +52,8 @@ export function mostraVista(si) {
   vista = !!si;
   if (!vista) { clearTimeout(congedo); congedo = null; }
   $("vistaScheda").classList.toggle("in-scontro", vista);
+  /* al master, nello scontro, la barra con PF/Danno/Cura di una scheda non serve: la nasconde (resta per gli avvisi) */
+  document.body.classList.toggle("master-scontro", dm && vista);
   $("vistaScontro").hidden = !vista;
   const b = document.querySelector(".switch [data-scontro]");
   if (b) b.setAttribute("aria-pressed", vista);

@@ -17,7 +17,7 @@ function esc(t) { const e = document.createElement("span"); e.textContent = t ??
 const sg = n => (n >= 0 ? "+" : "−") + Math.abs(n);
 
 let arch = null, dm = false, toast = () => {}, ridisegna = () => {}, dati = () => null, spendi = () => {}, ascolto = null;
-let A = [], SC = null, risolti = new Set();
+let A = [], SC = null, risolti = new Set(), statoMio = "";
 /* la bozza del giocatore: cosa ha scelto e scritto finora (resta anche se la vista si ridisegna) */
 let B = nuovaBozza(), mio = null;
 function nuovaBozza() { return { bersaglio: null, arma: 0, modo: "normale", d20: ["", ""], extraTiro: "", dadi: [], punizione: 0, nonMorto: false, extra: "" }; }
@@ -27,16 +27,28 @@ export function avviaAttacchi({ archivio, master, avvisa, aggiorna, datiAttacco,
   A = []; risolti = new Set(); B = nuovaBozza(); mio = null;
   ascolto = arch.ascoltaRaccolta(ATT, lista => {
     A = lista.map(x => ({ id: x.id, ...x.dati }));
+    const m = mio && A.find(x => x.id === mio);
+    if (m && m.stato !== statoMio) { const prima = statoMio; statoMio = m.stato; if (prima) avvisaEsito(m); }
     if (dm) A.filter(a => a.stato === "colpire" && SC && a.scontro === SC.id && !risolti.has(a.id)).forEach(risolvi);
     if (dm) { const nuovi = A.filter(a => a.stato === "danni" && !risolti.has(a.id + ":d")); nuovi.forEach(a => { risolti.add(a.id + ":d"); toast(`${a.pgNome}: danni a ${a.bersaglioNome}`); }); }
     ridisegna();
   });
 }
+/* il giocatore sente e vede subito la risposta del master, anche se stava guardando altrove */
+function avvisaEsito(a) {
+  const testo = a.stato === "colpito" ? (a.tiro.critico ? "Critico! Tira i danni" : "Colpito! Tira i danni")
+    : a.stato === "mancato" ? "Mancato" : a.stato === "applicato" ? `${a.bersaglioNome}: ${a.applicati} danni` : "";
+  if (!testo) return;
+  toast(testo, 4000);
+  try { navigator.vibrate && navigator.vibrate(a.stato === "mancato" ? 80 : [60, 40, 60]); } catch (_) {}
+  /* porta il riquadro in vista, appena sotto la barra in alto */
+  setTimeout(() => { const el = document.querySelector(".attacco"); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + scrollY - 90, behavior: "smooth" }); }, 80);
+}
 export function fermaAttacchi() { if (ascolto) ascolto(); ascolto = null; }
 /** Lo scontro è cambiato (nuovo turno, nuovo scontro…): la bozza vale solo per il turno in cui è nata. */
 export function aggiornaScontro(nuovo) {
   const chiave = s => s ? `${s.id}:${s.round}:${s.turno}` : "";
-  if (chiave(nuovo) !== chiave(SC)) { B = nuovaBozza(); mio = null; }
+  if (chiave(nuovo) !== chiave(SC)) { B = nuovaBozza(); mio = null; statoMio = ""; }
   SC = nuovo;
 }
 
@@ -94,17 +106,23 @@ export function htmlGiocatore(pg) {
   const fatti = A.filter(x => x.scontro === SC.id && x.pg === pg.id && x.round === SC.round && x.turno === SC.turno).length;
   const quanti = fatti ? `<small>${fatti === 1 ? "1 attacco" : `${fatti} attacchi`} in questo turno</small>` : "";
 
-  if (a && a.stato === "colpire") return box(quanti, `<p class="attesa">${a.tiro.tot} per colpire contro ${esc(a.bersaglioNome)}. Aspetto il master…</p>`);
-  if (a && a.stato === "mancato") return box(quanti, `<p class="esito mancato">Mancato</p><p class="attesa">${a.tiro.tot} non basta contro ${esc(a.bersaglioNome)}.</p>
-    <div class="azioni"><button class="btn up" data-at="nuovo">Nuovo attacco</button></div>`);
-  if (a && a.stato === "danni") return box(quanti, `<p class="attesa">${a.danni.tot} danni a ${esc(a.bersaglioNome)}. Il master li sta applicando…</p>`);
-  if (a && a.stato === "applicato") return box(quanti, `<p class="esito colpito">${esc(a.bersaglioNome)}: ${a.applicati} danni</p>
-    ${a.applicati !== a.danni.tot ? `<p class="attesa">Il master ne ha contati ${a.applicati} su ${a.danni.tot}.</p>` : ""}
-    <div class="azioni"><button class="btn up" data-at="nuovo">Nuovo attacco</button></div>`);
+  const dopo = `<div class="azioni"><button class="btn" data-az="fine">Fine turno</button><button class="btn up" data-at="nuovo">Nuovo attacco</button></div>`;
+  if (a && a.stato === "colpire") return box(quanti, banner("attesa", "Al master…", `${a.tiro.tot} per colpire contro ${esc(a.bersaglioNome)}`));
+  if (a && a.stato === "mancato") return box(quanti, banner("mancato", "Mancato", `${a.tiro.tot} non basta contro ${esc(a.bersaglioNome)}`) + dopo);
+  if (a && a.stato === "danni") return box(quanti, banner("attesa", "Al master…", `${a.danni.tot} danni a ${esc(a.bersaglioNome)}: li sta applicando`));
+  if (a && a.stato === "applicato") {
+    const ora = (SC.campo || []).find(c => c.id === a.bersaglio);
+    const giu = ora && ora.ferite === "sconfitto";
+    return box(quanti, banner(giu ? "critico" : "colpito", giu ? `${esc(a.bersaglioNome)} è a terra` : `${a.applicati} danni`,
+      giu ? `${a.applicati} danni: sconfitto` : `${esc(a.bersaglioNome)}${ora ? ` ora è <b>${esc(ora.ferite)}</b>` : ""}`)
+      + (a.applicati !== a.danni.tot ? `<p class="attesa">Il master ne ha contati ${a.applicati} su ${a.danni.tot} (resistenze o immunità).</p>` : "") + dopo);
+  }
   if (a && a.stato === "colpito") {
     const parti = partiDanno(d, a), somma = sommaDanni(parti, B.extra);
     const slot = d.punizione ? d.slot.filter(s => s.liberi > 0 && s.liv <= 4) : [];
-    return box(quanti, `<p class="esito colpito">${a.tiro.critico ? "Critico! Raddoppia i dadi" : "Colpito!"}</p>
+    const arma = d.attacchi[a.armaI ?? B.arma], [nd, fd] = dadiDanno(arma.dice, a.tiro.critico);
+    return box(quanti, banner(a.tiro.critico ? "critico" : "colpito", a.tiro.critico ? "Critico!" : "Colpito!", `${esc(a.bersaglioNome)} · ${a.tiro.tot} per colpire`) +
+      `<p class="poi">Ora tira <b>${nd}d${fd}</b> per ${esc(arma.n)}${a.tiro.critico ? " (col critico i dadi sono doppi)" : ""} e scrivi i numeri.</p>
       ${slot.length ? `<div class="riga-tiro"><b>Aggiungi la Punizione divina?</b><div class="seg">
         <button data-at="pun" data-l="0" aria-pressed="${!B.punizione}">No</button>
         ${slot.map(s => `<button data-at="pun" data-l="${s.liv}" aria-pressed="${B.punizione === s.liv}">Slot ${s.liv}° (${s.liberi})</button>`).join("")}</div>
@@ -132,6 +150,7 @@ export function htmlGiocatore(pg) {
     <small class="aiuto">"Altro": bonus in più al tiro, per esempio il d4 di Benedizione.</small>
     <div class="azioni"><button class="btn up" data-at="attacca"${t && B.bersaglio ? "" : " disabled"}>Attacca</button></div>`);
 }
+const banner = (tipo, titolo, sotto) => `<div class="esito-b ${tipo}" role="status"><b>${titolo}</b><span>${sotto}</span></div>`;
 const box = (quanti, h) => `<div class="attacco"><h3 class="sez-m">Attacco ${quanti}</h3>${h}</div>`;
 
 /* ---------- tocchi e campi ---------- */
@@ -144,12 +163,12 @@ export async function clic(b, pg, scrivi) {
     case "modo": B.modo = b.dataset.m; break;
     case "pun": B.punizione = +b.dataset.l; B.dadiPun = []; break;
     case "nm": B.nonMorto = b.checked; break;
-    case "nuovo": mio = null; B = { ...nuovaBozza(), bersaglio: B.bersaglio, arma: B.arma }; break;
+    case "nuovo": mio = null; statoMio = ""; B = { ...nuovaBozza(), bersaglio: B.bersaglio, arma: B.arma }; break;
     case "attacca": {
       const arma = d.attacchi[B.arma], t = tiro(d, arma), c = (SC.campo || []).find(x => x.id === B.bersaglio);
       if (!t || !c) return true;
       const id = `${pg.id}-${Date.now()}`;
-      mio = id;
+      mio = id; statoMio = "colpire";
       await arch.scrivi(`${ATT}/${id}`, { scontro: SC.id, round: SC.round, turno: SC.turno, pg: pg.id, pgNome: d.nome,
         bersaglio: c.id, bersaglioNome: c.nome, arma: arma.n, armaI: B.arma, tipo: (arma.t || "").toLowerCase(), tiro: t, stato: "colpire" });
       break;

@@ -87,3 +87,7 @@
   .concluso{animation:concluso-entra .4s ease-out}
   @keyframes concluso-entra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 }
+
+/* master nello scontro: niente barra dei PF della scheda; resta solo il punto d'appoggio degli avvisi */
+body.master-scontro .dock-in{display:none}
+body.master-scontro .dock{background:none;border:0;padding-block:0;backdrop-filter:none;-webkit-backdrop-filter:none}
