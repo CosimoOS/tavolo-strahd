@@ -33,6 +33,7 @@ export const dannoMedio = a => a.dice[0] * (a.dice[1] + 1) / 2 + a.mod;
  * C = regole del personaggio (js/personaggi/…), S = stato salvato (PF, punteggi, armi…).
  */
 export function calcola(C, S) {
+  if (C.vediStato) C.vediStato(S);                     // le regole dei multiclasse leggono i livelli di ogni classe
   const L = S.level, P = prof(L), M = {};
   /* effetti dei talenti presi: competenze nei tiri salvezza e nelle abilità, iniziativa, Percezione passiva */
   const tal = (S.asi || []).filter(a => a.feat).map(a => ({ a, t: talento(a.feat) })).filter(x => x.t);

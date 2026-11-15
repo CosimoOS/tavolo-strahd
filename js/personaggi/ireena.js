@@ -4,6 +4,16 @@ export default {
   id: "ireena", name: "Ireena", classe: "seguace-guerriero", sottoclasse: "attaccante", stemma: "I",
   femminile: true, tags: ["Umana", "Attaccante"], insp: false,
   skills: ["Atletica", "Inganno", "Intuizione", "Percezione", "Persuasione"],
+  /* correzioni ai dati già salvati: l'ascia di Ezmerelda è un'ascia (accetta) leggera da lancio, 1d6 */
+  correggi(S) {
+    const ascia = { n: "Ascia di Ezmerelda", t: "Taglienti", note: "leggera, lancio 6/18 m", ab: "for", dice: [1, 6], magic: 0 };
+    const i = S.weapons.findIndex(w => /ezmer/i.test(w.n));
+    if (i < 0) { S.weapons.push({ id: "w-ezm", ...ascia }); if (!S.inv.some(t => /ezmer/i.test(t))) S.inv.push(ascia.n); return true; }
+    const w = S.weapons[i];
+    if (w.dice[0] === 1 && w.dice[1] === 6 && /lancio/.test(w.note || "")) return false;
+    S.weapons[i] = { ...w, dice: [1, 6], note: ascia.note, t: "Taglienti", ab: w.ab === "des" ? "fin" : w.ab };
+    return true;
+  },
   kv: [["Armature", "Tutte"], ["Armi", "Tutte"], ["Classe", "Guerriero seguace (Calderone di Tasha)"]],
   magic: /^$/,
   def: {

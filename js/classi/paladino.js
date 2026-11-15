@@ -77,7 +77,7 @@ const EXTRA = {
 
 export default {
   id: "paladino", nome: "Paladino", dadoVita: 10, pfMedia: 6, ts: ["sag", "car"],
-  armature: ["leggera", "media", "pesante"], magia: l => l >= 2,
+  armature: ["leggera", "media", "pesante"], magia: l => l >= 2, incantatore: "mezzo",
   asi: [4, 8, 12, 16, 19], stileAl: 2,
   attacchi: l => l >= 5 ? 2 : 1, punizione: true,
   /* Aura di protezione: dal 6° livello +Car (minimo +1) a tutti i tiri salvezza */

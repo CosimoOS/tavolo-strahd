@@ -78,8 +78,11 @@ test("Rex: i numeri della sua scheda, con l'Aura di protezione nei tiri salvezza
   assert.equal(X.atk[0].mod, 4);
   assert.equal(X.skills.find(s => s.n === "Atletica").v, 7);
   assert.equal(X.skills.find(s => s.n === "Religione").v, 2);
-  assert.equal(rex.magia(6, X), "CD 14 · +6 per colpire");
-  assert.equal(rex.quantiPreparati(6, X), 6);
+  const [m] = rex.magie(6, X, rex.def);
+  assert.equal(m.testo, "CD 14 · +6 per colpire");
+  assert.equal(m.limite, 6);
+  assert.equal(m.chiave, "preparati");
+  assert.equal(m.fissi.length, 4);
 });
 
 test("Rex: slot del paladino e risorse al 6° livello", () => {

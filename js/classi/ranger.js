@@ -21,6 +21,7 @@ export const INCANTESIMI_RANGER = [
   { n: "Saltare", liv: 1, t: "Triplica la distanza di salto di una creatura per 1 minuto." },
   { n: "Passo veloce", liv: 1, t: "+3 m di velocità per 1 ora." },
   { n: "Parlare con gli animali", liv: 1, rituale: true, t: "Capisci e parli con le bestie per 10 minuti." },
+  { n: "Colpo di zefiro", liv: 1, conc: true, xanathar: true, t: "Azione bonus: per 1 minuto i tuoi movimenti non provocano attacchi di opportunità; una volta, vantaggio a un attacco con arma che fa +1d8 forza e ti dà +9 m di velocità per quel turno." },
   { n: "Messaggero animale", liv: 2, rituale: true, t: "Una bestia Minuscola porta un messaggio di 25 parole." },
   { n: "Pelle di corteccia", liv: 2, conc: true, t: "La CA di una creatura non può scendere sotto 16." },
   { n: "Sensi animali", liv: 2, conc: true, rituale: true, t: "Vedi e senti attraverso una bestia consenziente." },
@@ -59,7 +60,7 @@ const conosciuti = l => l < 2 ? 0 : 1 + Math.ceil(l / 2);   // 2 al 2°, 3 al 3�
 
 export default {
   id: "ranger", nome: "Ranger", dadoVita: 10, pfMedia: 6, ts: ["for", "des"],
-  armature: ["leggera", "media"], magia: l => l >= 2,
+  armature: ["leggera", "media"], magia: l => l >= 2, incantatore: "mezzo",
   asi: [4, 8, 12, 16, 19], stileAl: 2,
   attacchi: l => l >= 5 ? 2 : 1,
 
@@ -79,6 +80,7 @@ export default {
     if (l === 3) f.push([opz.tasha ? "Consapevolezza primordiale (Tasha) o Consapevolezza primeva" : "Consapevolezza primeva", opz.tasha ? "Puoi sostituire la versione del manuale con quella di Tasha." : "Spendi uno slot per percepire certi tipi di creature entro 1,5 km."]);
     if (this.asi.includes(l)) f.push(["Aumento dei punteggi di caratteristica", "+2 a una caratteristica, +1 a due, oppure un talento."]);
     if (l === 5) f.push(["Attacco extra", "Due attacchi quando usa l'azione di attacco. Slot di 2° livello."]);
+    if (l === 6) f.push(["Nemico prescelto ed Esploratore naturale migliorati", "Un nemico prescelto e un terreno prescelto in più."]);
     if (l === 8) f.push(["Andatura sul territorio", "Il terreno difficile non magico non ti rallenta; vantaggio contro le piante magiche."]);
     if (l === 10) f.push([opz.tasha ? "Velo della natura (Tasha) o Nascondersi in piena vista" : "Nascondersi in piena vista", "Ti nascondi meglio nella natura."]);
     if (l === 14) f.push(["Svanire", "Ti nascondi come azione bonus e non lasci tracce non magiche."]);
@@ -95,6 +97,9 @@ export default {
     if (abile) f.push(["Esploratore abile", `Maestria in un'abilità e due lingue${L >= 6 ? "; +1,5 m di velocità, scalare e nuotare" : ""}${L >= 10 ? "; PF temporanei e meno indebolimento col riposo breve" : ""}.`]);
     else f.push(["Esploratore naturale", `${terreni.length ? terreni.join(", ") : "da scegliere"}: nel terreno prescelto non ti perdi, viaggi più veloce e trovi il doppio del cibo.`]);
     S.styles.forEach(s => f.push([`Stile di combattimento: ${s}`, STYLES[s] || ""]));
+    if (L >= 3) f.push(opz.tasha && scelta(S, "primordiale") === "si"
+      ? ["Consapevolezza primordiale", "Incantesimi extra conosciuti (Parlare con gli animali al 3°, poi Sensi animali, Parlare con i vegetali…), una volta gratis per riposo lungo."]
+      : ["Consapevolezza primeva", "Azione e uno slot: per 1 minuto per slot percepisci aberrazioni, celestiali, draghi, elementali, folletti, immondi e non morti entro 1,5 km (9 km nel terreno prescelto)."]);
     if (L >= 5) f.push(["Attacco extra", "Due attacchi quando usa l'azione di attacco."]);
     if (L >= 8) f.push(["Andatura sul territorio", "Il terreno difficile non magico non ti rallenta."]);
     if (L >= 14) f.push(["Svanire", "Ti nascondi come azione bonus e non lasci tracce."]);
@@ -107,6 +112,7 @@ export default {
     const favorito = opz.tasha && scelta(S, "nemico-favorito") === "si", abile = opz.tasha && scelta(S, "esploratore-abile") === "si";
     if ([1, 6, 14].includes(l) && !favorito) c.push({ id: "nemico-prescelto", titolo: "Nemico prescelto", opzioni: NEMICI.filter(n => !scelteTutte(S, "nemico-prescelto").includes(n.id)) });
     if ([1, 6, 10].includes(l) && !abile) c.push({ id: "terreno", titolo: "Terreno prescelto", opzioni: TERRENI.filter(n => !scelteTutte(S, "terreno").includes(n.id)) });
+    if (opz.tasha && l === 3) c.push({ id: "primordiale", titolo: "Consapevolezza primordiale (Tasha) al posto di Consapevolezza primeva?", opzioni: [{ id: "no", nome: "Tieni Consapevolezza primeva" }, { id: "si", nome: "Usa Consapevolezza primordiale" }] });
     if (opz.tasha && this.asi.includes(l) && S.styles.length) c.push({ id: "versatilita", titolo: "Versatilità marziale: cambiare lo stile?", tipo: "cambio-stile" });
     return c;
   },

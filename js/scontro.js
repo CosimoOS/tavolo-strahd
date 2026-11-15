@@ -331,7 +331,7 @@ function vistaTurni() {
     ${a && mio(a.id) ? `<p class="tuo">Tocca a te: ${esc(a.nome)}</p>${htmlGiocatore(a)}` : ""}
     ${legenda()}<ol class="turni">${righe}</ol>
     <div class="azioni">
-      ${dm ? `<button class="btn link" data-az="chiudi">Chiudi lo scontro</button><button class="btn" data-az="indietro">Indietro</button>` : ""}
+      ${dm ? `<button class="btn link" data-az="chiudi">Chiudi lo scontro</button><button class="btn" data-az="indietro"${SC.round <= 1 && SC.turno === 0 ? " disabled title=\"Siamo al primo turno\"" : ""}>Turno precedente</button>` : ""}
       ${puo ? `<button class="btn up fine" data-az="fine"${inVolo ? " disabled" : ""}>Fine turno</button>` : ""}
     </div></section>${M.rapida}${M.campo}`;
 }
@@ -380,7 +380,9 @@ $("vistaScontro").addEventListener("click", async e => {
     } else if (az === "fine" || az === "indietro") {
       inVolo = true; disegna();
       const n = (SC.ordine || []).length;
-      await arch.aggiorna(DOC, { ...(az === "fine" ? avanza(SC, n) : indietro(SC, n)), ...timbro() });
+      const dopo = az === "fine" ? avanza(SC, n) : indietro(SC, n);
+      await arch.aggiorna(DOC, { ...dopo, ...timbro() });
+      if (az === "indietro") toast(`Di nuovo il turno di ${(SC.ordine[dopo.turno] || {}).nome || "…"} (round ${dopo.round})`);
     } else if (az === "scambia") {
       const i = +b.dataset.i, o = SC.ordine.slice();
       [o[i - 1], o[i]] = [o[i], o[i - 1]];

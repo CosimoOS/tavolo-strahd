@@ -4,17 +4,18 @@
 import rombosogliola from "./rombosogliola.js";
 import ireena from "./ireena.js";
 import rex from "./rex.js";
+import petrus from "./petrus.js";
 import { CLASSI } from "../classi/index.js";
 import { componi } from "../classi/componi.js";
 import { opzioni } from "../campagna.js";
 
-export const DATI = { rombosogliola, ireena, rex };
-export const PERSONAGGI = Object.fromEntries(Object.entries(DATI).map(([k, p]) => [k, componi(p, CLASSI[p.classe], opzioni)]));
+export const DATI = { rombosogliola, ireena, rex, petrus };
+export const PERSONAGGI = Object.fromEntries(Object.entries(DATI).map(([k, p]) => [k, componi(p, CLASSI, opzioni)]));
 
 export const PROFILI = [
   { id: "dm", nome: "Master", sotto: "Dungeon Master", stemma: "dm", personaggi: Object.keys(PERSONAGGI) },
   { id: "rombosogliola", nome: "Rombosogliola", sotto: "con Ireena", stemma: "pesce", personaggi: ["rombosogliola", "ireena"] },
-  { id: "petrus", nome: "Petrus", sotto: "Ranger", stemma: "P", personaggi: [] },
+  { id: "petrus", nome: "Petrus", sotto: "Ranger e druido", stemma: "P", personaggi: ["petrus"] },
   { id: "rex", nome: "Rex", sotto: "Paladino", stemma: "R", personaggi: ["rex"] },
 ];
 
