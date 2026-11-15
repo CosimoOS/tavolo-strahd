@@ -25,9 +25,9 @@ const secondi = ms => (ms / 1000).toFixed(1).replace(".", ",") + " s";
 export function avviaScontro({ archivio, profilo, datiIniziativa, avvisa }) {
   arch = archivio; dm = profilo.id === "dm"; miei = dm ? [] : profilo.personaggi.slice();
   info = datiIniziativa; toast = avvisa; SC = null; TIRATI = {}; rimandato = null; ultimoAvviso = "";
-  chiSono = profilo.id; inviando = false; prec = null; clearTimeout(congedo); congedo = null; visti = new Set();
+  chiSono = profilo.id; inviando = false; prec = null; clearTimeout(congedo); congedo = null; visti = new Set(); ultimoTimbro = 0;
   ascolti = [
-    arch.ascolta(DOC, dati => { SC = dati || { stato: "chiuso" }; aggiorna(); },
+    arch.ascolta(DOC, dati => { SC = dati || { stato: "chiuso" }; if (CONFIG.misura && !dm) misuraMaster(); aggiorna(); },
       () => toast("Scontro non raggiungibile", 5000), { anchePropri: true }),
     arch.ascoltaRaccolta(TIRI, lista => {
       TIRATI = Object.fromEntries(lista.map(t => [t.id, t.dati]));
@@ -166,6 +166,16 @@ function mostraSomma(radice, p) {
 async function salvaTiro(p, r) {
   await arch.scrivi(`${TIRI}/${p.id}`, { scontro: SC.id, nome: p.nome, tipo: p.tipo, ...r, da: chiSono, inviato: Date.now() });
 }
+/* Le modifiche del master portano l'ora d'invio ("inviato"): con ?misura il giocatore vede quanto ci hanno messo.
+   Quelle del giocatore (Fine turno) no: le regole gli permettono di cambiare solo turno e round. */
+const timbro = () => (dm ? { inviato: Date.now() } : {});
+let ultimoTimbro = 0;
+function misuraMaster() {
+  const primo = !ultimoTimbro, t = SC.inviato || -1;   // al primo caricamento si prende solo nota
+  if (t === ultimoTimbro) return;
+  ultimoTimbro = t;
+  if (!primo && SC.inviato) toast(`Dal master in ${secondi(Date.now() - SC.inviato)}`, 6000);   // al primo caricamento non conta
+}
 /* Solo per le prove (?misura): il master vede quanto ci ha messo il tiro di un giocatore ad arrivare.
    Le due finestre stanno sullo stesso computer, quindi l'orologio è lo stesso e il conto è esatto. */
 function misuraArrivi(lista) {
@@ -287,7 +297,7 @@ $("vistaScontro").addEventListener("click", async e => {
       const scelti = [...$("vistaScontro").querySelectorAll("[data-part]:checked")].map(i => i.dataset.part);
       const partecipanti = catalogo().filter(p => scelti.includes(p.id));
       if (!partecipanti.length) { toast("Scegli almeno un partecipante"); return; }
-      await arch.scrivi(DOC, { stato: "tiri", id: String(Date.now()), partecipanti, ordine: [], turno: 0, round: 1 });
+      await arch.scrivi(DOC, { stato: "tiri", id: String(Date.now()), partecipanti, ordine: [], turno: 0, round: 1, ...timbro() });
     } else if (az === "tira") {
       rimandato = null; apriTiro();
     } else if (az === "segna") {
@@ -297,18 +307,18 @@ $("vistaScontro").addEventListener("click", async e => {
       await salvaTiro(p, r);
     } else if (az === "inizia") {
       const voci = SC.partecipanti.filter(p => tiroDi(p.id)).map(p => { const t = tiroDi(p.id); return { id: p.id, nome: p.nome, tot: t.tot, des: t.des ?? null }; });
-      await arch.aggiorna(DOC, { stato: "in corso", ordine: ordina(voci), turno: 0, round: 1 });
+      await arch.aggiorna(DOC, { stato: "in corso", ordine: ordina(voci), turno: 0, round: 1, ...timbro() });
     } else if (az === "fine" || az === "indietro") {
       inVolo = true; disegna();
       const n = (SC.ordine || []).length;
-      await arch.aggiorna(DOC, az === "fine" ? avanza(SC, n) : indietro(SC, n));
+      await arch.aggiorna(DOC, { ...(az === "fine" ? avanza(SC, n) : indietro(SC, n)), ...timbro() });
     } else if (az === "scambia") {
       const i = +b.dataset.i, o = SC.ordine.slice();
       [o[i - 1], o[i]] = [o[i], o[i - 1]];
-      await arch.aggiorna(DOC, { ordine: o });
+      await arch.aggiorna(DOC, { ordine: o, ...timbro() });
     } else if (az === "chiudi") {
       /* "fine" serve ai giocatori per il messaggio "Scontro concluso · durato N round" */
-      await arch.scrivi(DOC, { stato: "chiuso", fine: { round: SC.round || 1, giocato: SC.stato === "in corso" } });
+      await arch.scrivi(DOC, { stato: "chiuso", fine: { round: SC.round || 1, giocato: SC.stato === "in corso" }, ...timbro() });
       toast("Scontro chiuso");
     }
   } catch (err) {
