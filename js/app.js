@@ -46,5 +46,8 @@ $("esciSi").onclick = esci;
 $("esciVeil").addEventListener("click", e => { if (e.target === $("esciVeil")) $("esciVeil").hidden = true; });
 $("aEsci").onclick = esci;
 
+/* service worker (sw.js): rende l'app installabile e la apre anche con poca rete */
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+
 const gia = await arch.profiloCorrente();
 if (gia && profilo(gia)) entraCome(gia); else mostraProfili(arch, entraCome);
