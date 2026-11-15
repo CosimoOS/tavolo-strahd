@@ -9,10 +9,17 @@
    browser di chiunque apra l'app. A proteggere i dati sono le regole in firestore.rules. */
 /* Aggiungendo ?prova all'indirizzo (http://localhost:8080/?prova) l'app usa la modalità locale
    con i PIN di prova: comodo per provare senza toccare i dati veri su Firebase. */
-const prova = typeof location !== "undefined" && new URLSearchParams(location.search).has("prova");
+/* Altri interruttori per le prove, da aggiungere all'indirizzo (anche insieme: ?misura&robusto):
+     ?misura → mostra quanto ci mette un tiro d'iniziativa ad arrivare (solo per le prove)
+     ?robusto → Firebase usa un collegamento più vecchio ma più robusto ("long polling"),
+               utile se qualche browser o rete frena quello normale */
+const indirizzo = typeof location !== "undefined" ? new URLSearchParams(location.search) : new URLSearchParams();
+const prova = indirizzo.has("prova");
 
 export const CONFIG = {
   modalita: prova ? "locale" : "firebase",
+  misura: indirizzo.has("misura"),
+  collegamentoRobusto: indirizzo.has("robusto"),
 
   firebase: {
     apiKey: "AIzaSyCa0xYAIHHvK3jRJPmABdwwWpddvxnrWgY",

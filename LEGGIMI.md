@@ -18,6 +18,12 @@ Per provare senza toccare i dati veri apri <http://localhost:8080/?prova>: i dat
 e i PIN sono quelli di prova scritti in `js/config.js`. Due schede del browser aperte con `?prova` si parlano,
 così puoi fare il master in una e il giocatore nell'altra.
 
+Altri interruttori da aggiungere all'indirizzo, anche insieme (`?misura&robusto`):
+
+- `?misura`: quando un giocatore manda l'iniziativa, il master vede quanto ci ha messo ad arrivare.
+- `?robusto`: Firebase usa un collegamento più vecchio ma più robusto, utile se un browser
+  (per esempio Brave con gli scudi attivi) frena quello normale.
+
 ## Test delle regole
 
 ```bash

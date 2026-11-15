@@ -72,3 +72,18 @@
   .switch.open button:not([aria-pressed="true"]) .nm{max-width:0;opacity:0;margin-left:0}
   .switch.open button:not([aria-pressed="true"]){padding:8px 12px}
 }
+
+/* fine dello scontro: il pulsante "Scontro" si restringe e sfuma prima di sparire */
+.switch .scontro{transition:max-width .35s ease,opacity .3s ease,padding .35s ease,margin .35s ease,transform .35s ease;max-width:220px}
+.switch .scontro.esce{max-width:0;min-width:0;opacity:0;padding-left:0;padding-right:0;margin:0;transform:scale(.6);border-color:transparent;overflow:hidden;pointer-events:none}
+.switch .scontro.esce::after{display:none}
+
+/* riquadro "Scontro concluso" che i giocatori vedono per qualche secondo */
+.concluso{text-align:center;padding-block:28px}
+.concluso h2{justify-content:center;margin-bottom:0}
+.concluso h2::after{display:none}
+.concluso p{margin:8px 0 0;font-family:var(--f-num);color:var(--muted);font-size:17px}
+@media (prefers-reduced-motion:no-preference){
+  .concluso{animation:concluso-entra .4s ease-out}
+  @keyframes concluso-entra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+}

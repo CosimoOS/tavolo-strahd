@@ -86,7 +86,10 @@ async function archivioFirebase(cfg) {
   const app = initializeApp(cfg.firebase);
   const auth = A.getAuth(app);
   /* cache sul telefono: la scheda si apre anche con rete scarsa, e si risincronizza quando torna */
-  const db = F.initializeFirestore(app, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }) });
+  const db = F.initializeFirestore(app, {
+    localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }),
+    ...(cfg.collegamentoRobusto ? { experimentalForceLongPolling: true } : {}),
+  });
   const email = profilo => `${profilo}@${cfg.dominioEmail}`;
   const profiloDi = u => (u && u.email ? u.email.split("@")[0] : null);
 
