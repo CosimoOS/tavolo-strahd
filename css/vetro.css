@@ -781,3 +781,21 @@ i.lato-alleati{background:var(--ok)}
 body.con-banda .vista-master{left:calc(max(16px,env(safe-area-inset-left,0px)) + 128px);max-width:calc(100% - 224px)}
 body.scorso .vista-master span{opacity:0}
 @media (max-width:560px){.vista-master span{display:none}}
+
+/* ================= Sull'iPhone vero ================= */
+/* lo spazio per la tacca si contava due volte (sul corpo della pagina e sulle pagine): il titolo partiva a metà schermo */
+body.in-scheda{padding-top:0}
+body.in-scheda::before{display:none}
+/* il pannello del profilo, da chiuso, esce del tutto dallo schermo e non si vede più spuntare in basso */
+.foglio-conto{transform:translateY(calc(100% + 90px));visibility:hidden;transition:transform .42s cubic-bezier(.32,.72,0,1),visibility 0s linear .42s}
+.foglio-conto.aperto{transform:none;visibility:visible;transition:transform .42s cubic-bezier(.32,.72,0,1),visibility 0s}
+/* la barra sta più in basso, vicino al bordo come nelle app dell'iPhone; dove non c'è la riga di casa resta a 12px */
+:root{--barra-giu:max(12px,calc(env(safe-area-inset-bottom,0px) - 14px))}
+.tabbar{bottom:var(--barra-giu)}
+body.in-scheda{padding-bottom:calc(var(--barra-h) + var(--barra-giu) + 28px)}
+.bordo-basso{height:calc(var(--barra-h) + var(--barra-giu) + 70px)}
+.toast{bottom:calc(var(--barra-h) + var(--barra-giu) + 14px)}
+/* l'avatar in alto resta nitido: sta sopra la sfumatura, con un'ombra netta */
+.navalto{z-index:19}
+.avatar-btn{box-shadow:0 4px 12px rgba(0,0,0,.5)}
+.avatar-btn.altro{opacity:.85}

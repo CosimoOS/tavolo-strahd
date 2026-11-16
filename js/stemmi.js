@@ -56,6 +56,5 @@ export function avatar(tipo, { classe = "" } = {}) {
     `<linearGradient id="${g}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6dc9c"/><stop offset="1" stop-color="#b08636"/></linearGradient></defs>` +
     `<circle cx="50" cy="50" r="48" fill="url(#${c})"/>` +
     `<g transform="translate(50 50) scale(${k}) translate(${-cx} ${-cy})">${s.emblema(`url(#${g})`, true)}</g>` +
-    `<ellipse cx="44" cy="22" rx="30" ry="12" fill="#fff" opacity=".09"/>` +
-    `<circle cx="50" cy="50" r="47" fill="none" stroke="url(#${g})" stroke-width="2.6"/></svg>`;
+    `<circle cx="50" cy="50" r="47" fill="none" stroke="url(#${g})" stroke-width="3.4"/></svg>`;
 }
