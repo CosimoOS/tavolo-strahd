@@ -11,7 +11,7 @@ import { PERSONAGGI, PROFILI } from "./personaggi/index.js";
 import { CONFIG } from "./config.js";
 import { finestra, tastierino, caselleDadi } from "./passi.js";
 import { opzioni } from "./campagna.js";
-import { avviaNemici, fermaNemici, htmlPreparazione, pannelloAperto, schieraScelte, infoGruppo, htmlTurniMaster, clic as clicNemici, input as inputNemici } from "./nemici.js";
+import { avviaNemici, fermaNemici, htmlPreparazione, pannelloAperto, schieraScelte, infoGruppo, htmlTurniMaster, nomeGruppo, clic as clicNemici, input as inputNemici } from "./nemici.js";
 import { avviaAttacchi, fermaAttacchi, aggiornaScontro, htmlGiocatore, htmlMaster, clic as clicAttacco, input as inputAttacco } from "./attacco.js";
 import { sistemaEvocati } from "./regole/nemici.js";
 import { totaleIniziativa, ordina, pariConPrecedente, avanza, indietro } from "./regole/combattimento.js";
@@ -149,7 +149,7 @@ function modoScontro() {
   banda.classList.toggle("tuo", !!tuo);
   banda.innerHTML = SC.stato === "tiri"
     ? `<span class="bs-segno" aria-hidden="true"></span><span class="bs-testo"><b>Scontro</b> · tirate l'iniziativa</span><span class="bs-vai">Vai</span>`
-    : `<span class="bs-segno" aria-hidden="true"></span><span class="bs-testo"><b>${tuo ? "Tocca a te" : "Scontro"}</b> · Round ${SC.round}${a && !tuo ? ` · tocca a ${esc(a.nome)}` : a ? ` · ${esc(a.nome)}` : ""}</span><span class="bs-vai">Torna allo scontro</span>`;
+    : `<span class="bs-segno" aria-hidden="true"></span><span class="bs-testo"><b>${tuo ? "Tocca a te" : "Scontro"}</b> · Round ${SC.round}${a && !tuo ? ` · tocca a ${esc(visibile(a) ? nomeVoce(a) : "il master")}` : a ? ` · ${esc(a.nome)}` : ""}</span><span class="bs-vai">Torna allo scontro</span>`;
 }
 
 /* Il pulsante "Scontro" compare e sparisce con un piccolo movimento: si restringe e sfuma (vedi .esce in scontro.css). */
@@ -320,7 +320,7 @@ function vistaPreparazione() {
 }
 
 function vistaTiri() {
-  const parts = SC.partecipanti || [], fatti = parts.filter(p => tiroDi(p.id)).length;
+  const parts = (SC.partecipanti || []).filter(visibile), fatti = parts.filter(p => tiroDi(p.id)).length;
   const righe = parts.map(p => {
     const t = tiroDi(p.id);
     let destra;
@@ -329,7 +329,7 @@ function vistaTiri() {
     else if (mio(p.id)) destra = `<button class="btn gold" data-az="tira">Tira</button>`;
     else if (nemico(p)) destra = `<small>tira il master</small>`;
     else destra = `<small>in attesa</small>`;
-    return `<li class="${t ? "fatto" : ""}" data-p="${p.id}"><span class="nome">${esc(p.nome)}</span><span class="stato">${destra}</span></li>`;
+    return `<li class="${t ? "fatto" : ""}" data-p="${p.id}"><span class="nome">${esc(nomeVoce(p))}</span><span class="stato">${destra}</span></li>`;
   }).join("");
   const mancano = parts.filter(p => !tiroDi(p.id)).map(p => p.nome);
   return `<section><h2>Tirate l'iniziativa <small>${fatti} su ${parts.length}</small></h2>
@@ -353,16 +353,21 @@ function righeMembri(id) {
   return `<ul class="membri">${m.map(c => `<li class="lato-${c.tipo === "alleato" ? "alleato" : "nemico"}${c.ferite === "sconfitto" ? " giu" : ""}"><span>${esc(c.nome)}</span>${etichetta(c)}</li>`).join("")}</ul>`;
 }
 /* da che parte sta una voce dei turni: il gruppo dei giocatori, gli alleati del master o i nemici */
+/* il nome da mostrare: al master quello vero anche per i nascosti, ai giocatori "???" (ma i nascosti non li vedono proprio) */
+const nomeVoce = v => dm && v.nascosto ? `${nomeGruppo(v.id) || v.nome} · nascosto` : v.nome;
+const visibile = v => dm || !v.nascosto;
 function lato(id) {
-  const m = membri(id); if (!m.length) return "gruppo";
+  const m = membri(id);
+  if (!m.length) { const p = (SC.partecipanti || []).find(x => x.id === id); return p && (p.tipo === "nemico" || p.tipo === "alleato") ? p.tipo : "gruppo"; }
   const tipi = new Set(m.filter(c => c.ferite !== "sconfitto").map(c => c.tipo === "alleato" ? "alleato" : "nemico"));
   return tipi.size === 1 ? [...tipi][0] : tipi.size ? "misto" : (m[0].tipo === "alleato" ? "alleato" : "nemico");
 }
 const legenda = () => (SC.campo || []).length ? `<p class="legenda"><span class="l-gruppo">Il gruppo</span><span class="l-alleato">Alleati</span><span class="l-nemico">Nemici</span></p>` : "";
 function vistaTurni() {
   const a = attivo(), o = SC.ordine || [], mioTurno = !!(a && mio(a.id));
-  const righe = o.map((v, i) => `<li class="lato-${lato(v.id)}${i === SC.turno ? " attivo" : ""}${mio(v.id) ? " mio" : ""}"${i === SC.turno ? ' aria-current="step"' : ""}>
-      <span class="pos">${i + 1}</span><span class="nome">${esc(v.nome)}</span>${stato(v.id)}
+  let pos = 0;
+  const righe = o.map((v, i) => !visibile(v) ? "" : `<li class="lato-${lato(v.id)}${i === SC.turno ? " attivo" : ""}${mio(v.id) ? " mio" : ""}${v.nascosto ? " nascosto" : ""}"${i === SC.turno ? ' aria-current="step"' : ""}>
+      <span class="pos">${++pos}</span><span class="nome">${esc(nomeVoce(v))}</span>${stato(v.id)}
       ${dm && pariConPrecedente(o, i) ? `<button class="btn link" data-az="scambia" data-i="${i}" aria-label="Metti ${esc(v.nome)} prima">Scambia</button>` : ""}
       <span class="tot">${v.tot}</span>${righeMembri(v.id)}</li>`).join("");
   const M = dm ? htmlTurniMaster(SC) : { rapida: "", campo: "" };
@@ -372,8 +377,8 @@ function vistaTurni() {
     ? `<section class="turno-ora mio"><p class="to-round">Round ${SC.round}</p><h2 class="to-chi">Tocca a te<span>${esc(a.nome)}</span></h2>
         ${htmlGiocatore(a)}
         <button class="btn fine-turno" data-az="fine"${inVolo ? " disabled" : ""}>Fine turno</button></section>`
-    : `<section class="turno-ora lato-${latoA}"><p class="to-round">Round ${SC.round}</p><h2 class="to-chi">${dm ? "Di turno" : "Tocca a"}<span>${esc(a ? a.nome : "…")}</span></h2>
-        ${dm ? `<button class="btn up fine-turno" data-az="fine"${inVolo ? " disabled" : ""}>Fine turno di ${esc(a ? a.nome : "")}</button>` : `<p class="to-attesa">Aspetta il tuo turno: quando tocca a te il telefono vibra.</p>`}</section>`;
+    : `<section class="turno-ora lato-${latoA}"><p class="to-round">Round ${SC.round}</p><h2 class="to-chi">${a && !visibile(a) ? "Turno<span>del master</span>" : `${dm ? "Di turno" : "Tocca a"}<span>${esc(a ? nomeVoce(a) : "…")}</span>`}</h2>
+        ${dm ? `<button class="btn up fine-turno" data-az="fine"${inVolo ? " disabled" : ""}>Fine turno di ${esc(a ? nomeVoce(a) : "")}</button>` : `<p class="to-attesa">Aspetta il tuo turno: quando tocca a te il telefono vibra.</p>`}</section>`;
   /* 2. l'ordine dei turni, sotto; 3. per il master: scheda di chi agisce e creature in campo */
   return `${dm ? htmlMaster() : ""}${turno}${dm ? M.rapida : ""}
     <section class="ordine"><h2>Ordine dei turni</h2>${legenda()}<ol class="turni">${righe}</ol>
@@ -422,7 +427,7 @@ $("vistaScontro").addEventListener("click", async e => {
       if (!r) { toast(p.tipo === "manuale" ? "Scrivi il totale" : "Scrivi il d20 (da 1 a 20)"); return; }
       await salvaTiro(p, r);
     } else if (az === "inizia") {
-      const voci = SC.partecipanti.filter(p => tiroDi(p.id)).map(p => { const t = tiroDi(p.id); return { id: p.id, nome: p.nome, tot: t.tot, des: t.des ?? null }; });
+      const voci = SC.partecipanti.filter(p => tiroDi(p.id)).map(p => { const t = tiroDi(p.id); return { id: p.id, nome: p.nome, tot: t.tot, des: t.des ?? null, ...(p.nascosto ? { nascosto: true } : {}) }; });
       await arch.aggiorna(DOC, { stato: "in corso", ordine: ordina(voci), turno: 0, round: 1, ...timbro() });
     } else if (az === "fine" || az === "indietro") {
       inVolo = true; disegna();

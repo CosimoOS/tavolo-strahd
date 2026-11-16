@@ -32,20 +32,21 @@ export function schiera(scelte, bestiario, gia = []) {
   const creature = [], gruppi = [];
   let n = gia.length;
   const nomiGia = () => [...gia, ...creature];
-  for (const { creatura, quanti, modo } of scelte) {
+  for (const { creatura, quanti, modo, nascosto } of scelte) {
     const c = bestiario[creatura]; if (!c || !(quanti > 0)) continue;
     const nomi = nomiNumerati(c.nome, quanti, nomiGia().map(x => x.nome));
     const visti = nomiNumerati(c.giocatori || c.nome, quanti, nomiGia().map(x => x.giocatori));
     const nuove = nomi.map((nome, i) => ({
       id: `n${++n}`, creatura, nome, giocatori: visti[i], tipo: c.tipo || "nemico",
-      pf: c.pf, max: c.pf, ca: c.ca, ini: c.ini ?? 0, pfVisibili: !!c.pfVisibili,
+      pf: c.pf, max: c.pf, ca: c.ca, ini: c.ini ?? 0, pfVisibili: !!c.pfVisibili, ...(nascosto ? { nascosto: true } : {}),
     }));
+    const extra = nascosto ? { nascosto: true } : {};
     creature.push(...nuove);
     if (modo === "branco" && nuove.length > 1) {
       const plurale = (c.giocatori || c.nome) + " ×" + nuove.length;
-      gruppi.push({ id: "g" + nuove[0].id, nome: plurale, membri: nuove.map(x => x.id), ini: nuove[0].ini, tipo: nuove[0].tipo });
+      gruppi.push({ id: "g" + nuove[0].id, nome: plurale, membri: nuove.map(x => x.id), ini: nuove[0].ini, tipo: nuove[0].tipo, ...extra });
     } else {
-      nuove.forEach(x => gruppi.push({ id: "g" + x.id, nome: x.giocatori, membri: [x.id], ini: x.ini, tipo: x.tipo }));
+      nuove.forEach(x => gruppi.push({ id: "g" + x.id, nome: x.giocatori, membri: [x.id], ini: x.ini, tipo: x.tipo, ...extra }));
     }
   }
   return { creature, gruppi };

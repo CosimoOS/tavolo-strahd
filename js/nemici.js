@@ -4,7 +4,8 @@
 
      dm/bestiario → { creature:[...], gruppi:[...] }   i modelli, importati dal file privato o scritti a mano
      dm/campo     → { scontro, creature:[...], gruppi:[...] }   chi è in campo adesso, con i PF veri          */
-import { ferite, danno, cura, schiera, togliDaOrdine, inserisciInOrdine, inserisciDopo, trasforma, leggiAzioni, scriviAzioni, leggiTratti, scriviTratti, chiaro, fonteChiara, incantesimi } from "./regole/nemici.js";
+import { ferite, danno, cura, schiera, togliDaOrdine, inserisciInOrdine, inserisciDopo, trasforma, leggiTratti, scriviTratti, chiaro, fonteChiara, incantesimi, media } from "./regole/nemici.js";
+import { finestra } from "./passi.js";
 
 const BEST = "dm/bestiario", CAMPO = "dm/campo", PNG = "dm/png";
 /* dm/png → { <modello>: { pf, slotUsati } }: i compagni del master (alleati come Ezmerelda) e chi lancia incantesimi
@@ -34,13 +35,13 @@ export const pannelloAperto = () => !!pannello;
 
 export function htmlPreparazione() {
   if (pannello === "bestiario") return htmlBestiario();
-  if (pannello && pannello.modifica !== undefined) return htmlModifica(pannello.modifica);
   const P = perId();
   const ordinate = B.creature.slice().sort((a, b) => a.nome.localeCompare(b.nome, "it"));
   const righe = scelte.map((s, i) => `<li><span class="nome">${s.quanti > 1 ? s.quanti + " × " : ""}${esc(P[s.creatura]?.nome || s.creatura)}</span>
       ${s.quanti > 1 ? `<button class="btn link" data-nz="modo" data-i="${i}">${s.modo === "branco" ? "in branco" : "uno per uno"}</button>` : ""}
+      <button class="btn link${s.nascosto ? " acceso" : ""}" data-nz="nasc" data-i="${i}" aria-pressed="${!!s.nascosto}">${s.nascosto ? "nascosti" : "visibili"}</button>
       <button class="btn link" data-nz="togli" data-i="${i}" aria-label="Togli">Togli</button></li>`).join("");
-  return `<section><h2>Nemici e alleati <button class="btn link" data-nz="bestiario">Bestiario</button></h2>
+  return `<section><h2>Nemici e alleati <span class="h2-azioni"><button class="btn link" data-nz="nuovo">Nuovo mostro</button><button class="btn link" data-nz="bestiario">Bestiario</button></span></h2>
     ${!B.creature.length ? `<p class="vuoto">Il bestiario è vuoto: aprilo e importa il file, oppure crea un modello.</p>` : `
     ${B.gruppi.length ? `<p class="lbl-sez">Gruppi pronti</p><div class="gruppi">${B.gruppi.map(g =>
       `<button class="btn" data-nz="gruppo" data-id="${esc(g.id)}">${esc(g.nome)}<small>${g.membri.map(m => `${m.quanti} ${esc(P[m.id]?.nome || m.id)}`).join(", ")}</small></button>`).join("")}</div>` : ""}
@@ -72,17 +73,20 @@ export async function schieraScelte(idScontro) {
   await arch.scrivi(CAMPO, { scontro: idScontro, creature, gruppi });
   scelte = [];
   return {
-    partecipanti: gruppi.map(g => ({ id: g.id, nome: g.nome, tipo: g.tipo === "alleato" ? "alleato" : "nemico" })),
+    /* i nascosti: i giocatori non li vedono (nome "???"); il master sì, con il nome vero */
+    partecipanti: gruppi.map(g => ({ id: g.id, nome: g.nascosto ? "???" : g.nome, tipo: g.tipo === "alleato" ? "alleato" : "nemico", ...(g.nascosto ? { nascosto: true } : {}) })),
     campo: pubblico(creature, gruppi),
   };
 }
 /* quello che vedono i giocatori: nome per loro, gruppo, parola sulle ferite (e i PF, per gli alleati che lo prevedono) */
 function pubblico(creature, gruppi) {
   const gruppoDi = id => (gruppi.find(g => g.membri.includes(id)) || {}).id;
-  return creature.map(c => ({ id: c.id, gruppo: gruppoDi(c.id), nome: c.giocatori, tipo: c.tipo, ferite: ferite(c.pf, c.max), subiti: Math.max(0, c.max - c.pf),
+  return creature.filter(c => !c.nascosto).map(c => ({ id: c.id, gruppo: gruppoDi(c.id), nome: c.giocatori, tipo: c.tipo, ferite: ferite(c.pf, c.max), subiti: Math.max(0, c.max - c.pf),
     ...(c.pfVisibili ? { pf: c.pf, max: c.max } : {}) }));
 }
 
+/** Il nome vero di un gruppo del master (per le sue viste, anche quando è nascosto ai giocatori). */
+export const nomeGruppo = id => { const g = C.gruppi.find(x => x.id === id); return g ? g.nome : null; };
 /** Modificatore d'iniziativa di un gruppo del master (solo lui lo conosce). */
 export function infoGruppo(id) {
   const g = C.gruppi.find(x => x.id === id);
@@ -106,6 +110,7 @@ export function htmlTurniMaster(SC) {
   const righe = C.creature.map(c => {
     const st = ferite(c.pf, c.max), aperta = aperte.has(c.id), m = P[c.creatura];
     return `<li class="${c.pf <= 0 ? "giu" : ""}${c.tipo === "alleato" ? " alleato" : ""}" data-c="${c.id}">
+      ${c.nascosto ? `<div class="nascosto-riga"><span>Nascosto ai giocatori</span><button class="btn gold" data-nz="rivela" data-id="${c.id}">Rivela</button></div>` : ""}
       <div class="riga"><button class="nome-c" data-nz="apri" data-id="${c.id}" aria-expanded="${aperta}">${esc(c.nome)}</button>
         <span class="ca" title="Classe Armatura">CA ${c.ca}</span>
         <span class="pf"><b>${c.pf}</b>/${c.max}</span></div>
@@ -128,10 +133,12 @@ export function htmlTurniMaster(SC) {
       <input id="nzRQuanti" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" min="1" max="30" value="1" aria-label="Quanti">
       <select id="nzRModo" aria-label="Iniziativa"><option value="branco">in branco</option><option value="uno">uno per uno</option></select>
     </div>
+    <label class="spunta"><input type="checkbox" id="nzRNasc"> Nascosti ai giocatori (li riveli quando si fanno vedere)</label>
     <div class="aggiungi"><select id="nzREvoca" aria-label="Chi li evoca"><option value="">Arrivano da soli: contano la loro iniziativa</option>
       ${(SC.ordine || []).filter(v => C.gruppi.some(g => g.id === v.id)).map(v => `<option value="${v.id}"${SC.ordine[SC.turno] && SC.ordine[SC.turno].id === v.id ? " selected" : ""}>Evocati da ${esc(C.gruppi.find(g => g.id === v.id).nome)}</option>`).join("")}</select></div>
     <div class="aggiungi"><label class="dado"><span class="lbl">d20 iniziativa</span><input id="nzRD20" data-foco="rd20" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" min="1" max="20" aria-label="d20 d'iniziativa dei rinforzi"></label>
       <button class="btn gold" data-nz="rinforzi">Entrano in campo</button></div>
+    <button class="btn link" data-nz="nuovo">Non c'è nel bestiario? Crea un mostro nuovo</button>
     <p class="hint">Un d20 per tutti quelli che entrano. Se sono evocati, in questo round giocano subito dopo chi li ha evocati; dal round dopo prendono il posto della loro iniziativa.</p>
   </details>`;
   return { rapida, campo: `<section><h2>In campo</h2>${rinforzi}<ul class="campo">${righe}</ul></section>` };
@@ -257,38 +264,79 @@ function htmlBestiario() {
     <div class="azioni"><button class="btn up" data-nz="chiudi">Fatto</button></div></section>`;
 }
 
-function htmlModifica(id) {
-  const c = B.creature.find(x => x.id === id) || { id: "", nome: "", giocatori: "", tipo: "nemico", ca: 10, pf: 10, ini: 0, vel: "9 m", azioni: [], tratti: [], tattica: "" };
-  const campo = (k, lbl, v, tipo = "text", extra = "") => `<label class="campo-m"><span class="lbl">${lbl}</span><input data-f="${k}" type="${tipo}" value="${esc(v)}" ${extra}></label>`;
-  const elimina = daEliminare === id;
-  return `<section><h2>${id ? "Modifica modello" : "Nuovo modello"}</h2>
-    <div class="modulo">
-      ${campo("nome", "Nome (lo vedi solo tu)", c.nome)}
-      ${campo("giocatori", "Nome per i giocatori", c.giocatori || "")}
-      <div class="tre">${campo("ca", "CA", c.ca, "number", 'inputmode="numeric"')}${campo("pf", "PF", c.pf, "number", 'inputmode="numeric"')}${campo("ini", "Iniziativa", c.ini ?? 0, "number", 'inputmode="numeric"')}</div>
-      ${campo("vel", "Velocità", c.vel || "")}
-      <label class="campo-m"><span class="lbl">Da che parte sta</span><select data-f="tipo"><option value="nemico"${c.tipo !== "alleato" ? " selected" : ""}>Nemico</option><option value="alleato"${c.tipo === "alleato" ? " selected" : ""}>Alleato controllato dal master</option></select></label>
-      <label class="spunta"><input type="checkbox" data-f="pfVisibili"${c.pfVisibili ? " checked" : ""}> I giocatori vedono i PF veri (per gli alleati)</label>
-      <label class="campo-m"><span class="lbl">Cosa fa in combattimento</span><textarea data-f="tattica" rows="3">${esc(c.tattica || "")}</textarea></label>
-      <label class="campo-m"><span class="lbl">Azioni, una per riga: Nome | +colpire | danni | nota</span><textarea data-f="azioni" rows="5" spellcheck="false">${esc(scriviAzioni(c.azioni))}</textarea></label>
-      <label class="campo-m"><span class="lbl">Tratti, uno per riga: Nome: testo</span><textarea data-f="tratti" rows="4">${esc(scriviTratti(c.tratti))}</textarea></label>
-    </div>
-    <div class="azioni">
-      ${id ? `<button class="btn link${elimina ? " rosso" : ""}" data-nz="elimina" data-id="${esc(id)}">${elimina ? "Tocca di nuovo per eliminare" : "Elimina"}</button>
-        <button class="btn" data-nz="duplica" data-id="${esc(id)}">Duplica</button>` : ""}
-      <button class="btn" data-nz="annulla">Annulla</button>
-      <button class="btn up" data-nz="salva" data-id="${esc(id)}">Salva</button></div></section>`;
-}
-
 const slug = t => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "modello";
-function leggiModulo(radice, vecchio) {
-  const f = k => radice.querySelector(`[data-f="${k}"]`);
-  const num = (k, d) => { const n = parseInt(f(k).value, 10); return Number.isInteger(n) ? n : d; };
-  return { ...(vecchio || {}),
-    nome: f("nome").value.trim(), giocatori: f("giocatori").value.trim() || f("nome").value.trim(),
-    ca: num("ca", 10), pf: Math.max(1, num("pf", 1)), ini: num("ini", 0), vel: f("vel").value.trim(),
-    tipo: f("tipo").value, pfVisibili: f("pfVisibili").checked, tattica: f("tattica").value.trim(),
-    azioni: leggiAzioni(f("azioni").value), tratti: leggiTratti(f("tratti").value) };
+/* ---------- editor di un mostro, in una finestra (si apre anche a scontro iniziato) ---------- */
+let ED = null;
+function apriEditor(id) {
+  const c = B.creature.find(x => x.id === id);
+  ED = { id: id || "", elimina: false, bozza: structuredClone(c || { nome: "", giocatori: "", tipo: "nemico", ca: 12, pf: 10, ini: 0, vel: "9 m",
+    azioni: [{ nome: "", colpire: 3, danni: "" }], tratti: [], tattica: "" }) };
+  ED.f = finestra({ chiave: "editor", titolo: id ? "Modifica mostro" : "Nuovo mostro", onClick: clicEditor, onChiudi: () => { ED = null; ridisegna(); } });
+  disegnaEditor();
+}
+function disegnaEditor(nuovo = true) {
+  const c = ED.bozza, num = 'type="text" inputmode="numeric" pattern="-?[0-9]*" autocomplete="off"';
+  const campo = (k, lbl, v, extra = "", ph = "") => `<label class="campo-m"><span class="lbl">${lbl}</span><input data-ed="${k}" value="${esc(v ?? "")}" ${extra} placeholder="${esc(ph)}"></label>`;
+  ED.f.mostra(`<div class="modulo">
+      ${campo("nome", "Nome (lo vedi solo tu)", c.nome, "", "es. Capo dei lupi")}
+      ${campo("giocatori", "Nome per i giocatori", c.giocatori, "", "es. Lupo enorme")}
+      <div class="tre">${campo("ca", "CA", c.ca, num)}${campo("pf", "PF", c.pf, num)}${campo("ini", "Iniziativa", c.ini ?? 0, num)}</div>
+      ${campo("vel", "Velocità", c.vel, "", "9 m")}
+      <div class="campo-m"><span class="lbl">Da che parte sta</span><div class="seg"><button data-ed-tipo="nemico" aria-pressed="${c.tipo !== "alleato"}">Nemico</button><button data-ed-tipo="alleato" aria-pressed="${c.tipo === "alleato"}">Alleato del master</button></div></div>
+      ${c.tipo === "alleato" ? `<label class="spunta"><input type="checkbox" data-ed="pfVisibili"${c.pfVisibili ? " checked" : ""}> I giocatori vedono i suoi PF veri</label>` : ""}
+      <p class="lbl-sez">Attacchi</p>
+      <div class="ed-attacchi">${(c.azioni || []).map((a, i) => `<div class="ed-att">
+        ${campo(`a${i}-nome`, "Nome", a.nome, "", "es. Morso")}
+        <div class="due">${campo(`a${i}-colpire`, "Per colpire", a.colpire ?? "", num, "+4")}${campo(`a${i}-danni`, "Danni", a.danni || "", "", "2d4+2 perforanti")}</div>
+        ${campo(`a${i}-nota`, "Nota (facoltativa)", a.nota || "", "", "es. il bersaglio cade prono")}
+        <button class="btn link" data-ed-togli="${i}">Togli questo attacco</button></div>`).join("")}</div>
+      <button class="btn" data-ed-aggiungi>+ Aggiungi un attacco</button>
+      <label class="campo-m"><span class="lbl">Cosa fa in combattimento</span><textarea data-ed="tattica" rows="3" placeholder="es. Attacca chi è isolato, fugge se perde metà dei PF">${esc(c.tattica || "")}</textarea></label>
+      <label class="campo-m"><span class="lbl">Tratti e difese (uno per riga, "Nome: testo")</span><textarea data-ed="tratti" rows="3" placeholder="Difese: resiste al fuoco">${esc(scriviTratti(c.tratti))}</textarea></label>
+    </div>
+    <div class="fondo">
+      ${ED.id ? `<button class="btn${ED.elimina ? " rosso" : ""}" data-ed-elimina>${ED.elimina ? "Tocca di nuovo per eliminare" : "Elimina"}</button><button class="btn" data-ed-duplica>Duplica</button>` : ""}
+      <button class="btn up" data-ed-salva>Salva</button></div>`, { nuovoPasso: nuovo });
+}
+/* legge i campi della finestra nella bozza (prima di ridisegnare o salvare, così non si perde niente) */
+function leggiEditor() {
+  const radice = document.querySelector("#passi .passi-corpo"), v = k => { const x = radice.querySelector(`[data-ed="${k}"]`); return x ? (x.type === "checkbox" ? x.checked : x.value.trim()) : undefined; };
+  const n = (k, d) => { const x = parseInt(v(k), 10); return Number.isInteger(x) ? x : d; }, c = ED.bozza;
+  c.nome = v("nome"); c.giocatori = v("giocatori"); c.ca = n("ca", 10); c.pf = Math.max(1, n("pf", 1)); c.ini = n("ini", 0); c.vel = v("vel");
+  if (v("pfVisibili") !== undefined) c.pfVisibili = v("pfVisibili");
+  c.tattica = v("tattica"); c.tratti = leggiTratti(v("tratti"));
+  c.azioni = (c.azioni || []).map((a, i) => {
+    const colpire = parseInt(v(`a${i}-colpire`), 10), danni = v(`a${i}-danni`) || "";
+    const x = { nome: v(`a${i}-nome`) || "", ...(Number.isInteger(colpire) ? { colpire, danni } : {}), ...(v(`a${i}-nota`) ? { nota: v(`a${i}-nota`) } : {}) };
+    const m = media(danni); if (Number.isInteger(colpire) && m != null) x.medio = m;
+    return x;
+  });
+}
+async function clicEditor(e) {
+  const b = e.target.closest("button"); if (!b || !ED) return;
+  if (!b.hasAttribute("data-ed-elimina")) ED.elimina = false;
+  if (b.dataset.edTipo) { leggiEditor(); ED.bozza.tipo = b.dataset.edTipo; return disegnaEditor(false); }
+  if (b.hasAttribute("data-ed-aggiungi")) { leggiEditor(); ED.bozza.azioni = [...(ED.bozza.azioni || []), { nome: "", colpire: 3, danni: "" }]; return disegnaEditor(false); }
+  if (b.dataset.edTogli != null) { leggiEditor(); ED.bozza.azioni = ED.bozza.azioni.filter((_, i) => i !== +b.dataset.edTogli); return disegnaEditor(false); }
+  if (b.hasAttribute("data-ed-elimina")) {
+    if (!ED.elimina) { ED.elimina = true; return disegnaEditor(false); }
+    await salvaBestiario(B.creature.filter(x => x.id !== ED.id), B.gruppi.filter(g => !g.membri.some(m => m.id === ED.id)));
+    toast("Mostro eliminato"); return ED.f.chiudi();
+  }
+  if (b.hasAttribute("data-ed-duplica")) {
+    leggiEditor(); let id = ED.id + "-copia", k = 2; while (B.creature.some(x => x.id === id)) id = `${ED.id}-copia-${k++}`;
+    await salvaBestiario([...B.creature, { ...structuredClone(ED.bozza), id, nome: ED.bozza.nome + " (copia)" }]);
+    toast("Copia creata"); ED.f.chiudi(true); return apriEditor(id);
+  }
+  if (b.hasAttribute("data-ed-salva")) {
+    leggiEditor(); const c = ED.bozza;
+    if (!c.nome) { toast("Serve almeno il nome"); return; }
+    c.azioni = c.azioni.filter(a => a.nome);
+    if (!c.giocatori) c.giocatori = c.nome;
+    if (!ED.id) { let id = slug(c.nome), k = 2; while (B.creature.some(x => x.id === id)) id = `${slug(c.nome)}-${k++}`; c.id = id; }
+    await salvaBestiario(ED.id ? B.creature.map(x => x.id === c.id ? c : x) : [...B.creature, c]);
+    toast(ED.id ? "Mostro salvato" : `${c.nome}: aggiunto al bestiario`); ED.f.chiudi();
+  }
 }
 async function salvaBestiario(creature, gruppi = B.gruppi) { await arch.scrivi(BEST, { versione: 1, creature, gruppi }); }
 
@@ -309,7 +357,6 @@ async function importa(file) {
 export async function clic(b, SC, scrivi) {
   const az = b.dataset.nz; if (!az) return false;
   const vista = $("vistaScontro");
-  if (az !== "elimina") daEliminare = null;
   switch (az) {
     case "gruppo": {
       const g = B.gruppi.find(x => x.id === b.dataset.id); if (!g) break;
@@ -323,32 +370,22 @@ export async function clic(b, SC, scrivi) {
     }
     case "togli": scelte.splice(+b.dataset.i, 1); break;
     case "modo": { const s = scelte[+b.dataset.i]; s.modo = s.modo === "branco" ? "uno" : "branco"; break; }
+    case "nasc": { const s = scelte[+b.dataset.i]; s.nascosto = !s.nascosto; break; }
+    case "rivela": {
+      /* il gruppo intero si fa vedere: nome vero nell'ordine dei turni e stato visibile ai giocatori */
+      const g = C.gruppi.find(x => x.membri.includes(b.dataset.id)); if (!g) break;
+      const creature = C.creature.map(c => g.membri.includes(c.id) ? { ...c, nascosto: false } : c);
+      const gruppi = C.gruppi.map(x => x.id === g.id ? { ...x, nascosto: false } : x);
+      await arch.aggiorna(CAMPO, { creature, gruppi });
+      const via = v => v.id === g.id ? { ...v, nome: g.nome, nascosto: false } : v;
+      await scrivi({ campo: pubblico(creature, gruppi), ordine: (SC.ordine || []).map(via), partecipanti: (SC.partecipanti || []).map(via) });
+      toast(`${g.nome}: ora i giocatori lo vedono`);
+      break;
+    }
     case "bestiario": pannello = "bestiario"; window.scrollTo({ top: 0 }); break;
     case "chiudi": pannello = null; break;
-    case "nuovo": pannello = { modifica: "" }; window.scrollTo({ top: 0 }); break;
-    case "modifica": pannello = { modifica: b.dataset.id }; window.scrollTo({ top: 0 }); break;
-    case "annulla": pannello = "bestiario"; break;
-    case "duplica": {
-      const c = B.creature.find(x => x.id === b.dataset.id); if (!c) break;
-      let id = c.id + "-copia", n = 2; while (B.creature.some(x => x.id === id)) id = `${c.id}-copia-${n++}`;
-      await salvaBestiario([...B.creature, { ...structuredClone(c), id, nome: c.nome + " (copia)" }]);
-      pannello = { modifica: id }; toast("Copia creata: cambiale il nome"); break;
-    }
-    case "elimina": {
-      const id = b.dataset.id;
-      if (daEliminare !== id) { daEliminare = id; break; }
-      daEliminare = null;
-      await salvaBestiario(B.creature.filter(x => x.id !== id), B.gruppi.filter(g => !g.membri.some(m => m.id === id)));
-      pannello = "bestiario"; toast("Modello eliminato"); break;
-    }
-    case "salva": {
-      const vecchio = B.creature.find(x => x.id === b.dataset.id);
-      const c = leggiModulo(vista, vecchio);
-      if (!c.nome) { toast("Serve almeno il nome"); return true; }
-      if (!vecchio) { let id = slug(c.nome), n = 2; while (B.creature.some(x => x.id === id)) id = `${slug(c.nome)}-${n++}`; c.id = id; }
-      await salvaBestiario(vecchio ? B.creature.map(x => x.id === c.id ? c : x) : [...B.creature, c]);
-      pannello = "bestiario"; toast("Modello salvato"); break;
-    }
+    case "nuovo": apriEditor(""); return true;
+    case "modifica": apriEditor(b.dataset.id); return true;
     case "slot": {
       /* tocco su una losanga: piena = slot usato. Toccare l'ultima piena la libera, una vuota la riempie fin lì */
       const id = b.dataset.id, l = b.dataset.l, i = +b.dataset.i;
@@ -396,18 +433,19 @@ export async function clic(b, SC, scrivi) {
       const d20 = parseInt($("nzRD20").value, 10);
       if (!(d20 >= 1 && d20 <= 20)) { toast("Scrivi il d20 d'iniziativa (da 1 a 20)"); return true; }
       const q = Math.min(30, Math.max(1, parseInt($("nzRQuanti").value, 10) || 1));
-      const nuovi = schiera([{ creatura: $("nzRCreatura").value, quanti: q, modo: $("nzRModo").value }], perId(), C.creature);
+      const nasc = $("nzRNasc").checked;
+      const nuovi = schiera([{ creatura: $("nzRCreatura").value, quanti: q, modo: $("nzRModo").value, nascosto: nasc }], perId(), C.creature);
       if (!nuovi.creature.length) break;
       const creature = [...C.creature, ...nuovi.creature], gruppi = [...C.gruppi, ...nuovi.gruppi];
       await arch.aggiorna(CAMPO, { creature, gruppi });
       let st = { ordine: SC.ordine || [], turno: SC.turno || 0 };
       const evocatore = $("nzREvoca").value;
       for (const g of [...nuovi.gruppi].reverse()) {
-        const voce = { id: g.id, nome: g.nome, tot: d20 + (g.ini ?? 0), des: null };
+        const voce = { id: g.id, nome: g.nascosto ? "???" : g.nome, tot: d20 + (g.ini ?? 0), des: null, ...(g.nascosto ? { nascosto: true } : {}) };
         st = evocatore ? inserisciDopo(st, { ...voce, evocati: SC.round }, evocatore) : inserisciInOrdine(st, voce);
       }
       await scrivi({ ...st, campo: pubblico(creature, gruppi),
-        partecipanti: [...(SC.partecipanti || []), ...nuovi.gruppi.map(g => ({ id: g.id, nome: g.nome, tipo: g.tipo === "alleato" ? "alleato" : "nemico" }))] });
+        partecipanti: [...(SC.partecipanti || []), ...nuovi.gruppi.map(g => ({ id: g.id, nome: g.nascosto ? "???" : g.nome, tipo: g.tipo === "alleato" ? "alleato" : "nemico", ...(g.nascosto ? { nascosto: true } : {}) }))] });
       $("nzRD20").value = ""; apriRinforzi = false;
       toast(`In campo: ${nuovi.creature.length > 1 ? nuovi.creature.length + " " : ""}${nuovi.creature[0].nome.replace(/ \d+$/, "")}`);
       break;

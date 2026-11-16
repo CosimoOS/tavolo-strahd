@@ -132,3 +132,9 @@ test("evocati: subito dopo l'evocatore, dal round dopo al posto della loro inizi
   const c = sistemaEvocati({ ordine: a.ordine, turno: 3, round: 3 });   // a metà round: il turno resta a Rex
   assert.equal(c.ordine[c.turno].id, "rex");
 });
+
+test("mostri nascosti: il segno arriva a creature e gruppi", () => {
+  const { creature, gruppi } = schiera([{ creatura: "lupo", quanti: 2, modo: "branco", nascosto: true }, { creatura: "strega", quanti: 1, modo: "uno" }], B);
+  assert.deepEqual(creature.map(c => !!c.nascosto), [true, true, false]);
+  assert.deepEqual(gruppi.map(g => !!g.nascosto), [true, false]);
+});

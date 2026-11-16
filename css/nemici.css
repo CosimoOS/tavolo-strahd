@@ -138,3 +138,18 @@
 .az-testa{align-items:center}
 .stato-c[data-s="a metà"]{border-color:var(--warn);color:var(--ink);background:color-mix(in srgb,var(--warn) 22%,transparent)}
 .stato-c b{font-family:var(--f-num);font-weight:600;margin-left:2px}
+/* mostri nascosti ai giocatori */
+.turni > li.nascosto{border-style:dashed;opacity:.85}
+.campo .nascosto-riga{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:-2px 0 8px;padding:6px 10px;border:1px dashed var(--line);border-radius:8px;color:var(--muted);font-size:14px}
+.campo .nascosto-riga .btn{min-height:40px}
+.schierati .btn.link.acceso{color:var(--gold);font-weight:700}
+.rinforzi .spunta{margin-top:8px}
+/* editor del mostro (nella finestra) */
+.ed-attacchi{display:flex;flex-direction:column;gap:10px}
+.ed-att{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.ed-att .due{display:grid;grid-template-columns:5.5em 1fr;gap:8px}
+.ed-att .btn.link{align-self:flex-start}
+.passo .modulo{gap:14px}
+.h2-azioni{display:inline-flex;gap:4px;margin-left:auto}
+.btn.rosso{border-color:var(--crimson);color:var(--crimson)}
+.passo .campo-m textarea{font-family:var(--f-body);font-size:15px}
