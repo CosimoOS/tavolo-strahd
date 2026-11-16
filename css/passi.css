@@ -1,0 +1,130 @@
+/* Finestra a passi dello scontro: una domanda alla volta, a tutto schermo sul telefono. */
+body.passi-aperta{overflow:hidden}
+.passi{position:fixed;inset:0;z-index:40;background:rgba(8,5,8,.72);display:flex;align-items:stretch;justify-content:center}
+@media (min-width:640px){.passi{align-items:center;padding:24px}}
+.passi-scheda{position:relative;width:100%;max-width:560px;display:flex;flex-direction:column;background:var(--bg2);
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (min-width:640px){.passi-scheda{max-height:min(860px,100%);border:1px solid var(--gold-deep);border-radius:16px;overflow:hidden;padding:0}}
+.passi[data-tono="rosso"] .passi-scheda{background:linear-gradient(180deg,color-mix(in srgb,var(--crimson-soft) 70%,var(--bg2)),var(--bg2) 40%)}
+
+.passi-testa{display:grid;grid-template-columns:48px 1fr 48px;align-items:center;min-height:60px;padding:4px 8px;border-bottom:1px solid var(--line)}
+.passi-ind,.passi-x{width:48px;height:48px;border:0;background:transparent;color:var(--muted);font-size:30px;line-height:1;border-radius:10px}
+.passi-ind:hover,.passi-x:hover{color:var(--ink);background:var(--panel)}
+.passi-tit{display:flex;flex-direction:column;align-items:center;gap:6px}
+.passi-tit b{font-family:var(--f-display);letter-spacing:.12em;text-transform:uppercase;font-size:15px;color:var(--gold)}
+.passi-pallini{display:flex;gap:8px}
+.passi-pallini i{width:8px;height:8px;transform:rotate(45deg);border:1px solid var(--gold-deep)}
+.passi-pallini i.fatto{background:var(--gold-deep)}
+.passi-pallini i.ora{background:var(--gold);border-color:var(--gold)}
+
+.passi-corpo{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:20px 18px 24px}
+.passo{display:flex;flex-direction:column;gap:16px;min-height:100%}
+.passo .domanda{margin:0;font-family:var(--f-display);font-size:clamp(20px,5.4vw,26px);font-weight:700;line-height:1.2;color:var(--ink)}
+.passo .aiuto{margin:-8px 0 0;color:var(--muted);font-size:15px;line-height:1.45}
+.passo .fondo{margin-top:auto;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;padding-top:8px}
+.passo .fondo .btn{min-height:52px;padding:12px 22px;font-size:16px}
+.passo .fondo .btn.up{flex:1 1 auto}
+@media (prefers-reduced-motion:no-preference){
+  .passo.entra{animation:passo-entra .24s ease-out}
+  @keyframes passo-entra{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:none}}
+}
+
+/* scelte grandi: bersagli, armi, oggetti */
+.carte{display:flex;flex-direction:column;gap:10px}
+.carta{display:flex;align-items:center;gap:12px;width:100%;min-height:64px;padding:12px 16px;border:1px solid var(--line);border-radius:12px;
+  background:var(--panel);color:var(--ink);text-align:left;font:inherit}
+.carta:hover{border-color:var(--gold-deep)}
+.carta[aria-pressed="true"]{border-color:var(--gold);background:var(--gold-soft)}
+.carta .c-nome{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.carta .c-nome b{font-size:18px}
+.carta .c-nome small{color:var(--muted);font-size:14px}
+.carta .c-num{font-family:var(--f-num);font-size:20px;font-weight:600;color:var(--gold)}
+.carta.nemico{border-left:4px solid var(--crimson)}
+.carta.alleato{border-left:4px solid var(--ok)}
+.carta.gruppo{border-left:4px solid var(--gold)}
+.carta .tag-inc{font-family:var(--f-display);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);border:1px solid var(--gold-deep);border-radius:999px;padding:2px 8px;margin-left:6px}
+
+/* tastierino: tutte le facce del dado */
+.tasti{display:grid;grid-template-columns:repeat(var(--col),1fr);gap:8px}
+.tasto{min-height:56px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);
+  font-family:var(--f-num);font-size:22px;font-weight:600}
+.tasto:active{transform:scale(.95)}
+.tasto.su{background:var(--gold);border-color:var(--gold);color:#1c140a}
+.tasto.max{border-color:var(--gold-deep);color:var(--gold)}
+.tasto.max.su{color:#1c140a}
+.tasto.min{border-color:var(--crimson-deep);color:color-mix(in srgb,var(--crimson) 70%,var(--ink))}
+
+/* caselle dei dadi da riempire */
+.caselle{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.casella{width:68px;height:72px;border:1px dashed var(--gold-deep);border-radius:12px;background:var(--bg);color:var(--ink);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:0}
+.casella small{font-family:var(--f-num);font-size:11px;color:var(--muted)}
+.casella b{font-family:var(--f-num);font-size:26px;font-weight:600;min-height:1.2em}
+.casella.piena{border-style:solid;border-color:var(--gold-deep);background:var(--gold-soft)}
+.casella.ora{border-color:var(--gold);box-shadow:0 0 0 2px color-mix(in srgb,var(--gold) 35%,transparent)}
+.riga-danni{display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.riga-danni > b{font-family:var(--f-display);letter-spacing:.06em}
+.riga-danni > b small{font-family:var(--f-body);letter-spacing:0;color:var(--muted);font-weight:400;margin-left:6px}
+
+/* totale grande */
+.totale{display:flex;align-items:baseline;justify-content:center;gap:10px;font-family:var(--f-num);color:var(--muted);font-size:18px}
+.totale b{font-size:48px;line-height:1;color:var(--gold);font-weight:600}
+
+/* interruttori per gli extra (Marchio del cacciatore, Punizione…) */
+.extra-lista{display:flex;flex-direction:column;gap:8px}
+.extra{display:flex;align-items:center;gap:12px;min-height:56px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);text-align:left;width:100%;font:inherit;color:var(--ink)}
+.extra .ex-testo{flex:1;display:flex;flex-direction:column}
+.extra .ex-testo small{color:var(--muted);font-size:13px}
+.extra .ex-dadi{font-family:var(--f-num);color:var(--gold);font-weight:600}
+.extra .ex-spia{width:22px;height:22px;transform:rotate(45deg);border:2px solid var(--gold-deep);border-radius:4px;flex:none}
+.extra[aria-pressed="true"]{border-color:var(--gold);background:var(--gold-soft)}
+.extra[aria-pressed="true"] .ex-spia{background:var(--gold);border-color:var(--gold)}
+
+/* la rivelazione del risultato */
+.rivela{display:flex;flex-direction:column;align-items:center;gap:10px;padding:28px 16px;text-align:center;border-radius:16px;border:1px solid var(--line);background:var(--panel)}
+.rivela b{font-family:var(--f-display);font-size:clamp(34px,10vw,48px);font-weight:900;letter-spacing:.06em;line-height:1}
+.rivela span{color:var(--muted);font-size:16px}
+.rivela-segno{width:56px;height:56px;transform:rotate(45deg);border:3px solid currentColor;border-radius:8px}
+.rivela.colpito{color:var(--gold);border-color:var(--gold);background:var(--gold-soft)}
+.rivela.critico{color:var(--gold);border-color:var(--gold);background:radial-gradient(circle at 50% 30%,color-mix(in srgb,var(--gold) 30%,transparent),var(--gold-soft) 70%)}
+.rivela.critico .rivela-segno{background:var(--gold)}
+.rivela.mancato{color:var(--ink);border-color:var(--crimson);background:var(--crimson-soft)}
+.rivela.mancato .rivela-segno{color:var(--crimson)}
+.rivela.attesa{color:var(--muted)}
+.rivela.danno{color:var(--crimson);border-color:var(--crimson);background:var(--crimson-soft)}
+.rivela.danno b{font-family:var(--f-num)}
+.rivela span b{font-family:inherit;font-size:inherit;color:var(--ink);letter-spacing:0;font-weight:700}
+@media (prefers-reduced-motion:no-preference){
+  .rivela.attesa .rivela-segno{animation:gira 1.6s linear infinite}
+  @keyframes gira{to{transform:rotate(405deg)}}
+  .rivela.colpito{animation:appare .5s cubic-bezier(.2,1.6,.4,1)}
+  .rivela.colpito .rivela-segno{animation:bagliore .9s ease-out}
+  .rivela.critico{animation:appare .6s cubic-bezier(.2,1.8,.4,1)}
+  .rivela.critico .rivela-segno{animation:esplode 1s ease-out}
+  .rivela.mancato{animation:trema .45s ease-in-out}
+  .rivela.danno b{animation:appare .5s cubic-bezier(.2,1.6,.4,1)}
+  @keyframes appare{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:none}}
+  @keyframes bagliore{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--gold) 70%,transparent)}100%{box-shadow:0 0 0 26px transparent}}
+  @keyframes esplode{0%{box-shadow:0 0 0 0 var(--gold),0 0 0 0 var(--gold)}60%{box-shadow:0 0 0 18px transparent,0 0 0 40px color-mix(in srgb,var(--gold) 40%,transparent)}100%{box-shadow:0 0 0 30px transparent,0 0 0 60px transparent;transform:rotate(225deg)}}
+  @keyframes trema{0%,100%{transform:none}20%{transform:translateX(-10px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(3px)}}
+}
+
+/* segmenti nella finestra */
+.passo .seg{margin:0}
+.passo .seg button{min-height:48px;padding:10px 16px;font-size:15px}
+.passo .piccolo{font-size:14px;color:var(--muted)}
+.passo .centrato{text-align:center}
+.bonus-riga{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.bonus-riga small{color:var(--muted)}
+.stepper{display:inline-flex;align-items:center;gap:6px}
+.stepper .btn.step{min-width:48px;min-height:48px}
+.stepper b{min-width:3ch;text-align:center;font-size:18px}
+.passo .fondo.colonna{flex-direction:column;align-items:stretch}
+.passo .fondo .btn.grande{min-height:64px;font-size:20px}
+.tre-btn{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tre-btn .btn{min-height:52px;padding:8px}
+.difese-nota{margin:0;padding:10px 14px;border-left:3px solid var(--crimson);background:var(--crimson-soft);border-radius:0 10px 10px 0;font-size:14px;line-height:1.5}
+.totale span{font-size:15px}
+.passi-testa .passi-ind[hidden]{display:block!important;visibility:hidden}
+.tre-btn .btn{display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1.2}
+.tre-btn .btn small{font-size:11px;color:var(--muted);letter-spacing:.04em}

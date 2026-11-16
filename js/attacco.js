@@ -1,259 +1,333 @@
-/* Attacco dal telefono del giocatore, con l'ultima parola al master.
+/* Attacchi nello scontro, a passi: una domanda alla volta, numeri scelti da una griglia, risultato che si rivela.
 
-   1. Giocatore, nel suo turno: sceglie bersaglio e arma, scrive il d20 → l'app somma il bonus.
-   2. Telefono del master (l'unico che conosce la CA): confronta e scrive "colpito" o "mancato".
-   3. Giocatore, se colpito: scrive i dadi dei danni (doppi col critico) ed eventualmente la Punizione divina.
-   4. Master: vede i danni e tocca Applica (o metà, doppio, nessuno per resistenze e immunità).
+   Giocatore:  bersaglio → arma → d20 → (il telefono del master confronta con la CA) → colpito/mancato → danni → conferma del master.
+   Master:     riceve "12 danni a Lupo 2" e conferma con un tocco (o metà, doppio, nessuno).
+               Attacca con le sue creature: bersaglio → d20 → esito → danni → applica.
 
-   Nell'archivio: scontro/attuale/attacchi/<id> → { scontro, pg, pgNome, bersaglio, bersaglioNome, arma, tipo,
-     tiro, stato: "colpire" | "colpito" | "mancato" | "danni" | "applicato", danni?, applicati? }
+   Nell'archivio: scontro/attuale/attacchi/<id> → { scontro, round, turno, pg, pgNome, bersaglio, bersaglioNome, arma, armaI,
+     tipo, tiro, stato: "colpire" | "colpito" | "mancato" | "danni" | "applicato", danni?, applicati? }
    La CA non viene mai scritta lì: il giocatore vede solo "colpito" o "mancato". */
 import { tiroPerColpire, esito, dadiDanno, sommaDanni, danniFinali, partiFormula, conResistenze } from "./regole/attacco.js";
 import { creaturaInCampo, ferisci, azioneDi, bersagliCreature, latoGruppo } from "./nemici.js";
+import { finestra, finestraAperta, tastierino, caselleDadi, rivelazione, vibra } from "./passi.js";
 
 const ATT = "scontro/attuale/attacchi";
-const $ = id => document.getElementById(id);
 function esc(t) { const e = document.createElement("span"); e.textContent = t ?? ""; return e.innerHTML; }
 const sg = n => (n >= 0 ? "+" : "−") + Math.abs(n);
+const vuoto = v => v == null || v === "";
 
 let arch = null, dm = false, toast = () => {}, ridisegna = () => {}, dati = () => null, spendi = () => {}, ascolto = null;
-let A = [], SC = null, risolti = new Set(), statoMio = "";
-/* la bozza del giocatore: cosa ha scelto e scritto finora (resta anche se la vista si ridisegna) */
-let B = nuovaBozza(), mio = null;
-function nuovaBozza() { return { bersaglio: null, arma: 0, modo: "normale", d20: ["", ""], extraTiro: "", dadi: [], punizione: 0, nonMorto: false, extra: "" }; }
+let bersaglioPg = () => null, colpisciPg = () => null, scriviScontro = async () => {};
+let A = [], SC = null, risolti = new Set(), confermati = new Set(), rimandati = new Set();
+let P = null;    // attacco del giocatore in corso
+let MA = null;   // attacco del master in corso
 
-let bersaglioPg = () => null, colpisciPg = () => null, MA = null;
-export function avviaAttacchi({ archivio, master, avvisa, aggiorna, datiAttacco, spendiSlot, bersaglio, colpisci }) {
+export function avviaAttacchi({ archivio, master, avvisa, aggiorna, datiAttacco, spendiSlot, bersaglio, colpisci, scrivi }) {
   arch = archivio; dm = master; toast = avvisa; ridisegna = aggiorna; dati = datiAttacco; spendi = spendiSlot;
-  bersaglioPg = bersaglio || (() => null); colpisciPg = colpisci || (() => null); MA = null;
-  A = []; risolti = new Set(); B = nuovaBozza(); mio = null;
+  bersaglioPg = bersaglio || (() => null); colpisciPg = colpisci || (() => null); scriviScontro = scrivi || (async () => {});
+  A = []; risolti = new Set(); confermati = new Set(); P = null; MA = null;
   ascolto = arch.ascoltaRaccolta(ATT, lista => {
     A = lista.map(x => ({ id: x.id, ...x.dati }));
-    const m = mio && A.find(x => x.id === mio);
-    if (m && m.stato !== statoMio) { const prima = statoMio; statoMio = m.stato; if (prima) avvisaEsito(m); }
-    if (dm) A.filter(a => a.stato === "colpire" && SC && a.scontro === SC.id && !risolti.has(a.id)).forEach(risolvi);
-    if (dm) { const nuovi = A.filter(a => a.stato === "danni" && !risolti.has(a.id + ":d")); nuovi.forEach(a => { risolti.add(a.id + ":d"); toast(`${a.pgNome}: danni a ${a.bersaglioNome}`); }); }
+    if (P && P.id) seguiMio();
+    if (dm) {
+      A.filter(a => a.stato === "colpire" && SC && a.scontro === SC.id && !risolti.has(a.id)).forEach(risolvi);
+      proponiConferma();
+    }
     ridisegna();
   });
 }
-/* il giocatore sente e vede subito la risposta del master, anche se stava guardando altrove */
-function avvisaEsito(a) {
-  const testo = a.stato === "colpito" ? (a.tiro.critico ? "Critico! Tira i danni" : "Colpito! Tira i danni")
-    : a.stato === "mancato" ? "Mancato" : a.stato === "applicato" ? `${a.bersaglioNome}: ${a.applicati} danni` : "";
-  if (!testo) return;
-  toast(testo, 4000);
-  try { navigator.vibrate && navigator.vibrate(a.stato === "mancato" ? 80 : [60, 40, 60]); } catch (_) {}
-  /* porta il riquadro in vista, appena sotto la barra in alto */
-  setTimeout(() => { const el = document.querySelector(".attacco"); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + scrollY - 90, behavior: "smooth" }); }, 80);
-}
-export function fermaAttacchi() { if (ascolto) ascolto(); ascolto = null; }
-/** Lo scontro è cambiato (nuovo turno, nuovo scontro…): la bozza vale solo per il turno in cui è nata. */
-export function aggiornaScontro(nuovo) {
-  const chiave = s => s ? `${s.id}:${s.round}:${s.turno}` : "";
-  if (chiave(nuovo) !== chiave(SC)) { B = nuovaBozza(); mio = null; statoMio = ""; MA = null; }
-  SC = nuovo;
+export function fermaAttacchi() { if (ascolto) ascolto(); ascolto = null; const f = finestraAperta(); if (f) f.chiudi(true); }
+export function aggiornaScontro(nuovo) { SC = nuovo; if (P && P.fase === "fine" && P.f && P.f.aperta) disegnaGiocatore(false); if (SC && SC.stato !== "in corso") { const f = finestraAperta(); if (f && (f.chiave === "attacco" || f.chiave === "mattacco")) f.chiudi(true); } }
+
+/* ======================================================================
+   GIOCATORE
+   ====================================================================== */
+/** I pulsanti grandi del turno del giocatore (li mette lo scontro sotto "Tocca a te"). */
+export function htmlGiocatore(pg) {
+  if (!SC || SC.stato !== "in corso") return "";
+  const d = dati(pg.id); if (!d || !d.attacchi.length) return "";
+  const fatti = A.filter(x => x.scontro === SC.id && x.pg === pg.id && x.round === SC.round && x.turno === SC.turno);
+  const ultimo = fatti[fatti.length - 1];
+  const riassunto = ultimo ? `<p class="ultimo-att">${ultimo.stato === "applicato" ? `Ultimo attacco: ${esc(ultimo.bersaglioNome)} −${ultimo.applicati}` : ultimo.stato === "mancato" ? `Ultimo attacco: mancato` : `Attacco in corso…`}</p>` : "";
+  return `<div class="azioni-turno">
+    <button class="azione-grande" data-at="apri"><svg class="az-icona" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4l10 10M4 5l1-1M13 16l3-3M15 18l3-3M17.5 17.5l2.5 2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M19 4L9 14M20 5l-1-1M11 16l-3-3M9 18l-3-3M6.5 17.5L4 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><b>Attacca</b><small>${fatti.length ? `${fatti.length} ${fatti.length === 1 ? "attacco" : "attacchi"} in questo turno` : "arma o incantesimo"}</small></button>
+  </div>${riassunto}`;
 }
 
-/* ---------- master: esito automatico ---------- */
+function nuovoAttacco(pg) {
+  return { pg, fase: "bersaglio", bersaglio: null, armaI: null, modo: "normale", d20: [], bonus: 0, dadi: {}, pun: 0, nonMorto: false, extra: 0, id: null, statoVisto: "" };
+}
+function apriAttacco(pg) {
+  P = nuovoAttacco(pg);
+  P.f = finestra({ chiave: "attacco", titolo: "Attacco", onClick: clicFinestraGiocatore, onIndietro: indietroGiocatore, onChiudi: () => { P = null; ridisegna(); } });
+  disegnaGiocatore();
+}
+const bersagliGiocatore = () => (SC.campo || []).filter(c => c.tipo !== "alleato" && c.ferite !== "sconfitto");
+const PASSI_G = ["bersaglio", "arma", "tiro", "esito", "danni", "fine"];
+function disegnaGiocatore(nuovo = true) {
+  if (!P) return;
+  const d = dati(P.pg.id), a = P.id && A.find(x => x.id === P.id);
+  const opz = { passo: PASSI_G.indexOf(P.fase === "attesa" ? "esito" : P.fase === "confermare" ? "fine" : P.fase) + 1, di: PASSI_G.length, nuovoPasso: nuovo,
+    indietro: ["arma", "tiro"].includes(P.fase) || (P.fase === "danni" && false) };
+  let h = "";
+  if (P.fase === "bersaglio") {
+    const b = bersagliGiocatore();
+    h = `<p class="domanda">Chi attacchi?</p>
+      ${b.length ? `<div class="carte">${b.map(c => `<button class="carta nemico" data-bers="${c.id}"><span class="c-nome"><b>${esc(c.nome)}</b><small>${esc(c.ferite)}${c.subiti ? ` · −${c.subiti}` : ""}</small></span></button>`).join("")}</div>`
+        : `<p class="aiuto">Non c'è nessun nemico in piedi.</p>`}`;
+  } else if (P.fase === "arma") {
+    h = `<p class="domanda">Con cosa attacchi?</p><p class="aiuto">${esc(nomeBersaglio())}</p>
+      <div class="carte">${d.attacchi.map((w, i) => `<button class="carta" data-arma="${i}"><span class="c-nome"><b>${esc(w.n)}</b><small>${w.dice[0]}d${w.dice[1]}${w.mod ? sg(w.mod) : ""} ${esc((w.t || "").toLowerCase())}${w.note ? ` · ${esc(w.note)}` : ""}</small></span><span class="c-num">${sg(w.hit)}</span></button>`).join("")}</div>`;
+  } else if (P.fase === "tiro") {
+    const w = d.attacchi[P.armaI], n = P.modo === "normale" ? 1 : 2, t = tiroCorrente(d);
+    h = `<p class="domanda">Tira il d20</p><p class="aiuto">${esc(w.n)} contro ${esc(nomeBersaglio())}. Tocca il numero uscito.</p>
+      <div class="seg">${[["normale", "Normale"], ["vantaggio", "Vantaggio"], ["svantaggio", "Svantaggio"]].map(([m, l]) => `<button data-modo="${m}" aria-pressed="${P.modo === m}">${l}</button>`).join("")}</div>
+      ${caselleDadi(P.d20, n, 20, "d20")}
+      ${tastierino(20, null, "data-d20")}
+      <div class="bonus-riga"><span>Bonus in più <small>(es. il d4 di Benedizione)</small></span><span class="stepper"><button class="btn step" data-bonus="-1" aria-label="Bonus meno uno">−</button><b class="num">${sg(P.bonus)}</b><button class="btn step" data-bonus="1" aria-label="Bonus più uno">+</button></span></div>
+      <div class="totale">${t ? `${t.usato} ${sg(t.bonus)} =<b>${t.tot}</b>` : `<span>${sg(w.hit + P.bonus)} al tiro</span>`}</div>
+      <div class="fondo"><button class="btn up" data-att="invia-tiro"${t ? "" : " disabled"}>Attacca</button></div>`;
+  } else if (P.fase === "attesa") {
+    h = rivelazione("attesa", "Al master…", `${a ? a.tiro.tot : ""} per colpire contro ${esc(nomeBersaglio())}`) + `<p class="aiuto centrato">Il telefono del master confronta il tiro con la difesa del bersaglio.</p>`;
+  } else if (P.fase === "esito") {
+    const crit = a.tiro.critico, preso = a.stato === "colpito";
+    h = rivelazione(preso ? (crit ? "critico" : "colpito") : "mancato", preso ? (crit ? "Critico!" : "Colpito!") : "Mancato", `${a.tiro.tot} per colpire contro ${esc(a.bersaglioNome)}`) +
+      (preso ? `<div class="fondo"><button class="btn up" data-att="vai-danni">Tira i danni${crit ? " (doppi)" : ""}</button></div>`
+        : `<div class="fondo"><button class="btn" data-att="chiudi">Chiudi</button><button class="btn" data-att="fine-turno">Fine turno</button><button class="btn up" data-att="ancora">Nuovo attacco</button></div>`);
+  } else if (P.fase === "danni") {
+    const parti = partiGiocatore(d, a), som = sommaDanni(parti, P.extra), attiva = parti.find(p => p.valori.some(vuoto));
+    const slot = d.punizione ? d.slot.filter(s => s.liberi > 0 && s.liv <= 4) : [];
+    h = `<p class="domanda">Tira i danni</p><p class="aiuto">${a.tiro.critico ? "Critico: i dadi sono doppi. " : ""}Tocca il numero di ogni dado.</p>
+      ${slot.length ? `<div class="riga-danni"><b>Punizione divina <small>spende uno slot</small></b><div class="seg">
+        <button data-pun="0" aria-pressed="${!P.pun}">No</button>${slot.map(s => `<button data-pun="${s.liv}" aria-pressed="${P.pun === s.liv}">Slot ${s.liv}° · ${s.liv + 1}d8</button>`).join("")}</div>
+        ${P.pun ? `<button class="extra" data-nm aria-pressed="${P.nonMorto}"><span class="ex-spia"></span><span class="ex-testo">Contro un non morto o un immondo<small>+1d8 radianti</small></span></button>` : ""}</div>` : ""}
+      ${parti.map(p => `<div class="riga-danni"><b>${esc(p.nome)} <small>${p.n}d${p.facce}${p.mod ? sg(p.mod) : ""} ${esc(p.tipo)}</small></b>${caselleDadi(p.valori, p.n, p.facce, p.chiave)}</div>`).join("")}
+      ${attiva ? tastierino(attiva.facce, null, "data-faccia") : ""}
+      <div class="bonus-riga"><span>Altri danni <small>(Marchio del cacciatore, Uccisore di colossi…)</small></span><span class="stepper"><button class="btn step" data-extra="-1" aria-label="Meno uno">−</button><b class="num">+${P.extra}</b><button class="btn step" data-extra="1" aria-label="Più uno">+</button></span></div>
+      <div class="totale">${som ? `Totale<b>${som.tot}</b>` : `<span>Mancano dei dadi</span>`}</div>
+      <div class="fondo"><button class="btn up" data-att="invia-danni"${som ? "" : " disabled"}>Invia ${som ? som.tot + " danni" : "i danni"}</button></div>`;
+  } else if (P.fase === "confermare") {
+    h = rivelazione("attesa", "Al master…", `${P.inviati} danni a ${esc(a.bersaglioNome)}: li sta confermando`);
+  } else if (P.fase === "fine") {
+    const ora = (SC.campo || []).find(c => c.id === a.bersaglio), giu = ora && ora.ferite === "sconfitto";
+    h = rivelazione("danno", a.applicati ? `−${a.applicati}` : "Nessun danno", giu ? `<b>${esc(a.bersaglioNome)}</b> è a terra` : `<b>${esc(a.bersaglioNome)}</b>${ora ? ` ora è ${esc(ora.ferite)}` : ""}`) +
+      (a.applicati !== a.danni.tot ? `<p class="aiuto centrato">Il master ne ha contati ${a.applicati} su ${a.danni.tot} (resistenze o immunità).</p>` : "") +
+      `<div class="fondo"><button class="btn" data-att="chiudi">Chiudi</button><button class="btn" data-att="fine-turno">Fine turno</button><button class="btn up" data-att="ancora">Nuovo attacco</button></div>`;
+  }
+  P.f.mostra(h, opz);
+}
+const nomeBersaglio = () => { const c = (SC.campo || []).find(x => x.id === P.bersaglio); return c ? c.nome : ""; };
+const tiroCorrente = d => tiroPerColpire({ dadi: P.d20, modo: P.modo, bonus: d.attacchi[P.armaI].hit + P.bonus, critMin: d.critMin });
+function partiGiocatore(d, a) {
+  const w = d.attacchi[a.armaI ?? P.armaI], [n, f] = dadiDanno(w.dice, a.tiro.critico);
+  const parti = [{ chiave: "arma", nome: w.n, valori: Array.from({ length: n }, (_, i) => (P.dadi.arma || [])[i] ?? ""), n, facce: f, mod: w.mod, tipo: (w.t || "").toLowerCase() }];
+  if (P.pun) {
+    const base = P.pun + 1 + (P.nonMorto ? 1 : 0), k = a.tiro.critico ? base * 2 : base;
+    parti.push({ chiave: "pun", nome: "Punizione divina", valori: Array.from({ length: k }, (_, i) => (P.dadi.pun || [])[i] ?? ""), n: k, facce: 8, mod: 0, tipo: "radianti" });
+  }
+  return parti;
+}
+/* il documento dell'attacco è cambiato: si passa al passo giusto, con un segnale */
+function seguiMio() {
+  const a = A.find(x => x.id === P.id); if (!a || a.stato === P.statoVisto) return;
+  P.statoVisto = a.stato;
+  if (a.stato === "colpito" || a.stato === "mancato") { P.fase = "esito"; vibra(a.stato === "mancato" ? 90 : [60, 40, 120]); }
+  else if (a.stato === "applicato") { P.fase = "fine"; vibra([40, 30, 40]); }
+  else return;
+  if (P.f.aperta) disegnaGiocatore(); else toast(a.stato === "mancato" ? "Mancato" : a.stato === "applicato" ? `${a.bersaglioNome}: −${a.applicati}` : "Colpito! Tira i danni", 5000);
+}
+function indietroGiocatore() {
+  if (P.fase === "arma") P.fase = "bersaglio"; else if (P.fase === "tiro") { P.fase = "arma"; P.d20 = []; }
+  disegnaGiocatore();
+}
+async function clicFinestraGiocatore(e) {
+  if (!P) return;
+  const b = e.target.closest("button"); if (!b || b.disabled) return;
+  const d = dati(P.pg.id), a = P.id && A.find(x => x.id === P.id);
+  const ds = b.dataset;
+  if (ds.bers) { P.bersaglio = ds.bers; P.fase = "arma"; return disegnaGiocatore(); }
+  if (ds.arma != null) { P.armaI = +ds.arma; P.fase = "tiro"; P.d20 = []; return disegnaGiocatore(); }
+  if (ds.modo) { P.modo = ds.modo; P.d20 = P.d20.slice(0, P.modo === "normale" ? 1 : 2); return disegnaGiocatore(false); }
+  if (ds.d20) { const n = P.modo === "normale" ? 1 : 2, i = Array.from({ length: n }, (_, k) => P.d20[k]).findIndex(vuoto); if (i >= 0) P.d20[i] = +ds.d20; else P.d20[n - 1] = +ds.d20; return disegnaGiocatore(false); }
+  if (ds.casella === "d20") { P.d20[+ds.i] = ""; return disegnaGiocatore(false); }
+  if (ds.bonus) { P.bonus = Math.max(-5, Math.min(10, P.bonus + +ds.bonus)); return disegnaGiocatore(false); }
+  if (ds.pun != null) { P.pun = +ds.pun; P.dadi.pun = []; return disegnaGiocatore(false); }
+  if (b.hasAttribute("data-nm")) { P.nonMorto = !P.nonMorto; P.dadi.pun = []; return disegnaGiocatore(false); }
+  if (ds.faccia) {
+    const parti = partiGiocatore(d, a), p = parti.find(x => x.valori.some(vuoto)); if (!p) return;
+    const v = (P.dadi[p.chiave] || []).slice(); v[p.valori.findIndex(vuoto)] = +ds.faccia; P.dadi[p.chiave] = v; return disegnaGiocatore(false);
+  }
+  if (ds.casella) { const v = (P.dadi[ds.casella] || []).slice(); v[+ds.i] = ""; P.dadi[ds.casella] = v; return disegnaGiocatore(false); }
+  if (ds.extra) { P.extra = Math.max(0, P.extra + +ds.extra); return disegnaGiocatore(false); }
+  switch (ds.att) {
+    case "invia-tiro": {
+      const w = d.attacchi[P.armaI], t = tiroCorrente(d), c = (SC.campo || []).find(x => x.id === P.bersaglio); if (!t || !c) return;
+      P.id = `${P.pg.id}-${Date.now()}`; P.statoVisto = "colpire"; P.fase = "attesa"; disegnaGiocatore();
+      try {
+        await arch.scrivi(`${ATT}/${P.id}`, { scontro: SC.id, round: SC.round, turno: SC.turno, pg: P.pg.id, pgNome: d.nome,
+          bersaglio: c.id, bersaglioNome: c.nome, arma: w.n, armaI: P.armaI, tipo: (w.t || "").toLowerCase(), tiro: t, stato: "colpire" });
+      } catch (_) { toast("Non inviato: controlla la connessione", 5000); P.fase = "tiro"; P.id = null; disegnaGiocatore(); }
+      return;
+    }
+    case "vai-danni": P.fase = "danni"; return disegnaGiocatore();
+    case "invia-danni": {
+      const som = sommaDanni(partiGiocatore(d, a), P.extra); if (!som) return;
+      const perTipo = { ...som.perTipo }; if (perTipo.altro) { perTipo["extra"] = perTipo.altro; delete perTipo.altro; }
+      P.inviati = som.tot; P.fase = "confermare"; disegnaGiocatore();
+      try { await arch.aggiorna(`${ATT}/${P.id}`, { stato: "danni", danni: { tot: som.tot, perTipo } }); if (P.pun) spendi(P.pg.id, P.pun); }
+      catch (_) { toast("Non inviato: controlla la connessione", 5000); P.fase = "danni"; disegnaGiocatore(); }
+      return;
+    }
+    case "ancora": { const pg = P.pg; P.f.chiudi(true); apriAttacco(pg); return; }
+    case "fine-turno": P.f.chiudi(true); P = null; document.querySelector('#vistaScontro [data-az="fine"]')?.click(); return;
+    case "chiudi": P.f.chiudi(); return;
+  }
+}
+
+/* ======================================================================
+   MASTER: esito automatico e conferma dei danni con un tocco
+   ====================================================================== */
 async function risolvi(a) {
   risolti.add(a.id);
   const c = creaturaInCampo(a.bersaglio);
   if (!c) return;
-  const e = esito(a.tiro, c.ca);
-  try { await arch.aggiorna(`${ATT}/${a.id}`, { stato: e }); } catch (_) { risolti.delete(a.id); }
+  try { await arch.aggiorna(`${ATT}/${a.id}`, { stato: esito(a.tiro, c.ca) }); } catch (_) { risolti.delete(a.id); }
 }
-
-/** Le richieste che aspettano il master, in cima alla sua vista. scrivi(campi) aggiorna lo scontro. */
-/* ---------- master: una sua creatura attacca un personaggio ----------
-   Il telefono del master conosce la CA dei personaggi (ha tutte le schede): confronta da solo,
-   poi il master scrive i dadi dei danni e li applica alla scheda del giocatore, resistenze comprese. */
-function htmlAttaccoMaster() {
-  if (!MA) return "";
-  const az = azioneDi(MA.gruppo, MA.i); if (!az) return "";
-  /* bersagli: un alleato del master colpisce i nemici; un nemico colpisce i personaggi e gli alleati del master */
-  const pgs = latoGruppo(MA.gruppo) === "alleato" ? [] : (SC.ordine || []).map(v => bersaglioPg(v.id)).filter(Boolean);
-  const a = az.azione, pg = [...pgs, ...bersagliCreature(MA.gruppo)];
-  const t = tiroPerColpire({ dadi: MA.d20, modo: MA.modo, bonus: a.colpire }), b = pg.find(x => x.id === MA.bersaglio);
-  const es = t && b ? esito(t, b.ca) : null;
-  let h = `<p class="chi"><b>${esc(az.chi)}</b> · ${esc(a.nome)} <span class="tiro-r">${sg(a.colpire)} · ${esc(a.danni || "")}</span></p>
-    <p class="lbl-sez">Bersaglio</p><div class="scelte">${pg.map(x => `<button class="btn" data-at="m-pg" data-id="${x.id}" aria-pressed="${MA.bersaglio === x.id}">${esc(x.nome)}<small>CA ${x.ca} · ${x.hp}/${x.maxhp} PF</small></button>`).join("")}</div>
-    <div class="seg modo">${["normale", "vantaggio", "svantaggio"].map(m => `<button data-at="m-modo" data-m="${m}" aria-pressed="${MA.modo === m}">${m[0].toUpperCase() + m.slice(1)}</button>`).join("")}</div>
-    <div class="dadi">${Array.from({ length: MA.modo === "normale" ? 1 : 2 }, (_, i) => `<label class="dado"><span class="lbl">d20</span><input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" min="1" max="20" data-ma-d20="${i}" data-foco="ma${i}" value="${esc(MA.d20[i] || "")}"></label>`).join("")}
-      <span class="somma">${t ? `${t.usato} ${sg(a.colpire)} = <b>${t.tot}</b>${b ? ` contro CA ${b.ca}` : ""}` : sg(a.colpire)}</span></div>`;
-  if (es) h += `<div class="esito-b ${es === "mancato" ? "mancato" : t.critico ? "critico" : "colpito"}"><b>${es === "mancato" ? "Mancato" : t.critico ? "Critico!" : "Colpito"}</b><span>${esc(b.nome)}</span></div>`;
-  if (es === "colpito") {
-    const parti = partiFormula(a.danni).map((p, k) => ({ ...p, n: t.critico ? p.n * 2 : p.n, k }));
-    const somma = sommaDanni(parti.map(p => ({ valori: Array.from({ length: p.n }, (_, i) => (MA.dadi[p.k] || [])[i] ?? ""), facce: p.f, mod: p.mod, tipo: p.tipo || "danni" })));
-    const fin = somma ? conResistenze(somma.perTipo, b.res) : null;
-    h += parti.map(p => `<div class="riga-tiro"><b>${p.n}d${p.f}${p.mod ? sg(p.mod) : ""} ${esc(p.tipo)}</b><div class="dadi">${Array.from({ length: p.n }, (_, i) =>
-      `<label class="dado"><span class="lbl">d${p.f}</span><input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" min="1" max="${p.f}" data-ma-dado="${p.k}" data-i="${i}" data-foco="mad${p.k}-${i}" value="${esc((MA.dadi[p.k] || [])[i] ?? "")}"></label>`).join("")}</div></div>`).join("") +
-      (!parti.length ? `<p class="attesa">Questa azione non ha dadi di danno: applica l'effetto a voce.</p>` : "") +
-      (fin ? `<p class="somma-tot">Totale <b>${fin.tot}</b>${fin.dimezzati.length ? ` · ${esc(b.nome)} resiste: ${fin.dimezzati.join(", ")} dimezzati` : ""}</p>` : "") +
-      `<div class="azioni"><button class="btn" data-at="m-annulla">Annulla</button><button class="btn up" data-at="m-colpisci"${fin ? "" : " disabled"}>Applica ${fin ? fin.tot : ""} a ${esc(b.nome)}</button></div>`;
-  } else h += `<div class="azioni"><button class="btn" data-at="m-annulla">${es === "mancato" ? "Chiudi" : "Annulla"}</button></div>`;
-  return `<section class="richieste attacco-master"><h2>Attacco del master</h2>${h}</section>`;
+const daConfermare = () => SC ? A.filter(a => a.scontro === SC.id && a.stato === "danni" && !confermati.has(a.id)) : [];
+/* se il master non sta facendo altro, la conferma si apre da sola (non quelle che ha già chiuso senza decidere) */
+function proponiConferma() {
+  const q = daConfermare().filter(a => !rimandati.has(a.id)); if (!q.length) return;
+  const f = finestraAperta();
+  if (f && f.chiave !== "conferma") return;
+  apriConferma(q[0]);
 }
-
-export function htmlMaster() {
-  if (!SC) return "";
-  const mio = htmlAttaccoMaster();
-  const aperte = A.filter(a => a.scontro === SC.id && (a.stato === "danni" || a.stato === "colpito" || a.stato === "colpire"));
-  if (!aperte.length) return mio;
-  return mio + `<section class="richieste"><h2>Attacchi dei giocatori</h2>${aperte.map(a => {
-    const c = creaturaInCampo(a.bersaglio), t = a.tiro;
-    const riga = `<p class="chi"><b>${esc(a.pgNome)}</b> → <b>${esc(c ? c.nome : a.bersaglioNome)}</b> · ${esc(a.arma)}</p>
-      <p class="tiro-r">${t.tot} per colpire${c ? ` contro CA ${c.ca}` : ""}${t.critico ? " · <b>critico</b>" : ""}${t.fallimento ? " · 1 naturale" : ""}</p>`;
-    if (a.stato !== "danni") return `<div class="richiesta">${riga}<p class="stato-r">${a.stato === "colpire" ? "Valuto…" : "Colpito: aspetto i danni"}</p>
-      ${a.stato === "colpito" ? `<button class="btn link" data-at="m-manca" data-id="${a.id}">Segna mancato</button>` : ""}</div>`;
-    const d = a.danni, parti = Object.entries(d.perTipo).map(([k, v]) => `${v} ${esc(k)}`).join(" + ");
-    return `<div class="richiesta urgente">${riga}
-      <p class="danni-r"><span class="tot-r">${d.tot}</span> danni · ${parti}</p>
-      ${c && c.difese.length ? `<p class="difese">${c.difese.map(esc).join("<br>")}</p>` : ""}
-      <div class="scelte-m">
-        <button class="btn up" data-at="m-applica" data-id="${a.id}" data-come="pieni">Applica ${d.tot}</button>
-        <button class="btn" data-at="m-applica" data-id="${a.id}" data-come="meta">Metà ${danniFinali(d.tot, "meta")}</button>
-        <button class="btn" data-at="m-applica" data-id="${a.id}" data-come="doppio">Doppio ${danniFinali(d.tot, "doppio")}</button>
-        <button class="btn link" data-at="m-applica" data-id="${a.id}" data-come="nulla">Nessuno</button>
-      </div></div>`;
-  }).join("")}</section>`;
-}
-
-/* ---------- giocatore ---------- */
-const tiro = (d, arma) => tiroPerColpire({ dadi: B.d20, modo: B.modo, bonus: arma.hit + (parseInt(B.extraTiro, 10) || 0), critMin: d.critMin });
-function partiDanno(d, a) {
-  const arma = d.attacchi[a.armaI ?? B.arma], [n, f] = dadiDanno(arma.dice, a.tiro.critico);
-  const pad = (v, k) => Array.from({ length: k }, (_, i) => (v || [])[i] ?? "");
-  const parti = [{ chiave: "arma", nome: arma.n, valori: pad(B.dadi, n), n, facce: f, mod: arma.mod, tipo: (arma.t || "").toLowerCase() }];
-  if (B.punizione) {
-    const base = B.punizione + 1 + (B.nonMorto ? 1 : 0), k = a.tiro.critico ? base * 2 : base;
-    parti.push({ chiave: "pun", nome: "Punizione divina", valori: pad(B.dadiPun, k), n: k, facce: 8, mod: 0, tipo: "radianti" });
-  }
-  return parti;
-}
-
-/** Il pannello dell'attacco, sotto "Tocca a te". pg = il personaggio di turno (mio). */
-export function htmlGiocatore(pg) {
-  if (!SC || SC.stato !== "in corso") return "";
-  const d = dati(pg.id); if (!d || !d.attacchi.length) return "";
-  const a = mio && A.find(x => x.id === mio);
-  const fatti = A.filter(x => x.scontro === SC.id && x.pg === pg.id && x.round === SC.round && x.turno === SC.turno).length;
-  const quanti = fatti ? `<small>${fatti === 1 ? "1 attacco" : `${fatti} attacchi`} in questo turno</small>` : "";
-
-  const dopo = `<div class="azioni"><button class="btn" data-az="fine">Fine turno</button><button class="btn up" data-at="nuovo">Nuovo attacco</button></div>`;
-  if (a && a.stato === "colpire") return box(quanti, banner("attesa", "Al master…", `${a.tiro.tot} per colpire contro ${esc(a.bersaglioNome)}`));
-  if (a && a.stato === "mancato") return box(quanti, banner("mancato", "Mancato", `${a.tiro.tot} non basta contro ${esc(a.bersaglioNome)}`) + dopo);
-  if (a && a.stato === "danni") return box(quanti, banner("attesa", "Al master…", `${a.danni.tot} danni a ${esc(a.bersaglioNome)}: li sta applicando`));
-  if (a && a.stato === "applicato") {
-    const ora = (SC.campo || []).find(c => c.id === a.bersaglio);
-    const giu = ora && ora.ferite === "sconfitto";
-    return box(quanti, banner(giu ? "critico" : "colpito", giu ? `${esc(a.bersaglioNome)} è a terra` : `${a.applicati} danni`,
-      giu ? `${a.applicati} danni: sconfitto` : `${esc(a.bersaglioNome)}${ora ? ` ora è <b>${esc(ora.ferite)}</b>` : ""}`)
-      + (a.applicati !== a.danni.tot ? `<p class="attesa">Il master ne ha contati ${a.applicati} su ${a.danni.tot} (resistenze o immunità).</p>` : "") + dopo);
-  }
-  if (a && a.stato === "colpito") {
-    const parti = partiDanno(d, a), somma = sommaDanni(parti, B.extra);
-    const slot = d.punizione ? d.slot.filter(s => s.liberi > 0 && s.liv <= 4) : [];
-    const arma = d.attacchi[a.armaI ?? B.arma], [nd, fd] = dadiDanno(arma.dice, a.tiro.critico);
-    return box(quanti, banner(a.tiro.critico ? "critico" : "colpito", a.tiro.critico ? "Critico!" : "Colpito!", `${esc(a.bersaglioNome)} · ${a.tiro.tot} per colpire`) +
-      `<p class="poi">Ora tira <b>${nd}d${fd}</b> per ${esc(arma.n)}${a.tiro.critico ? " (col critico i dadi sono doppi)" : ""} e scrivi i numeri.</p>
-      ${slot.length ? `<div class="riga-tiro"><b>Aggiungi la Punizione divina?</b><div class="seg">
-        <button data-at="pun" data-l="0" aria-pressed="${!B.punizione}">No</button>
-        ${slot.map(s => `<button data-at="pun" data-l="${s.liv}" aria-pressed="${B.punizione === s.liv}">Slot ${s.liv}° (${s.liberi})</button>`).join("")}</div>
-        ${B.punizione ? `<label class="spunta"><input type="checkbox" data-at="nm"${B.nonMorto ? " checked" : ""}> Contro un non morto o un immondo (+1d8)</label>` : ""}</div>` : ""}
-      ${parti.map(p => `<div class="riga-tiro"><b>${esc(p.nome)}</b><div class="dadi">${Array.from({ length: p.n }, (_, i) =>
-        `<label class="dado"><span class="lbl">d${p.facce}</span><input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" min="1" max="${p.facce}" data-at-dado="${p.chiave}" data-i="${i}" data-foco="${p.chiave}${i}" value="${esc(p.valori[i] ?? "")}"></label>`).join("")}
-        ${p.mod ? `<span class="somma">${sg(p.mod)}</span>` : ""}<small class="aiuto">${esc(p.tipo)}</small></div></div>`).join("")}
-      <label class="campo-m extra"><span class="lbl">Altri danni (es. Marchio del cacciatore), già sommati</span>
-        <input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" min="0" data-at-campo="extra" data-foco="extra" value="${esc(B.extra)}"></label>
-      <p class="somma-tot">${somma ? `Totale <b>${somma.tot}</b>` : "Scrivi tutti i dadi"}</p>
-      <div class="azioni"><button class="btn up" data-at="invia"${somma ? "" : " disabled"}>Invia i danni</button></div>`);
-  }
-  /* scelta del bersaglio, dell'arma e tiro per colpire */
-  const bers = (SC.campo || []).filter(c => c.tipo !== "alleato" && c.ferite !== "sconfitto");
-  if (!bers.length) return "";
-  const arma = d.attacchi[B.arma] || d.attacchi[0], t = tiro(d, arma), n = B.modo === "normale" ? 1 : 2;
-  return box(quanti, `
-    <p class="lbl-sez">Bersaglio</p><div class="scelte">${bers.map(c => `<button class="btn" data-at="bers" data-id="${c.id}" aria-pressed="${B.bersaglio === c.id}">${esc(c.nome)}<small>${esc(c.ferite)}</small></button>`).join("")}</div>
-    <p class="lbl-sez">Arma</p><div class="scelte">${d.attacchi.map((w, i) => `<button class="btn" data-at="arma" data-i="${i}" aria-pressed="${B.arma === i}">${esc(w.n)}<small>${sg(w.hit)} · ${w.dice[0]}d${w.dice[1]}${w.mod ? sg(w.mod) : ""}</small></button>`).join("")}</div>
-    <p class="lbl-sez">Tiro per colpire</p>
-    <div class="seg modo">${["normale", "vantaggio", "svantaggio"].map(m => `<button data-at="modo" data-m="${m}" aria-pressed="${B.modo === m}">${m[0].toUpperCase() + m.slice(1)}</button>`).join("")}</div>
-    <div class="dadi">${Array.from({ length: n }, (_, i) => `<label class="dado"><span class="lbl">d20${n > 1 ? " " + (i + 1) : ""}</span><input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" min="1" max="20" data-at-d20="${i}" data-foco="d20-${i}" value="${esc(B.d20[i])}"></label>`).join("")}
-      <span class="somma">${t ? `${t.usato} ${sg(t.bonus)} = <b>${t.tot}</b>` : sg(arma.hit)}</span>
-      <label class="dado piccolo"><span class="lbl">Altro</span><input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-at-campo="extraTiro" data-foco="xt" value="${esc(B.extraTiro)}" aria-label="Bonus in più al tiro, es. Benedizione"></label></div>
-    <small class="aiuto">"Altro": bonus in più al tiro, per esempio il d4 di Benedizione.</small>
-    <div class="azioni"><button class="btn up" data-at="attacca"${t && B.bersaglio ? "" : " disabled"}>Attacca</button></div>`);
-}
-const banner = (tipo, titolo, sotto) => `<div class="esito-b ${tipo}" role="status"><b>${titolo}</b><span>${sotto}</span></div>`;
-const box = (quanti, h) => `<div class="attacco"><h3 class="sez-m">Attacco ${quanti}</h3>${h}</div>`;
-
-/* ---------- tocchi e campi ---------- */
-export async function clic(b, pg, scrivi) {
-  const az = b.dataset.at; if (!az) return false;
-  const d = pg && dati(pg.id);
-  switch (az) {
-    case "bers": B.bersaglio = b.dataset.id; break;
-    case "arma": B.arma = +b.dataset.i; break;
-    case "modo": B.modo = b.dataset.m; break;
-    case "pun": B.punizione = +b.dataset.l; B.dadiPun = []; break;
-    case "nm": B.nonMorto = b.checked; break;
-    case "nuovo": mio = null; statoMio = ""; B = { ...nuovaBozza(), bersaglio: B.bersaglio, arma: B.arma }; break;
-    case "attacca": {
-      const arma = d.attacchi[B.arma], t = tiro(d, arma), c = (SC.campo || []).find(x => x.id === B.bersaglio);
-      if (!t || !c) return true;
-      const id = `${pg.id}-${Date.now()}`;
-      mio = id; statoMio = "colpire";
-      await arch.scrivi(`${ATT}/${id}`, { scontro: SC.id, round: SC.round, turno: SC.turno, pg: pg.id, pgNome: d.nome,
-        bersaglio: c.id, bersaglioNome: c.nome, arma: arma.n, armaI: B.arma, tipo: (arma.t || "").toLowerCase(), tiro: t, stato: "colpire" });
-      break;
-    }
-    case "invia": {
-      const a = A.find(x => x.id === mio); if (!a) return true;
-      const parti = partiDanno(d, a), somma = sommaDanni(parti, B.extra);
-      if (!somma) return true;
-      await arch.aggiorna(`${ATT}/${a.id}`, { stato: "danni", danni: { tot: somma.tot, perTipo: somma.perTipo } });
-      if (B.punizione) spendi(pg.id, B.punizione);
-      break;
-    }
-    /* master che attacca */
-    case "m-nuovo": MA = { gruppo: b.dataset.g, i: +b.dataset.i, bersaglio: null, modo: "normale", d20: [], dadi: {} }; window.scrollTo({ top: 0, behavior: "smooth" }); break;
-    case "m-pg": MA.bersaglio = b.dataset.id; break;
-    case "m-modo": MA.modo = b.dataset.m; break;
-    case "m-annulla": MA = null; break;
-    case "m-colpisci": {
-      const az = azioneDi(MA.gruppo, MA.i), bb = bersaglioPg(MA.bersaglio) || bersagliCreature(MA.gruppo).find(x => x.id === MA.bersaglio);
-      const t = tiroPerColpire({ dadi: MA.d20, modo: MA.modo, bonus: az.azione.colpire });
-      const parti = partiFormula(az.azione.danni).map((p, k) => ({ valori: Array.from({ length: t.critico ? p.n * 2 : p.n }, (_, i) => (MA.dadi[k] || [])[i] ?? ""), facce: p.f, mod: p.mod, tipo: p.tipo || "danni" }));
-      const somma = sommaDanni(parti); if (!somma) return true;
-      const fin = conResistenze(somma.perTipo, bb.res);
-      if (bb.creatura) { const campi = await ferisci(bb.id, fin.tot, SC); await scrivi(campi); toast(`${bb.nome}: −${fin.tot} PF`); }
-      else { const resta = colpisciPg(bb.id, fin.tot, az.chi); toast(`${bb.nome}: −${fin.tot} PF (ora ${resta})`); }
-      MA = null; break;
-    }
-    /* master: richieste dei giocatori */
-    case "m-manca": await arch.aggiorna(`${ATT}/${b.dataset.id}`, { stato: "mancato" }); break;
-    case "m-applica": {
-      const a = A.find(x => x.id === b.dataset.id); if (!a) return true;
-      const n = danniFinali(a.danni.tot, b.dataset.come);
+function apriConferma(a) {
+  const c = creaturaInCampo(a.bersaglio), t = a.tiro, d = a.danni;
+  const parti = Object.entries(d.perTipo).map(([k, v]) => `${v} ${esc(k)}`).join(" + ");
+  let deciso = false;
+  const f = finestra({ chiave: "conferma", titolo: "Danni da confermare", onChiudi: () => { if (!deciso) rimandati.add(a.id); setTimeout(proponiConferma, 50); }, onClick: async e => {
+    const b = e.target.closest("[data-come]"); if (!b) return;
+    deciso = true; confermati.add(a.id);
+    const n = danniFinali(d.tot, b.dataset.come);
+    try {
+      /* prima lo stato della creatura nello scontro, poi "applicato": così il giocatore vede subito com'è rimasta */
       const campi = n > 0 ? await ferisci(a.bersaglio, n, SC) : null;
+      if (campi) await scriviScontro(campi);
       await arch.aggiorna(`${ATT}/${a.id}`, { stato: "applicato", applicati: n });
-      if (campi) await scrivi(campi);
-      break;
+      toast(`${c ? c.nome : a.bersaglioNome}: −${n}`);
+    } catch (_) { confermati.delete(a.id); toast("Non salvato: controlla la connessione", 5000); }
+    f.chiudi();
+  } });
+  vibra(50);
+  f.mostra(`<p class="domanda">${esc(a.pgNome)} colpisce ${esc(c ? c.nome : a.bersaglioNome)}</p>
+    <p class="aiuto">${esc(a.arma)} · ${t.tot} contro CA ${c ? c.ca : "?"}${t.critico ? " · critico" : ""}</p>
+    ${rivelazione("danno", `${d.tot}`, `danni · ${parti}`)}
+    ${c && c.difese.length ? `<p class="difese-nota">${c.difese.map(esc).join("<br>")}</p>` : ""}
+    <div class="fondo colonna">
+      <button class="btn up grande" data-come="pieni">Applica ${d.tot}</button>
+      <div class="tre-btn"><button class="btn" data-come="meta"><small>Resiste</small>Metà ${danniFinali(d.tot, "meta")}</button><button class="btn" data-come="doppio"><small>Vulnerabile</small>Doppio ${danniFinali(d.tot, "doppio")}</button><button class="btn" data-come="nulla"><small>Immune</small>Nessuno</button></div>
+    </div>`, { tono: "rosso" });
+}
+
+/** Nella vista del master: quanti danni aspettano conferma (se ha chiuso la finestra senza decidere). */
+export function htmlMaster() {
+  const q = daConfermare();
+  return q.length ? `<button class="avviso-conferma" data-at="conferme"><b>${q.length}</b> ${q.length === 1 ? "attacco da confermare" : "attacchi da confermare"}</button>` : "";
+}
+
+/* ======================================================================
+   MASTER: una sua creatura attacca
+   ====================================================================== */
+function bersagliMaster() {
+  const pgs = latoGruppo(MA.gruppo) === "alleato" ? [] : (SC.ordine || []).map(v => bersaglioPg(v.id)).filter(Boolean);
+  return [...pgs, ...bersagliCreature(MA.gruppo)];
+}
+function apriAttaccoMaster(gruppo, i) {
+  MA = { gruppo, i, fase: "bersaglio", bersaglio: null, modo: "normale", d20: [], dadi: {} };
+  MA.f = finestra({ chiave: "mattacco", titolo: "Attacco del master", onClick: clicFinestraMaster, onChiudi: () => { MA = null; setTimeout(proponiConferma, 50); },
+    onIndietro: () => { if (MA.fase === "tiro") { MA.fase = "bersaglio"; MA.d20 = []; } else if (MA.fase === "danni") { MA.fase = "tiro"; } disegnaMaster(); } });
+  disegnaMaster();
+}
+const PASSI_M = ["bersaglio", "tiro", "esito", "danni", "fine"];
+function disegnaMaster(nuovo = true) {
+  const az = azioneDi(MA.gruppo, MA.i); if (!az) return MA.f.chiudi();
+  const a = az.azione, bs = bersagliMaster(), b = bs.find(x => x.id === MA.bersaglio);
+  const t = tiroPerColpire({ dadi: MA.d20, modo: MA.modo, bonus: a.colpire });
+  const opz = { passo: PASSI_M.indexOf(MA.fase) + 1, di: PASSI_M.length, nuovoPasso: nuovo, indietro: MA.fase === "tiro" || MA.fase === "danni", tono: "rosso" };
+  const testa = `<p class="aiuto">${esc(az.chi)} · ${esc(a.nome)} ${sg(a.colpire)} · ${esc(a.danni || "")}</p>`;
+  let h = "";
+  if (MA.fase === "bersaglio") {
+    h = `<p class="domanda">Chi è il bersaglio?</p>${testa}<div class="carte">${bs.map(x => `<button class="carta ${x.creatura ? "alleato" : "gruppo"}" data-mb="${x.id}"><span class="c-nome"><b>${esc(x.nome)}</b><small>${x.hp}/${x.maxhp} PF</small></span><span class="c-num">CA ${x.ca}</span></button>`).join("")}</div>`;
+  } else if (MA.fase === "tiro") {
+    const n = MA.modo === "normale" ? 1 : 2;
+    h = `<p class="domanda">Tira il d20</p><p class="aiuto">${esc(az.chi)} contro ${esc(b.nome)} (CA ${b.ca})</p>
+      <div class="seg">${[["normale", "Normale"], ["vantaggio", "Vantaggio"], ["svantaggio", "Svantaggio"]].map(([m, l]) => `<button data-mmodo="${m}" aria-pressed="${MA.modo === m}">${l}</button>`).join("")}</div>
+      ${caselleDadi(MA.d20, n, 20, "md20")}${tastierino(20, null, "data-md20")}
+      <div class="totale">${t ? `${t.usato} ${sg(a.colpire)} =<b>${t.tot}</b><span>contro CA ${b.ca}</span>` : `<span>${sg(a.colpire)} al tiro</span>`}</div>
+      <div class="fondo"><button class="btn up" data-mat="esito"${t ? "" : " disabled"}>Vedi se colpisce</button></div>`;
+  } else if (MA.fase === "esito") {
+    const es = esito(t, b.ca);
+    h = rivelazione(es === "mancato" ? "mancato" : t.critico ? "critico" : "colpito", es === "mancato" ? "Mancato" : t.critico ? "Critico!" : "Colpito!", `${t.tot} contro CA ${b.ca} · ${esc(b.nome)}`) +
+      (es === "mancato" ? `<div class="fondo"><button class="btn up" data-mat="chiudi">Chiudi</button></div>` : `<div class="fondo"><button class="btn up" data-mat="danni">Tira i danni${t.critico ? " (doppi)" : ""}</button></div>`);
+  } else if (MA.fase === "danni") {
+    const parti = partiMaster(a, t), som = sommaDanni(parti), fin = som ? conResistenze(som.perTipo, b.res) : null, attiva = parti.find(p => p.valori.some(vuoto));
+    h = `<p class="domanda">Tira i danni</p><p class="aiuto">${t.critico ? "Critico: i dadi sono doppi. " : ""}${esc(a.danni || "")}</p>
+      ${parti.length ? parti.map(p => `<div class="riga-danni"><b>${p.n}d${p.facce}${p.mod ? sg(p.mod) : ""} <small>${esc(p.tipo)}</small></b>${caselleDadi(p.valori, p.n, p.facce, "m" + p.k)}</div>`).join("") : `<p class="aiuto">Questa azione non ha dadi di danno: applica l'effetto a voce.</p>`}
+      ${attiva ? tastierino(attiva.facce, null, "data-mfaccia") : ""}
+      <div class="totale">${fin ? `Totale<b>${fin.tot}</b>${fin.dimezzati.length ? `<span>${esc(b.nome)} resiste: ${fin.dimezzati.join(", ")}</span>` : ""}` : `<span>Mancano dei dadi</span>`}</div>
+      <div class="fondo"><button class="btn up" data-mat="applica"${fin ? "" : " disabled"}>Applica ${fin ? fin.tot : ""} a ${esc(b.nome)}</button></div>`;
+  } else if (MA.fase === "fine") {
+    h = rivelazione("danno", `−${MA.applicati}`, `<b>${esc(b ? b.nome : "")}</b> colpito da ${esc(az.chi)}`) + `<div class="fondo"><button class="btn up" data-mat="chiudi">Fatto</button></div>`;
+  }
+  MA.f.mostra(h, opz);
+}
+function partiMaster(a, t) {
+  return partiFormula(a.danni).map((p, k) => {
+    const n = t && t.critico ? p.n * 2 : p.n;
+    return { k, n, facce: p.f, mod: p.mod, tipo: p.tipo || "danni", valori: Array.from({ length: n }, (_, i) => (MA.dadi[k] || [])[i] ?? "") };
+  });
+}
+async function clicFinestraMaster(e) {
+  if (!MA) return;
+  const b = e.target.closest("button"); if (!b || b.disabled) return;
+  const ds = b.dataset, az = azioneDi(MA.gruppo, MA.i); if (!az) return;
+  const a = az.azione, t = tiroPerColpire({ dadi: MA.d20, modo: MA.modo, bonus: a.colpire });
+  if (ds.mb) { MA.bersaglio = ds.mb; MA.fase = "tiro"; return disegnaMaster(); }
+  if (ds.mmodo) { MA.modo = ds.mmodo; MA.d20 = MA.d20.slice(0, MA.modo === "normale" ? 1 : 2); return disegnaMaster(false); }
+  if (ds.md20) { const n = MA.modo === "normale" ? 1 : 2, i = Array.from({ length: n }, (_, k) => MA.d20[k]).findIndex(vuoto); if (i >= 0) MA.d20[i] = +ds.md20; else MA.d20[n - 1] = +ds.md20; return disegnaMaster(false); }
+  if (ds.casella === "md20") { MA.d20[+ds.i] = ""; return disegnaMaster(false); }
+  if (ds.mfaccia) {
+    const p = partiMaster(a, t).find(x => x.valori.some(vuoto)); if (!p) return;
+    const v = (MA.dadi[p.k] || []).slice(); v[p.valori.findIndex(vuoto)] = +ds.mfaccia; MA.dadi[p.k] = v; return disegnaMaster(false);
+  }
+  if (ds.casella && ds.casella.startsWith("m")) { const k = +ds.casella.slice(1), v = (MA.dadi[k] || []).slice(); v[+ds.i] = ""; MA.dadi[k] = v; return disegnaMaster(false); }
+  switch (ds.mat) {
+    case "esito": { const bb = bersagliMaster().find(x => x.id === MA.bersaglio); MA.fase = "esito"; vibra(esito(t, bb.ca) === "mancato" ? 90 : [60, 40, 120]); return disegnaMaster(); }
+    case "danni": MA.fase = "danni"; return disegnaMaster();
+    case "applica": {
+      const bb = bersagliMaster().find(x => x.id === MA.bersaglio), som = sommaDanni(partiMaster(a, t)); if (!som) return;
+      const fin = conResistenze(som.perTipo, bb.res);
+      try {
+        if (bb.creatura) { const campi = await ferisci(bb.id, fin.tot, SC); await scriviScontro(campi); }
+        else colpisciPg(bb.id, fin.tot, az.chi);
+      } catch (_) { toast("Non salvato: controlla la connessione", 5000); return; }
+      MA.applicati = fin.tot; MA.fase = "fine"; return disegnaMaster();
     }
+    case "chiudi": MA.f.chiudi(); return;
+  }
+}
+
+/* ======================================================================
+   Tocchi che arrivano dalla vista dello scontro (pulsanti con data-at)
+   ====================================================================== */
+export async function clic(b, pg, scrivi) {
+  if (scrivi) scriviScontro = scrivi;
+  switch (b.dataset.at) {
+    case "apri": if (pg) apriAttacco(pg); return true;
+    case "m-nuovo": apriAttaccoMaster(b.dataset.g, +b.dataset.i); return true;
+    case "conferme": { const q = daConfermare(); if (q.length) apriConferma(q[0]); return true; }
     default: return false;
   }
-  ridisegna();
-  return true;
 }
-export function input(e) {
-  const t = e.target;
-  if (MA && t.dataset.maD20 !== undefined) { MA.d20[+t.dataset.maD20] = t.value; ridisegna(); return true; }
-  if (MA && t.dataset.maDado !== undefined) { const k = +t.dataset.maDado; MA.dadi[k] = (MA.dadi[k] || []).slice(); MA.dadi[k][+t.dataset.i] = t.value; ridisegna(); return true; }
-  if (t.dataset.atD20 !== undefined) { B.d20[+t.dataset.atD20] = t.value; ridisegna(); return true; }
-  if (t.dataset.atCampo) { B[t.dataset.atCampo] = t.value; ridisegna(); return true; }
-  if (t.dataset.atDado) {
-    const k = t.dataset.atDado === "pun" ? "dadiPun" : "dadi";
-    B[k] = (B[k] || []).slice(); B[k][+t.dataset.i] = t.value; ridisegna(); return true;
-  }
-  if (t.dataset.at === "nm") { B.nonMorto = t.checked; ridisegna(); return true; }
-  return false;
-}
+/** Non ci sono più caselle da scrivere: i numeri si scelgono dalla griglia. */
+export function input() { return false; }

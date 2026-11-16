@@ -97,3 +97,54 @@ body.master-scontro .dock{background:none;border:0;padding-block:0;backdrop-filt
 .regole-tavolo .spunta{display:flex;align-items:center;gap:10px;min-height:48px}
 .regole-tavolo .spunta input{width:22px;height:22px;accent-color:var(--gold)}
 .vista-scontro .btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ===== modalità scontro ===== */
+/* banda in alto quando si guarda la scheda durante uno scontro */
+.banda-scontro{position:fixed;left:0;right:0;top:env(safe-area-inset-top,0px);z-index:16;display:flex;align-items:center;gap:10px;min-height:52px;
+  padding:8px max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px));border:0;border-bottom:1px solid var(--crimson-deep);
+  background:linear-gradient(180deg,var(--crimson),var(--crimson-deep));color:var(--on-accent);font:inherit;text-align:left}
+.banda-scontro .bs-segno{width:12px;height:12px;transform:rotate(45deg);background:var(--on-accent);flex:none}
+.banda-scontro .bs-testo{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.banda-scontro .bs-testo b{font-family:var(--f-display);letter-spacing:.08em}
+.banda-scontro .bs-vai{flex:none;font-weight:700;padding:6px 12px;border:1px solid color-mix(in srgb,var(--on-accent) 50%,transparent);border-radius:999px;font-size:14px}
+.banda-scontro.tuo{background:linear-gradient(180deg,var(--gold),var(--gold-deep));color:#1c140a;border-bottom-color:var(--gold-deep)}
+.banda-scontro.tuo .bs-segno{background:#1c140a}
+.banda-scontro.tuo .bs-vai{border-color:rgba(28,20,10,.45)}
+@media (prefers-reduced-motion:no-preference){.banda-scontro.tuo .bs-segno{animation:batte 1.2s ease-in-out infinite}
+  @keyframes batte{50%{transform:rotate(45deg) scale(.6)}}}
+body.con-banda{padding-top:calc(env(safe-area-inset-top,0px) + 52px)}
+body.con-banda .dock{top:calc(env(safe-area-inset-top,0px) + 52px)}
+
+/* selettore in basso: in scontro "Scontro" sta da parte, in cremisi */
+body.modo-scontro .switch .scontro{background:var(--crimson-soft);border-color:var(--crimson);color:var(--ink);margin-left:6px;position:relative}
+body.modo-scontro .switch .scontro::before{content:"";position:absolute;left:-7px;top:10px;bottom:10px;width:1px;background:var(--line)}
+body.modo-scontro .switch .scontro[aria-pressed="true"]{background:var(--crimson);color:var(--on-accent);border-color:var(--crimson)}
+
+/* il turno adesso: in cima, grande */
+.turno-ora{display:flex;flex-direction:column;gap:14px;border-color:var(--line)}
+.turno-ora .to-round{margin:0;font-family:var(--f-display);letter-spacing:.14em;text-transform:uppercase;font-size:13px;color:var(--muted)}
+.turno-ora .to-chi{margin:0;display:flex;flex-direction:column;gap:2px;font-size:14px;letter-spacing:.14em;color:var(--muted)}
+.turno-ora .to-chi::after{display:none}
+.turno-ora .to-chi span{font-size:clamp(26px,8vw,34px);letter-spacing:.04em;color:var(--ink);text-transform:none;line-height:1.1}
+.turno-ora .to-attesa{margin:0;color:var(--muted)}
+.turno-ora.mio{border-color:var(--gold);background:linear-gradient(180deg,var(--gold-soft),var(--panel) 70%)}
+.turno-ora.mio .to-chi{color:var(--gold)}
+.turno-ora.lato-nemico{border-left:4px solid var(--crimson)}
+.turno-ora.lato-alleato{border-left:4px solid var(--ok)}
+.turno-ora.lato-gruppo{border-left:4px solid var(--gold)}
+.turno-ora .fine-turno{min-height:52px;font-size:16px}
+.turno-ora.mio .fine-turno{align-self:stretch}
+.azioni-turno{display:grid;grid-template-columns:1fr;gap:10px}
+.azione-grande{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:14px;align-items:center;min-height:76px;padding:12px 18px;
+  border:1px solid var(--gold-deep);border-radius:14px;background:linear-gradient(180deg,var(--gold),var(--gold-deep));color:#1c140a;text-align:left;font:inherit}
+.azione-grande .az-icona{grid-row:1 / 3;width:32px;height:32px}
+.azione-grande b{font-family:var(--f-display);font-size:22px;letter-spacing:.06em}
+.azione-grande small{font-size:14px;opacity:.8}
+.azione-grande:active{transform:scale(.98)}
+.azione-grande.secondaria{background:var(--panel2);border-color:var(--line);color:var(--ink)}
+.ultimo-att{margin:0;color:var(--muted);font-size:14px}
+.ordine h2 small{font-family:var(--f-body)}
+/* conferme in attesa per il master */
+.avviso-conferma{display:flex;align-items:center;gap:10px;width:100%;min-height:56px;padding:10px 16px;border:1px solid var(--crimson);border-radius:12px;
+  background:var(--crimson-soft);color:var(--ink);font:inherit;font-weight:600;text-align:left}
+.avviso-conferma b{display:inline-grid;place-items:center;min-width:30px;height:30px;border-radius:999px;background:var(--crimson);color:var(--on-accent);font-family:var(--f-num)}
