@@ -1,6 +1,6 @@
 /* La scheda del personaggio. È la logica della scheda originale, quasi riga per riga:
    cambia solo da dove arrivano i dati (archivio.js) e quali personaggi mostra (dipende dal profilo). */
-import { AB, ABN, STYLES, CONDS, COINS, mod, prof, sg, clone, calcola, attacchiOrdinati, normalizza } from "./regole/base.js";
+import { AB, ABN, STYLES, CONDS, COINS, mod, prof, sg, clone, calcola, attacchiOrdinati, normalizza, quantita, conQuantita, aggiungiOggetto } from "./regole/base.js";
 import { talento, talentiDisponibili, requisiti } from "./regole/talenti.js";
 import { stiliPer } from "./regole/stili.js";
 import { opzioni, suOpzioni } from "./campagna.js";
@@ -108,9 +108,12 @@ function render() {
   $("attTxt").textContent = `Sintonia ${S.attuned.length}/3`;
   $("inv").innerHTML = S.inv.map((t, i) => {
     const on = S.attuned.includes(t);
-    return `<li class="${C.magic.test(t) || on ? "magic" : ""}"><button class="att${on ? " on" : ""}" data-att="${i}" ${!on && full ? "disabled" : ""} aria-pressed="${on}" title="${on ? "In sintonia" : "Metti in sintonia"}">${on ? "◆" : "◇"}</button><span></span><button class="x" data-del="${i}" aria-label="Rimuovi">×</button></li>`;
+    const q = quantita(t);
+    return `<li class="${C.magic.test(t) || on ? "magic" : ""}"><button class="att${on ? " on" : ""}" data-att="${i}" ${!on && full ? "disabled" : ""} aria-pressed="${on}" title="${on ? "In sintonia" : "Metti in sintonia"}">${on ? "◆" : "◇"}</button><span class="nome-ogg"></span>
+      <span class="qta${q.n > 1 ? " piu" : ""}">${q.n > 1 ? `<button class="btn step" data-qta-ogg="${i}" data-d="-1" aria-label="Uno in meno">−</button><b class="num">${q.n}</b>` : ""}<button class="btn step" data-qta-ogg="${i}" data-d="1" aria-label="Uno in più">+</button></span>
+      <button class="x" data-del="${i}" aria-label="Rimuovi">×</button></li>`;
   }).join("");
-  $("inv").querySelectorAll("li span").forEach((s, i) => s.textContent = S.inv[i]);
+  $("inv").querySelectorAll("li .nome-ogg").forEach((s, i) => { const n = quantita(S.inv[i]).nome; s.textContent = n.charAt(0).toUpperCase() + n.slice(1); });
   if (document.activeElement !== $("notes")) $("notes").value = S.notes;
 }
 
@@ -558,12 +561,17 @@ $("vistaScheda").addEventListener("click", e => {
     else { wd.dataset.armed = "1"; wd.textContent = "Togli?"; wd.classList.add("armed"); setTimeout(() => { if (wd.isConnected) { delete wd.dataset.armed; wd.textContent = "×"; wd.classList.remove("armed"); } }, 3500); }
     return;
   }
+  const qo = e.target.closest("[data-qta-ogg]");
+  if (qo && !qo.disabled) {
+    const i = +qo.dataset.qtaOgg, vecchio = S.inv[i], q = quantita(vecchio), nuovo = conQuantita(q.nome, Math.max(1, q.n + +qo.dataset.d));
+    S.inv = S.inv.map((t, k) => k === i ? nuovo : t); S.attuned = S.attuned.map(t => t === vecchio ? nuovo : t); change(); return;
+  }
   const del = e.target.closest("[data-del]");
   if (del) { const t = S.inv[+del.dataset.del]; S.inv.splice(+del.dataset.del, 1); if (!S.inv.includes(t)) S.attuned = S.attuned.filter(x => x !== t); change(); return; }
 });
 COINS.forEach(([k]) => $("c_" + k).addEventListener("input", e => { S.coins[k] = Math.max(0, parseInt(e.target.value, 10) || 0); change(); }));
 $("addForm").addEventListener("submit", e => {
-  e.preventDefault(); const v = $("newItem").value.trim(); if (!v) return; S.inv.push(v); $("newItem").value = "";
+  e.preventDefault(); const v = $("newItem").value.trim(); if (!v) return; S.inv = aggiungiOggetto(S.inv, v); $("newItem").value = "";
   const w = $("isWeapon").checked; $("isWeapon").checked = false; change();
   if (w) {
     editW = true; render(); $("wName").value = v; $("wForm").scrollIntoView({ behavior: "smooth", block: "center" });

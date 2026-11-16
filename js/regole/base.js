@@ -86,3 +86,23 @@ export function normalizza(def, v) {
   s.conds = (s.conds || []).filter(c => CONDS.includes(c));
   return s;
 }
+
+/* ---------- quantità degli oggetti ----------
+   Un oggetto si scrive "Lancia ×3" (o "10 torce", come nei dati vecchi). Le misure non sono quantità: "15 metri di corda" resta com'è. */
+const MISURE = /^(metri|m|cm|kg|g|litri|l|piedi|libbre)\b/i;
+export function quantita(t) {
+  const s = String(t || "").trim();
+  let m = s.match(/^(.+?)\s*[×x]\s*(\d+)$/);
+  if (m) return { nome: m[1].trim(), n: +m[2] };
+  m = s.match(/^(\d+)\s+(.+)$/);
+  if (m && !MISURE.test(m[2])) return { nome: m[2].trim(), n: +m[1] };
+  return { nome: s, n: 1 };
+}
+export const conQuantita = (nome, n) => n > 1 ? `${nome} ×${n}` : nome;
+/** Aggiunge un oggetto all'equipaggiamento: se c'è già (stesso nome), ne aumenta il numero. Restituisce il nuovo elenco. */
+export function aggiungiOggetto(inv, testo) {
+  const nuovo = quantita(testo), i = inv.findIndex(t => quantita(t).nome.toLowerCase() === nuovo.nome.toLowerCase());
+  if (i < 0) return [...inv, conQuantita(nuovo.nome, nuovo.n)];
+  const q = quantita(inv[i]);
+  return inv.map((t, k) => k === i ? conQuantita(q.nome, q.n + nuovo.n) : t);
+}

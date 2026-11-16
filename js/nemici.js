@@ -4,15 +4,17 @@
 
      dm/bestiario → { creature:[...], gruppi:[...] }   i modelli, importati dal file privato o scritti a mano
      dm/campo     → { scontro, creature:[...], gruppi:[...] }   chi è in campo adesso, con i PF veri          */
-import { ferite, danno, cura, schiera, togliDaOrdine, inserisciInOrdine, trasforma, leggiAzioni, scriviAzioni, leggiTratti, scriviTratti, chiaro, fonteChiara, incantesimi } from "./regole/nemici.js";
+import { ferite, danno, cura, schiera, togliDaOrdine, inserisciInOrdine, inserisciDopo, trasforma, leggiAzioni, scriviAzioni, leggiTratti, scriviTratti, chiaro, fonteChiara, incantesimi } from "./regole/nemici.js";
 
-const BEST = "dm/bestiario", CAMPO = "dm/campo";
+const BEST = "dm/bestiario", CAMPO = "dm/campo", PNG = "dm/png";
+/* dm/png → { <modello>: { pf, slotUsati } }: i compagni del master (alleati come Ezmerelda) e chi lancia incantesimi
+   si portano dietro ferite e slot da uno scontro all'altro, finché il master non segna un riposo lungo. */
 const $ = id => document.getElementById(id);
 function esc(t) { const e = document.createElement("span"); e.textContent = t ?? ""; return e.innerHTML; }
 const sg = n => (n >= 0 ? "+" : "−") + Math.abs(n);
 
 let arch = null, ridisegna = () => {}, toast = () => {}, ascolti = [];
-let B = { creature: [], gruppi: [] }, C = { scontro: null, creature: [], gruppi: [] };
+let B = { creature: [], gruppi: [] }, C = { scontro: null, creature: [], gruppi: [] }, R = {};
 let scelte = [], pannello = null, cerca = "", aperte = new Set(), daEliminare = null, apriRinforzi = false;
 const perId = () => Object.fromEntries(B.creature.map(c => [c.id, c]));
 
@@ -21,6 +23,7 @@ export function avviaNemici({ archivio, aggiorna, avvisa }) {
   ascolti = [
     arch.ascolta(BEST, d => { B = { creature: [], gruppi: [], ...(d || {}) }; ridisegna(); }, null, { anchePropri: true }),
     arch.ascolta(CAMPO, d => { C = { scontro: null, creature: [], gruppi: [], ...(d || {}) }; ridisegna(); }, null, { anchePropri: true }),
+    arch.ascolta(PNG, d => { R = d || {}; }, null, { anchePropri: true }),
   ];
 }
 export function fermaNemici() { ascolti.forEach(s => s()); ascolti = []; }
@@ -44,7 +47,7 @@ export function htmlPreparazione() {
     <p class="lbl-sez">Aggiungi una creatura</p>
     <div class="aggiungi">
       <select id="nzCreatura" aria-label="Creatura">${ordinate.map(c => `<option value="${esc(c.id)}">${esc(c.nome)}${c.tipo === "alleato" ? " (alleato)" : ""}</option>`).join("")}</select>
-      <input id="nzQuanti" type="number" inputmode="numeric" min="1" max="30" value="1" aria-label="Quanti">
+      <input id="nzQuanti" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" min="1" max="30" value="1" aria-label="Quanti">
       <select id="nzModo" aria-label="Iniziativa"><option value="branco">in branco</option><option value="uno">uno per uno</option></select>
       <button class="btn gold" data-nz="aggiungi">Aggiungi</button>
     </div>`}
@@ -53,8 +56,19 @@ export function htmlPreparazione() {
 }
 
 /** Al momento di "Tirate l'iniziativa": mette in campo le creature scelte. Restituisce le voci per lo scontro. */
+/* chi si ricorda ferite e slot tra uno scontro e l'altro: gli alleati e chiunque abbia slot, se è l'unico del suo modello */
+const persiste = (c, tutte) => (c.tipo === "alleato" || (perId()[c.creatura] || {}).slot) && tutte.filter(x => x.creatura === c.creatura).length === 1;
+const conMemoria = creature => creature.map(c => {
+  const m = persiste(c, creature) && R[c.creatura]; if (!m) return c;
+  return { ...c, ...(m.slotUsati ? { slotUsati: m.slotUsati } : {}), ...(c.tipo === "alleato" && m.pf != null ? { pf: Math.min(c.max, m.pf) } : {}) };
+});
+async function ricorda(creature, id) {
+  const c = creature.find(x => x.id === id); if (!c || !persiste(c, creature)) return;
+  R = { ...R, [c.creatura]: { slotUsati: c.slotUsati || {}, ...(c.tipo === "alleato" ? { pf: c.pf } : {}) } };
+  await arch.scrivi(PNG, R);
+}
 export async function schieraScelte(idScontro) {
-  const { creature, gruppi } = schiera(scelte, perId());
+  const s0 = schiera(scelte, perId()), gruppi = s0.gruppi, creature = conMemoria(s0.creature);
   await arch.scrivi(CAMPO, { scontro: idScontro, creature, gruppi });
   scelte = [];
   return {
@@ -65,7 +79,7 @@ export async function schieraScelte(idScontro) {
 /* quello che vedono i giocatori: nome per loro, gruppo, parola sulle ferite (e i PF, per gli alleati che lo prevedono) */
 function pubblico(creature, gruppi) {
   const gruppoDi = id => (gruppi.find(g => g.membri.includes(id)) || {}).id;
-  return creature.map(c => ({ id: c.id, gruppo: gruppoDi(c.id), nome: c.giocatori, tipo: c.tipo, ferite: ferite(c.pf, c.max),
+  return creature.map(c => ({ id: c.id, gruppo: gruppoDi(c.id), nome: c.giocatori, tipo: c.tipo, ferite: ferite(c.pf, c.max), subiti: Math.max(0, c.max - c.pf),
     ...(c.pfVisibili ? { pf: c.pf, max: c.max } : {}) }));
 }
 
@@ -97,12 +111,13 @@ export function htmlTurniMaster(SC) {
         <span class="pf"><b>${c.pf}</b>/${c.max}</span></div>
       <div class="hpbar" data-state="${c.pf * 2 > c.max ? "" : c.pf * 4 > c.max ? "mid" : "low"}"><i style="width:${Math.round(100 * c.pf / c.max)}%"></i></div>
       <div class="colpo"><span class="parola">${st}</span>
-        <input type="number" inputmode="numeric" min="0" placeholder="0" data-qta="${c.id}" aria-label="Quantità per ${esc(c.nome)}">
+        <input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" min="0" placeholder="0" data-qta="${c.id}" data-foco="q-${c.id}" aria-label="Quantità per ${esc(c.nome)}">
         <button class="btn dmg" data-nz="danno" data-id="${c.id}">Danno</button>
         <button class="btn heal" data-nz="cura" data-id="${c.id}">Cura</button></div>
       ${aperta ? `<div class="dettaglio">
         <div class="cambi">
           <button class="btn" data-nz="lato" data-id="${c.id}">${c.tipo === "alleato" ? "Passa ai nemici" : "Passa agli alleati"}</button>
+          ${persiste(c, C.creature) ? `<button class="btn" data-nz="riposo" data-id="${c.id}">Riposo lungo (PF e slot)</button>` : ""}
           <div class="aggiungi"><select data-trasf="${c.id}" aria-label="Nuovo modello per ${esc(c.nome)}">${ordinate.map(x => `<option value="${esc(x.id)}"${x.id === c.creatura ? " selected" : ""}>${esc(x.nome)}</option>`).join("")}</select>
             <button class="btn" data-nz="trasforma" data-id="${c.id}">Trasforma</button></div>
         </div>${m ? schedaModello(m, c) : ""}</div>` : ""}</li>`;
@@ -110,12 +125,14 @@ export function htmlTurniMaster(SC) {
   const rinforzi = `<details class="rinforzi"${apriRinforzi ? " open" : ""}><summary data-nz="rinf-apri">Arrivano rinforzi</summary>
     <div class="aggiungi">
       <select id="nzRCreatura" aria-label="Creatura">${ordinate.map(x => `<option value="${esc(x.id)}">${esc(x.nome)}${x.tipo === "alleato" ? " (alleato)" : ""}</option>`).join("")}</select>
-      <input id="nzRQuanti" type="number" inputmode="numeric" min="1" max="30" value="1" aria-label="Quanti">
+      <input id="nzRQuanti" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" min="1" max="30" value="1" aria-label="Quanti">
       <select id="nzRModo" aria-label="Iniziativa"><option value="branco">in branco</option><option value="uno">uno per uno</option></select>
     </div>
-    <div class="aggiungi"><label class="dado"><span class="lbl">d20 iniziativa</span><input id="nzRD20" type="number" inputmode="numeric" min="1" max="20" aria-label="d20 d'iniziativa dei rinforzi"></label>
+    <div class="aggiungi"><select id="nzREvoca" aria-label="Chi li evoca"><option value="">Arrivano da soli: contano la loro iniziativa</option>
+      ${(SC.ordine || []).filter(v => C.gruppi.some(g => g.id === v.id)).map(v => `<option value="${v.id}"${SC.ordine[SC.turno] && SC.ordine[SC.turno].id === v.id ? " selected" : ""}>Evocati da ${esc(C.gruppi.find(g => g.id === v.id).nome)}</option>`).join("")}</select></div>
+    <div class="aggiungi"><label class="dado"><span class="lbl">d20 iniziativa</span><input id="nzRD20" data-foco="rd20" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" min="1" max="20" aria-label="d20 d'iniziativa dei rinforzi"></label>
       <button class="btn gold" data-nz="rinforzi">Entrano in campo</button></div>
-    <p class="hint">Un d20 per tutti quelli che entrano: per tiri separati aggiungili uno alla volta. L'app somma il loro modificatore e li mette al posto giusto nei turni.</p>
+    <p class="hint">Un d20 per tutti quelli che entrano. Se sono evocati, in questo round giocano subito dopo chi li ha evocati; dal round dopo prendono il posto della loro iniziativa.</p>
   </details>`;
   return { rapida, campo: `<section><h2>In campo</h2>${rinforzi}<ul class="campo">${righe}</ul></section>` };
 }
@@ -171,6 +188,7 @@ function schedaModello(m, c, gruppo) {
 async function colpisci(id, n, comeCura, SC) {
   const creature = C.creature.map(c => c.id !== id ? c : { ...c, pf: comeCura ? cura(c.pf, c.max, n) : danno(c.pf, n) });
   await arch.aggiorna(CAMPO, { creature });
+  await ricorda(creature, id);
   const c = creature.find(x => x.id === id);
   const campi = { campo: pubblico(creature, C.gruppi) };
   const g = C.gruppi.find(x => x.membri.includes(id));
@@ -197,6 +215,17 @@ export function azioneDi(gruppoId, i) {
   if (!m || !m.azioni || !m.azioni[i]) return null;
   return { chi: membri.length > 1 ? m.nome : membri[0].nome, azione: m.azioni[i] };
 }
+/** Le creature del master che un attaccante può colpire: un alleato colpisce i nemici, un nemico gli alleati del master. */
+export function bersagliCreature(gruppoId) {
+  const g = C.gruppi.find(x => x.id === gruppoId); if (!g) return [];
+  const att = C.creature.find(c => g.membri.includes(c.id)), lato = att && att.tipo === "alleato" ? "alleato" : "nemico";
+  return C.creature.filter(c => c.pf > 0 && !g.membri.includes(c.id) && (c.tipo === "alleato" ? "alleato" : "nemico") !== lato)
+    .map(c => ({ id: c.id, nome: c.nome, ca: c.ca, hp: c.pf, maxhp: c.max, res: [], creatura: true }));
+}
+export const latoGruppo = gruppoId => {
+  const g = C.gruppi.find(x => x.id === gruppoId), c = g && C.creature.find(x => g.membri.includes(x.id));
+  return c && c.tipo === "alleato" ? "alleato" : "nemico";
+};
 /** Danno deciso dal master su una richiesta d'attacco: stessi effetti del pulsante Danno. */
 export const ferisci = (id, n, SC) => colpisci(id, n, false, SC);
 
@@ -317,7 +346,16 @@ export async function clic(b, SC, scrivi) {
         return { ...c, slotUsati: { ...(c.slotUsati || {}), [l]: i < u ? i : i + 1 } };
       });
       await arch.aggiorna(CAMPO, { creature });
+      await ricorda(creature, id);
       break;
+    }
+    case "riposo": {
+      /* riposo lungo di un compagno del master: PF pieni e slot liberi, anche per gli scontri futuri */
+      const creature = C.creature.map(c => c.id !== b.dataset.id ? c : { ...c, pf: c.max, slotUsati: {} });
+      await arch.aggiorna(CAMPO, { creature });
+      await ricorda(creature, b.dataset.id);
+      await scrivi({ campo: pubblico(creature, C.gruppi) });
+      toast("Riposo lungo: PF pieni e slot liberi");
     }
     case "rinf-apri": apriRinforzi = !apriRinforzi; break;
     case "lato": {
@@ -351,7 +389,11 @@ export async function clic(b, SC, scrivi) {
       const creature = [...C.creature, ...nuovi.creature], gruppi = [...C.gruppi, ...nuovi.gruppi];
       await arch.aggiorna(CAMPO, { creature, gruppi });
       let st = { ordine: SC.ordine || [], turno: SC.turno || 0 };
-      for (const g of nuovi.gruppi) st = inserisciInOrdine(st, { id: g.id, nome: g.nome, tot: d20 + (g.ini ?? 0), des: null });
+      const evocatore = $("nzREvoca").value;
+      for (const g of [...nuovi.gruppi].reverse()) {
+        const voce = { id: g.id, nome: g.nome, tot: d20 + (g.ini ?? 0), des: null };
+        st = evocatore ? inserisciDopo(st, { ...voce, evocati: SC.round }, evocatore) : inserisciInOrdine(st, voce);
+      }
       await scrivi({ ...st, campo: pubblico(creature, gruppi),
         partecipanti: [...(SC.partecipanti || []), ...nuovi.gruppi.map(g => ({ id: g.id, nome: g.nome, tipo: g.tipo === "alleato" ? "alleato" : "nemico" }))] });
       $("nzRD20").value = ""; apriRinforzi = false;

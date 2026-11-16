@@ -2,11 +2,12 @@
    I numeri veri (PF, CA, attacchi) li vede solo il master; ai giocatori arriva una parola. */
 
 /** Come sta una creatura, detto a parole per i giocatori.
-    illeso: PF pieni · ferito: sotto il massimo · in fin di vita: un quarto o meno · sconfitto: 0. */
+    illeso: PF pieni · ferito: sotto il massimo · a metà: metà o meno · in fin di vita: un quarto o meno · sconfitto: 0. */
 export function ferite(pf, max) {
   if (pf <= 0) return "sconfitto";
   if (pf >= max) return "illeso";
-  return pf * 4 <= max ? "in fin di vita" : "ferito";
+  if (pf * 4 <= max) return "in fin di vita";
+  return pf * 2 <= max ? "a metà" : "ferito";
 }
 
 /** Danno e cura: mai sotto 0, mai sopra il massimo. */
@@ -150,4 +151,25 @@ export function trasforma(c, m) {
   const max = m.pf, persi = Math.max(0, c.max - c.pf);
   return { ...c, creatura: m.id, nome: m.nome, giocatori: m.giocatori || m.nome, ca: m.ca, ini: m.ini ?? c.ini,
     max, pf: Math.max(1, max - persi) };
+}
+
+/** Creature evocate: nel round in cui arrivano giocano subito dopo chi le ha evocate.
+    La voce porta "evocati: round" per ricordarsi di spostarla dopo. */
+export function inserisciDopo({ ordine, turno }, voce, idEvocatore) {
+  let i = ordine.findIndex(v => v.id === idEvocatore);
+  if (i < 0) i = turno;
+  const nuovo = [...ordine.slice(0, i + 1), voce, ...ordine.slice(i + 1)];
+  return { ordine: nuovo, turno: i + 1 <= turno ? turno + 1 : turno };
+}
+/** Dal round dopo l'evocazione le creature evocate prendono il posto della loro iniziativa (anche più in alto
+    dell'evocatore). Il turno resta a chi lo aveva. null se non c'è niente da spostare. */
+export function sistemaEvocati({ ordine, turno, round }) {
+  const daSpostare = ordine.filter(v => v.evocati != null && v.evocati < round);
+  if (!daSpostare.length) return null;
+  const attivo = ordine[turno] && ordine[turno].id;
+  let st = { ordine: ordine.filter(v => !daSpostare.includes(v)), turno: 0 };
+  for (const v of daSpostare) { const { evocati, ...pulita } = v; st = inserisciInOrdine(st, pulita); }
+  /* a inizio round (turno 0) si riparte dal nuovo primo, che può essere proprio un evocato; altrimenti il turno resta a chi lo aveva */
+  const t = st.ordine.findIndex(v => v.id === attivo);
+  return { ordine: st.ordine, turno: turno === 0 || t < 0 ? 0 : t };
 }

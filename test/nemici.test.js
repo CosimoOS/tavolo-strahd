@@ -7,7 +7,9 @@ test("ai giocatori arriva una parola sola", () => {
   assert.equal(ferite(11, 11), "illeso");
   assert.equal(ferite(10, 11), "ferito");
   assert.equal(ferite(3, 12), "in fin di vita");   // esattamente un quarto
-  assert.equal(ferite(4, 12), "ferito");
+  assert.equal(ferite(4, 12), "a metà");
+  assert.equal(ferite(6, 12), "a metà");                // esattamente metà
+  assert.equal(ferite(7, 12), "ferito");
   assert.equal(ferite(0, 11), "sconfitto");
 });
 
@@ -113,4 +115,20 @@ test("trasformazione: nuovo modello, ferite conservate", () => {
   assert.equal(t.tipo, "alleato");                             // lo schieramento si cambia a parte
   assert.equal(t.id, "n7");
   assert.equal(trasforma({ ...civile, pf: 0, max: 100 }, lupo).pf, 1);
+});
+
+import { inserisciDopo, sistemaEvocati } from "../js/regole/nemici.js";
+
+test("evocati: subito dopo l'evocatore, dal round dopo al posto della loro iniziativa", () => {
+  const o = [{ id: "rombo", tot: 20 }, { id: "strahd", tot: 15 }, { id: "rex", tot: 10 }];
+  const a = inserisciDopo({ ordine: o, turno: 1 }, { id: "lupi", tot: 22, evocati: 2 }, "strahd");
+  assert.deepEqual(a.ordine.map(v => v.id), ["rombo", "strahd", "lupi", "rex"]);
+  assert.equal(a.turno, 1);                                    // tocca ancora a Strahd
+  assert.equal(sistemaEvocati({ ...a, round: 2 }), null);      // stesso round: restano lì
+  const b = sistemaEvocati({ ordine: a.ordine, turno: 0, round: 3 });
+  assert.deepEqual(b.ordine.map(v => v.id), ["lupi", "rombo", "strahd", "rex"]);
+  assert.equal(b.turno, 0);                                    // nuovo round: si parte dai lupi, ora primi
+  assert.equal(b.ordine[0].evocati, undefined);
+  const c = sistemaEvocati({ ordine: a.ordine, turno: 3, round: 3 });   // a metà round: il turno resta a Rex
+  assert.equal(c.ordine[c.turno].id, "rex");
 });

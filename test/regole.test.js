@@ -92,3 +92,15 @@ test("Rex: slot del paladino e risorse al 6° livello", () => {
   assert.deepEqual(r.map(x => [x.k, x.max]), [["slot1", 4], ["slot2", 2], ["canale", 1], ["senso", 4]]);
   assert.equal(rex.riserva(6).max, 30);
 });
+
+import { quantita, conQuantita, aggiungiOggetto } from "../js/regole/base.js";
+
+test("oggetti con quantità: +1, −1 e niente doppioni", () => {
+  assert.deepEqual(quantita("10 torce"), { nome: "torce", n: 10 });
+  assert.deepEqual(quantita("Lancia ×3"), { nome: "Lancia", n: 3 });
+  assert.deepEqual(quantita("15 metri di corda di canapa"), { nome: "15 metri di corda di canapa", n: 1 });
+  assert.equal(conQuantita("Lancia", 1), "Lancia");
+  assert.deepEqual(aggiungiOggetto(["Lancia", "Scudo"], "Lancia"), ["Lancia ×2", "Scudo"]);
+  assert.deepEqual(aggiungiOggetto(["Pozione di guarigione ×2"], "2 pozione di guarigione"), ["Pozione di guarigione ×4"]);
+  assert.deepEqual(aggiungiOggetto(["Scudo"], "Corda"), ["Scudo", "Corda"]);
+});

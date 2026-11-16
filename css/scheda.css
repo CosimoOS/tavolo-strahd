@@ -349,3 +349,10 @@ body.in-scheda{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))}
 .conc-cd{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;padding:12px 14px;border:1px solid var(--gold-deep);border-radius:10px;background:var(--gold-soft);margin:6px 0 4px}
 .conc-cd b{font-family:var(--f-num);font-size:26px;color:var(--gold)}
 .conc-cd small{flex-basis:100%;color:var(--muted)}
+/* quantità degli oggetti */
+.inv li .nome-ogg{flex:1;min-width:0;overflow-wrap:anywhere}
+.inv li .qta{display:inline-flex;align-items:center;gap:4px;flex:none}
+.inv li .qta .btn.step{min-width:40px;min-height:40px;padding:4px 0}
+.inv li .qta .btn.step:disabled{opacity:.35}
+.inv li .qta b{min-width:2ch;text-align:center}
+.inv li .qta:not(.piu) .btn.step{background:transparent;border-color:transparent;color:var(--muted);min-width:36px}

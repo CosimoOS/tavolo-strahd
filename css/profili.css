@@ -1,5 +1,5 @@
 /* Schermata dei profili (stile "chi guarda?") e tastierino del PIN. Stessi colori e font della scheda. */
-.profili{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+.profili{min-height:calc(100vh - env(safe-area-inset-top,0px));min-height:calc(100dvh - env(safe-area-inset-top,0px));display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
   padding-block:32px calc(32px + env(safe-area-inset-bottom,0px));gap:6px}
 .ptitolo{font-family:var(--f-display);font-weight:900;font-size:clamp(26px,7vw,44px);letter-spacing:.03em;margin:4px 0 26px;color:var(--ink)}
 .pgriglia{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 16px;width:100%;max-width:520px}

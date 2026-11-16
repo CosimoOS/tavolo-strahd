@@ -136,3 +136,5 @@
 .rinforzi .hint{margin:10px 0 0}
 .attacca-pg{margin-left:auto;min-height:40px;padding:6px 14px}
 .az-testa{align-items:center}
+.stato-c[data-s="a metà"]{border-color:var(--warn);color:var(--ink);background:color-mix(in srgb,var(--warn) 22%,transparent)}
+.stato-c b{font-family:var(--f-num);font-weight:600;margin-left:2px}

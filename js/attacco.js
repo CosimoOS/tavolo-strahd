@@ -9,7 +9,7 @@
      tiro, stato: "colpire" | "colpito" | "mancato" | "danni" | "applicato", danni?, applicati? }
    La CA non viene mai scritta lì: il giocatore vede solo "colpito" o "mancato". */
 import { tiroPerColpire, esito, dadiDanno, sommaDanni, danniFinali, partiFormula, conResistenze } from "./regole/attacco.js";
-import { creaturaInCampo, ferisci, azioneDi } from "./nemici.js";
+import { creaturaInCampo, ferisci, azioneDi, bersagliCreature, latoGruppo } from "./nemici.js";
 
 const ATT = "scontro/attuale/attacchi";
 const $ = id => document.getElementById(id);
@@ -70,13 +70,15 @@ async function risolvi(a) {
 function htmlAttaccoMaster() {
   if (!MA) return "";
   const az = azioneDi(MA.gruppo, MA.i); if (!az) return "";
-  const a = az.azione, pg = (SC.ordine || []).map(v => bersaglioPg(v.id)).filter(Boolean);
+  /* bersagli: un alleato del master colpisce i nemici; un nemico colpisce i personaggi e gli alleati del master */
+  const pgs = latoGruppo(MA.gruppo) === "alleato" ? [] : (SC.ordine || []).map(v => bersaglioPg(v.id)).filter(Boolean);
+  const a = az.azione, pg = [...pgs, ...bersagliCreature(MA.gruppo)];
   const t = tiroPerColpire({ dadi: MA.d20, modo: MA.modo, bonus: a.colpire }), b = pg.find(x => x.id === MA.bersaglio);
   const es = t && b ? esito(t, b.ca) : null;
   let h = `<p class="chi"><b>${esc(az.chi)}</b> · ${esc(a.nome)} <span class="tiro-r">${sg(a.colpire)} · ${esc(a.danni || "")}</span></p>
     <p class="lbl-sez">Bersaglio</p><div class="scelte">${pg.map(x => `<button class="btn" data-at="m-pg" data-id="${x.id}" aria-pressed="${MA.bersaglio === x.id}">${esc(x.nome)}<small>CA ${x.ca} · ${x.hp}/${x.maxhp} PF</small></button>`).join("")}</div>
     <div class="seg modo">${["normale", "vantaggio", "svantaggio"].map(m => `<button data-at="m-modo" data-m="${m}" aria-pressed="${MA.modo === m}">${m[0].toUpperCase() + m.slice(1)}</button>`).join("")}</div>
-    <div class="dadi">${Array.from({ length: MA.modo === "normale" ? 1 : 2 }, (_, i) => `<label class="dado"><span class="lbl">d20</span><input type="number" inputmode="numeric" min="1" max="20" data-ma-d20="${i}" data-foco="ma${i}" value="${esc(MA.d20[i] || "")}"></label>`).join("")}
+    <div class="dadi">${Array.from({ length: MA.modo === "normale" ? 1 : 2 }, (_, i) => `<label class="dado"><span class="lbl">d20</span><input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" min="1" max="20" data-ma-d20="${i}" data-foco="ma${i}" value="${esc(MA.d20[i] || "")}"></label>`).join("")}
       <span class="somma">${t ? `${t.usato} ${sg(a.colpire)} = <b>${t.tot}</b>${b ? ` contro CA ${b.ca}` : ""}` : sg(a.colpire)}</span></div>`;
   if (es) h += `<div class="esito-b ${es === "mancato" ? "mancato" : t.critico ? "critico" : "colpito"}"><b>${es === "mancato" ? "Mancato" : t.critico ? "Critico!" : "Colpito"}</b><span>${esc(b.nome)}</span></div>`;
   if (es === "colpito") {
@@ -84,7 +86,7 @@ function htmlAttaccoMaster() {
     const somma = sommaDanni(parti.map(p => ({ valori: Array.from({ length: p.n }, (_, i) => (MA.dadi[p.k] || [])[i] ?? ""), facce: p.f, mod: p.mod, tipo: p.tipo || "danni" })));
     const fin = somma ? conResistenze(somma.perTipo, b.res) : null;
     h += parti.map(p => `<div class="riga-tiro"><b>${p.n}d${p.f}${p.mod ? sg(p.mod) : ""} ${esc(p.tipo)}</b><div class="dadi">${Array.from({ length: p.n }, (_, i) =>
-      `<label class="dado"><span class="lbl">d${p.f}</span><input type="number" inputmode="numeric" min="1" max="${p.f}" data-ma-dado="${p.k}" data-i="${i}" data-foco="mad${p.k}-${i}" value="${esc((MA.dadi[p.k] || [])[i] ?? "")}"></label>`).join("")}</div></div>`).join("") +
+      `<label class="dado"><span class="lbl">d${p.f}</span><input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" min="1" max="${p.f}" data-ma-dado="${p.k}" data-i="${i}" data-foco="mad${p.k}-${i}" value="${esc((MA.dadi[p.k] || [])[i] ?? "")}"></label>`).join("")}</div></div>`).join("") +
       (!parti.length ? `<p class="attesa">Questa azione non ha dadi di danno: applica l'effetto a voce.</p>` : "") +
       (fin ? `<p class="somma-tot">Totale <b>${fin.tot}</b>${fin.dimezzati.length ? ` · ${esc(b.nome)} resiste: ${fin.dimezzati.join(", ")} dimezzati` : ""}</p>` : "") +
       `<div class="azioni"><button class="btn" data-at="m-annulla">Annulla</button><button class="btn up" data-at="m-colpisci"${fin ? "" : " disabled"}>Applica ${fin ? fin.tot : ""} a ${esc(b.nome)}</button></div>`;
@@ -159,10 +161,10 @@ export function htmlGiocatore(pg) {
         ${slot.map(s => `<button data-at="pun" data-l="${s.liv}" aria-pressed="${B.punizione === s.liv}">Slot ${s.liv}° (${s.liberi})</button>`).join("")}</div>
         ${B.punizione ? `<label class="spunta"><input type="checkbox" data-at="nm"${B.nonMorto ? " checked" : ""}> Contro un non morto o un immondo (+1d8)</label>` : ""}</div>` : ""}
       ${parti.map(p => `<div class="riga-tiro"><b>${esc(p.nome)}</b><div class="dadi">${Array.from({ length: p.n }, (_, i) =>
-        `<label class="dado"><span class="lbl">d${p.facce}</span><input type="number" inputmode="numeric" min="1" max="${p.facce}" data-at-dado="${p.chiave}" data-i="${i}" data-foco="${p.chiave}${i}" value="${esc(p.valori[i] ?? "")}"></label>`).join("")}
+        `<label class="dado"><span class="lbl">d${p.facce}</span><input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" min="1" max="${p.facce}" data-at-dado="${p.chiave}" data-i="${i}" data-foco="${p.chiave}${i}" value="${esc(p.valori[i] ?? "")}"></label>`).join("")}
         ${p.mod ? `<span class="somma">${sg(p.mod)}</span>` : ""}<small class="aiuto">${esc(p.tipo)}</small></div></div>`).join("")}
       <label class="campo-m extra"><span class="lbl">Altri danni (es. Marchio del cacciatore), già sommati</span>
-        <input type="number" inputmode="numeric" min="0" data-at-campo="extra" data-foco="extra" value="${esc(B.extra)}"></label>
+        <input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" min="0" data-at-campo="extra" data-foco="extra" value="${esc(B.extra)}"></label>
       <p class="somma-tot">${somma ? `Totale <b>${somma.tot}</b>` : "Scrivi tutti i dadi"}</p>
       <div class="azioni"><button class="btn up" data-at="invia"${somma ? "" : " disabled"}>Invia i danni</button></div>`);
   }
@@ -175,9 +177,9 @@ export function htmlGiocatore(pg) {
     <p class="lbl-sez">Arma</p><div class="scelte">${d.attacchi.map((w, i) => `<button class="btn" data-at="arma" data-i="${i}" aria-pressed="${B.arma === i}">${esc(w.n)}<small>${sg(w.hit)} · ${w.dice[0]}d${w.dice[1]}${w.mod ? sg(w.mod) : ""}</small></button>`).join("")}</div>
     <p class="lbl-sez">Tiro per colpire</p>
     <div class="seg modo">${["normale", "vantaggio", "svantaggio"].map(m => `<button data-at="modo" data-m="${m}" aria-pressed="${B.modo === m}">${m[0].toUpperCase() + m.slice(1)}</button>`).join("")}</div>
-    <div class="dadi">${Array.from({ length: n }, (_, i) => `<label class="dado"><span class="lbl">d20${n > 1 ? " " + (i + 1) : ""}</span><input type="number" inputmode="numeric" min="1" max="20" data-at-d20="${i}" data-foco="d20-${i}" value="${esc(B.d20[i])}"></label>`).join("")}
+    <div class="dadi">${Array.from({ length: n }, (_, i) => `<label class="dado"><span class="lbl">d20${n > 1 ? " " + (i + 1) : ""}</span><input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" min="1" max="20" data-at-d20="${i}" data-foco="d20-${i}" value="${esc(B.d20[i])}"></label>`).join("")}
       <span class="somma">${t ? `${t.usato} ${sg(t.bonus)} = <b>${t.tot}</b>` : sg(arma.hit)}</span>
-      <label class="dado piccolo"><span class="lbl">Altro</span><input type="number" inputmode="numeric" data-at-campo="extraTiro" data-foco="xt" value="${esc(B.extraTiro)}" aria-label="Bonus in più al tiro, es. Benedizione"></label></div>
+      <label class="dado piccolo"><span class="lbl">Altro</span><input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-at-campo="extraTiro" data-foco="xt" value="${esc(B.extraTiro)}" aria-label="Bonus in più al tiro, es. Benedizione"></label></div>
     <small class="aiuto">"Altro": bonus in più al tiro, per esempio il d4 di Benedizione.</small>
     <div class="azioni"><button class="btn up" data-at="attacca"${t && B.bersaglio ? "" : " disabled"}>Attacca</button></div>`);
 }
@@ -218,13 +220,13 @@ export async function clic(b, pg, scrivi) {
     case "m-modo": MA.modo = b.dataset.m; break;
     case "m-annulla": MA = null; break;
     case "m-colpisci": {
-      const az = azioneDi(MA.gruppo, MA.i), bb = bersaglioPg(MA.bersaglio);
+      const az = azioneDi(MA.gruppo, MA.i), bb = bersaglioPg(MA.bersaglio) || bersagliCreature(MA.gruppo).find(x => x.id === MA.bersaglio);
       const t = tiroPerColpire({ dadi: MA.d20, modo: MA.modo, bonus: az.azione.colpire });
       const parti = partiFormula(az.azione.danni).map((p, k) => ({ valori: Array.from({ length: t.critico ? p.n * 2 : p.n }, (_, i) => (MA.dadi[k] || [])[i] ?? ""), facce: p.f, mod: p.mod, tipo: p.tipo || "danni" }));
       const somma = sommaDanni(parti); if (!somma) return true;
       const fin = conResistenze(somma.perTipo, bb.res);
-      const resta = colpisciPg(bb.id, fin.tot, az.chi);
-      toast(`${bb.nome}: −${fin.tot} PF (ora ${resta})`);
+      if (bb.creatura) { const campi = await ferisci(bb.id, fin.tot, SC); await scrivi(campi); toast(`${bb.nome}: −${fin.tot} PF`); }
+      else { const resta = colpisciPg(bb.id, fin.tot, az.chi); toast(`${bb.nome}: −${fin.tot} PF (ora ${resta})`); }
       MA = null; break;
     }
     /* master: richieste dei giocatori */

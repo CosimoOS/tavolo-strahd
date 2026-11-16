@@ -12,6 +12,7 @@ import { CONFIG } from "./config.js";
 import { opzioni } from "./campagna.js";
 import { avviaNemici, fermaNemici, htmlPreparazione, pannelloAperto, schieraScelte, infoGruppo, htmlTurniMaster, clic as clicNemici, input as inputNemici } from "./nemici.js";
 import { avviaAttacchi, fermaAttacchi, aggiornaScontro, htmlGiocatore, htmlMaster, clic as clicAttacco, input as inputAttacco } from "./attacco.js";
+import { sistemaEvocati } from "./regole/nemici.js";
 import { totaleIniziativa, ordina, pariConPrecedente, avanza, indietro } from "./regole/combattimento.js";
 
 const DOC = "scontro/attuale", TIRI = "scontro/attuale/tiri";
@@ -85,6 +86,10 @@ const attivo = () => (SC && SC.stato === "in corso" && SC.ordine && SC.ordine[SC
 /* ---------- reazioni ai cambiamenti ---------- */
 function aggiorna() {
   if (!SC) return;
+  /* nuovo round: il telefono del master sposta le creature evocate al posto della loro iniziativa */
+  if (dm && SC.stato === "in corso" && (SC.ordine || []).some(v => v.evocati != null && v.evocati < SC.round)) {
+    const r = sistemaEvocati(SC); if (r) arch.aggiorna(DOC, { ...r, ...timbro() }).catch(() => {});
+  }
   /* lo scontro è appena finito? (prec è lo stato visto l'ultima volta; al primo caricamento non c'è) */
   const finito = !dm && prec && prec !== "chiuso" && SC.stato === "chiuso";
   prec = SC.stato;
@@ -153,12 +158,12 @@ function daTirare() {
    Per uno "a mano": il master scrive direttamente il totale. */
 function campi(p, dove) {
   if (p.tipo === "manuale")
-    return `<label class="dado tot"><span class="lbl">Totale</span><input type="number" inputmode="numeric" data-tiro="${p.id}" data-i="0" aria-label="Totale di iniziativa di ${esc(p.nome)}"></label>
+    return `<label class="dado tot"><span class="lbl">Totale</span><input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-tiro="${p.id}" data-i="0" data-foco="t-${p.id}-0" aria-label="Totale di iniziativa di ${esc(p.nome)}"></label>
       <output class="somma" data-somma="${p.id}"></output>`;
   const d = infoDi(p); if (!d) return "";
   const n = d.vantaggio ? 2 : 1, aiuto = d.vantaggio ? "vantaggio: conta il più alto" : "";
   let h = "";
-  for (let i = 0; i < n; i++) h += `<label class="dado"><span class="lbl">d20${n > 1 ? " " + (i + 1) : ""}</span><input type="number" inputmode="numeric" min="1" max="20" data-tiro="${p.id}" data-i="${i}" aria-label="Dado ${i + 1} di ${esc(p.nome)}"${dove === "veil" && i === 0 ? " data-primo" : ""}></label>`;
+  for (let i = 0; i < n; i++) h += `<label class="dado"><span class="lbl">d20${n > 1 ? " " + (i + 1) : ""}</span><input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" min="1" max="20" data-tiro="${p.id}" data-i="${i}" data-foco="t-${dove}-${p.id}-${i}" aria-label="Dado ${i + 1} di ${esc(p.nome)}"${dove === "veil" && i === 0 ? " data-primo" : ""}></label>`;
   return h + `<output class="somma" data-somma="${p.id}">${sg(d.mod)}</output>${aiuto ? `<small class="aiuto">${aiuto}</small>` : ""}`;
 }
 function leggiCampi(radice, p) {
@@ -252,7 +257,7 @@ function disegna(forza) {
   const scritti = [...el.querySelectorAll("[data-tiro]")].map(i => [i.dataset.tiro, i.dataset.i, i.value]);
   const tolti = [...el.querySelectorAll("[data-part]:not(:checked)")].map(i => i.dataset.part);
   const foco = document.activeElement && el.contains(document.activeElement) && document.activeElement.dataset.foco;
-  const campiLiberi = [...el.querySelectorAll("[data-qta], [data-trasf], #nzCreatura, #nzQuanti, #nzModo, #nzRCreatura, #nzRQuanti, #nzRModo, #nzRD20")]
+  const campiLiberi = [...el.querySelectorAll("[data-qta], [data-trasf], #nzCreatura, #nzQuanti, #nzModo, #nzRCreatura, #nzRQuanti, #nzRModo, #nzRD20, #nzREvoca")]
     .map(i => [i.dataset.qta ? `[data-qta="${i.dataset.qta}"]` : i.dataset.trasf ? `[data-trasf="${i.dataset.trasf}"]` : "#" + i.id, i.value]);
   if (SC.stato === "chiuso") el.innerHTML = dm ? vistaPreparazione() : `<section><h2>Scontro</h2><p class="vuoto">Nessuno scontro in corso.</p></section>`;
   else if (SC.stato === "tiri") el.innerHTML = vistaTiri();
@@ -302,7 +307,7 @@ function vistaTiri() {
 
 /* Come stanno le creature del master, per tutti: un'etichetta colorata con la parola
    (o i PF veri, per gli alleati che lo prevedono). Un gruppo mostra una riga per creatura. */
-const etichetta = c => `<span class="stato-c" data-s="${c.ferite}">${c.pf != null && c.ferite !== "sconfitto" ? `${c.pf}/${c.max} PF` : c.ferite}</span>`;
+const etichetta = c => `<span class="stato-c" data-s="${c.ferite}">${c.pf != null && c.ferite !== "sconfitto" ? `${c.pf}/${c.max} PF` : c.ferite}${c.subiti && c.ferite !== "sconfitto" && c.pf == null ? ` <b>−${c.subiti}</b>` : ""}</span>`;
 function membri(id) { return (SC.campo || []).filter(c => c.gruppo === id); }
 function stato(id) {
   const m = membri(id);
