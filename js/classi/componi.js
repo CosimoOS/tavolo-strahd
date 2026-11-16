@@ -43,7 +43,7 @@ export function componi(P, CLASSI, opzioni = () => ({ tasha: false })) {
   const C = {
     /* chi è */
     id: P.id, name: P.name, stemma: P.stemma, femminile: !!P.femminile, tags: P.tags, kv: P.kv, magic: P.magic || /^$/,
-    def: P.def, skills: P.skills, correggi: P.correggi, incantesimiOggetto: P.incantesimiOggetto || [], armor: !!P.armor, insp: P.insp !== false,
+    def: P.def, skills: P.skills, correggi: P.correggi, png: !!P.png, incantesimiOggetto: P.incantesimiOggetto || [], armor: !!P.armor, insp: P.insp !== false,
     classeId: voci[0].classe, sottoclasseId: voci[0].sottoclasse, multiclasse: voci.length > 1,
     vediStato(S) { St = S; },
     get classe() { const p = parti(); return p.length > 1 ? p.map(x => `${x.cl.nome} ${x.lv}`).join(" · ") : prima.nome; },

@@ -33,26 +33,35 @@ export function fermaNemici() { ascolti.forEach(s => s()); ascolti = []; }
 /** true quando il master sta guardando il bestiario o un modello: la vista dello scontro mostra solo quello. */
 export const pannelloAperto = () => !!pannello;
 
+/* Mostri e Persone: stessi dati, due schede. Le persone (paesani, guardie, PNG della campagna) possono stare
+   dalla vostra parte o contro di voi: lo si sceglie quando le si mette in campo. */
+const persona = c => c && c.categoria === "persona";
+let catPrep = "mostri";
 export function htmlPreparazione() {
   if (pannello === "bestiario") return htmlBestiario();
-  const P = perId();
-  const ordinate = B.creature.slice().sort((a, b) => a.nome.localeCompare(b.nome, "it"));
+  const P = perId(), pers = catPrep === "persone";
+  const ordinate = B.creature.filter(c => persona(c) === pers).sort((a, b) => a.nome.localeCompare(b.nome, "it"));
+  const gruppi = B.gruppi.filter(g => g.membri.every(m => persona(P[m.id]) === pers));
+  const lato = s => s.lato || (P[s.creatura] || {}).tipo || "nemico";
   const righe = scelte.map((s, i) => `<li><span class="nome">${s.quanti > 1 ? s.quanti + " × " : ""}${esc(P[s.creatura]?.nome || s.creatura)}</span>
+      <button class="btn link lato-${lato(s)}" data-nz="lato-scelta" data-i="${i}">${lato(s) === "alleato" ? "con noi" : "contro"}</button>
       ${s.quanti > 1 ? `<button class="btn link" data-nz="modo" data-i="${i}">${s.modo === "branco" ? "in branco" : "uno per uno"}</button>` : ""}
       <button class="btn link${s.nascosto ? " acceso" : ""}" data-nz="nasc" data-i="${i}" aria-pressed="${!!s.nascosto}">${s.nascosto ? "nascosti" : "visibili"}</button>
       <button class="btn link" data-nz="togli" data-i="${i}" aria-label="Togli">Togli</button></li>`).join("");
-  return `<section><h2>Nemici e alleati <span class="h2-azioni"><button class="btn link" data-nz="nuovo">Nuovo mostro</button><button class="btn link" data-nz="bestiario">Bestiario</button></span></h2>
+  return `<section><h2>Chi altro combatte <span class="h2-azioni"><button class="btn link" data-nz="nuovo">Nuovo</button><button class="btn link" data-nz="bestiario">Bestiario</button></span></h2>
+    <div class="seg schede-prep"><button data-nz="cat" data-cat="mostri" aria-pressed="${!pers}">Mostri</button><button data-nz="cat" data-cat="persone" aria-pressed="${pers}">Persone</button></div>
     ${!B.creature.length ? `<p class="vuoto">Il bestiario è vuoto: aprilo e importa il file, oppure crea un modello.</p>` : `
-    ${B.gruppi.length ? `<p class="lbl-sez">Gruppi pronti</p><div class="gruppi">${B.gruppi.map(g =>
+    ${pers ? `<p class="hint">Paesani, guardie e personaggi che possono unirsi a voi. Messi in campo, scegli se stanno <b>con noi</b> o <b>contro</b>.</p>` : ""}
+    ${gruppi.length ? `<p class="lbl-sez">Gruppi pronti</p><div class="gruppi">${gruppi.map(g =>
       `<button class="btn" data-nz="gruppo" data-id="${esc(g.id)}">${esc(g.nome)}<small>${g.membri.map(m => `${m.quanti} ${esc(P[m.id]?.nome || m.id)}`).join(", ")}</small></button>`).join("")}</div>` : ""}
-    <p class="lbl-sez">Aggiungi una creatura</p>
+    <p class="lbl-sez">${pers ? "Aggiungi una persona" : "Aggiungi una creatura"}</p>
     <div class="aggiungi">
-      <select id="nzCreatura" aria-label="Creatura">${ordinate.map(c => `<option value="${esc(c.id)}">${esc(c.nome)}${c.tipo === "alleato" ? " (alleato)" : ""}</option>`).join("")}</select>
-      <input id="nzQuanti" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" min="1" max="30" value="1" aria-label="Quanti">
+      <select id="nzCreatura" aria-label="${pers ? "Persona" : "Creatura"}">${ordinate.map(c => `<option value="${esc(c.id)}">${esc(c.nome)}${c.tipo === "alleato" ? " (di solito con noi)" : ""}</option>`).join("")}</select>
+      <input id="nzQuanti" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="1" aria-label="Quanti">
       <select id="nzModo" aria-label="Iniziativa"><option value="branco">in branco</option><option value="uno">uno per uno</option></select>
       <button class="btn gold" data-nz="aggiungi">Aggiungi</button>
     </div>`}
-    ${scelte.length ? `<ul class="schierati">${righe}</ul>` : ""}
+    ${scelte.length ? `<p class="lbl-sez">In campo</p><ul class="schierati">${righe}</ul>` : ""}
   </section>`;
 }
 
@@ -85,6 +94,12 @@ function pubblico(creature, gruppi) {
     ...(c.pfVisibili ? { pf: c.pf, max: c.max } : {}) }));
 }
 
+/** Quanti nemici ci sono in campo e quanti sono ancora in piedi (anche i nascosti): serve per capire se lo scontro è vinto. */
+export function statoNemici(idScontro) {
+  if (C.scontro !== idScontro) return { totali: 0, inPiedi: 0 };
+  const n = C.creature.filter(c => c.tipo !== "alleato");
+  return { totali: n.length, inPiedi: n.filter(c => c.pf > 0).length };
+}
 /** Il nome vero di un gruppo del master (per le sue viste, anche quando è nascosto ai giocatori). */
 export const nomeGruppo = id => { const g = C.gruppi.find(x => x.id === id); return g ? g.nome : null; };
 /** Modificatore d'iniziativa di un gruppo del master (solo lui lo conosce). */
@@ -270,7 +285,7 @@ let ED = null;
 function apriEditor(id) {
   const c = B.creature.find(x => x.id === id);
   ED = { id: id || "", elimina: false, bozza: structuredClone(c || { nome: "", giocatori: "", tipo: "nemico", ca: 12, pf: 10, ini: 0, vel: "9 m",
-    azioni: [{ nome: "", colpire: 3, danni: "" }], tratti: [], tattica: "" }) };
+    azioni: [{ nome: "", colpire: 3, danni: "" }], tratti: [], tattica: "", ...(catPrep === "persone" ? { categoria: "persona" } : {}) }) };
   ED.f = finestra({ chiave: "editor", titolo: id ? "Modifica mostro" : "Nuovo mostro", onClick: clicEditor, onChiudi: () => { ED = null; ridisegna(); } });
   disegnaEditor();
 }
@@ -282,7 +297,8 @@ function disegnaEditor(nuovo = true) {
       ${campo("giocatori", "Nome per i giocatori", c.giocatori, "", "es. Lupo enorme")}
       <div class="tre">${campo("ca", "CA", c.ca, num)}${campo("pf", "PF", c.pf, num)}${campo("ini", "Iniziativa", c.ini ?? 0, num)}</div>
       ${campo("vel", "Velocità", c.vel, "", "9 m")}
-      <div class="campo-m"><span class="lbl">Da che parte sta</span><div class="seg"><button data-ed-tipo="nemico" aria-pressed="${c.tipo !== "alleato"}">Nemico</button><button data-ed-tipo="alleato" aria-pressed="${c.tipo === "alleato"}">Alleato del master</button></div></div>
+      <div class="campo-m"><span class="lbl">Che cos'è</span><div class="seg"><button data-ed-cat="mostro" aria-pressed="${!persona(c)}">Mostro</button><button data-ed-cat="persona" aria-pressed="${persona(c)}">Persona</button></div></div>
+      <div class="campo-m"><span class="lbl">Da che parte sta di solito</span><div class="seg"><button data-ed-tipo="nemico" aria-pressed="${c.tipo !== "alleato"}">Nemico</button><button data-ed-tipo="alleato" aria-pressed="${c.tipo === "alleato"}">Alleato del master</button></div></div>
       ${c.tipo === "alleato" ? `<label class="spunta"><input type="checkbox" data-ed="pfVisibili"${c.pfVisibili ? " checked" : ""}> I giocatori vedono i suoi PF veri</label>` : ""}
       <p class="lbl-sez">Attacchi</p>
       <div class="ed-attacchi">${(c.azioni || []).map((a, i) => `<div class="ed-att">
@@ -316,6 +332,7 @@ async function clicEditor(e) {
   const b = e.target.closest("button"); if (!b || !ED) return;
   if (!b.hasAttribute("data-ed-elimina")) ED.elimina = false;
   if (b.dataset.edTipo) { leggiEditor(); ED.bozza.tipo = b.dataset.edTipo; return disegnaEditor(false); }
+  if (b.dataset.edCat) { leggiEditor(); if (b.dataset.edCat === "persona") ED.bozza.categoria = "persona"; else delete ED.bozza.categoria; return disegnaEditor(false); }
   if (b.hasAttribute("data-ed-aggiungi")) { leggiEditor(); ED.bozza.azioni = [...(ED.bozza.azioni || []), { nome: "", colpire: 3, danni: "" }]; return disegnaEditor(false); }
   if (b.dataset.edTogli != null) { leggiEditor(); ED.bozza.azioni = ED.bozza.azioni.filter((_, i) => i !== +b.dataset.edTogli); return disegnaEditor(false); }
   if (b.hasAttribute("data-ed-elimina")) {
@@ -371,6 +388,8 @@ export async function clic(b, SC, scrivi) {
     case "togli": scelte.splice(+b.dataset.i, 1); break;
     case "modo": { const s = scelte[+b.dataset.i]; s.modo = s.modo === "branco" ? "uno" : "branco"; break; }
     case "nasc": { const s = scelte[+b.dataset.i]; s.nascosto = !s.nascosto; break; }
+    case "cat": catPrep = b.dataset.cat; break;
+    case "lato-scelta": { const s = scelte[+b.dataset.i], ora = s.lato || (perId()[s.creatura] || {}).tipo || "nemico"; s.lato = ora === "alleato" ? "nemico" : "alleato"; break; }
     case "rivela": {
       /* il gruppo intero si fa vedere: nome vero nell'ordine dei turni e stato visibile ai giocatori */
       const g = C.gruppi.find(x => x.membri.includes(b.dataset.id)); if (!g) break;

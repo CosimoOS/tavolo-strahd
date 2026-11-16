@@ -116,6 +116,7 @@ function render() {
   }).join("");
   $("inv").querySelectorAll("li .nome-ogg").forEach((s, i) => { const n = quantita(S.inv[i]).nome; s.textContent = n.charAt(0).toUpperCase() + n.slice(1); });
   if (document.activeElement !== $("notes")) $("notes").value = S.notes;
+  document.dispatchEvent(new Event("scheda:aggiornata"));
 }
 
 /* ---------- incantesimi ----------
@@ -289,6 +290,8 @@ export function curaPg(k, n, da) {
   salvaDopo(k); return St.hp;
 }
 function salvaDopo(k) { if (k === cur) change(); else { clearTimeout(timers[k]); timers[k] = setTimeout(() => flush(k), 300); } }
+/** PF di un personaggio, per la banda in alto durante lo scontro. */
+export function pfDi(k) { const St = STATE[k], P = PERSONAGGI[k]; return St && P ? { nome: P.name, hp: St.hp, max: St.maxhp, stemma: P.stemma } : null; }
 /** Per gli attacchi del master: nome, CA e resistenze di un personaggio (il telefono del master ha tutte le schede). */
 export function bersaglioPg(k) {
   const St = STATE[k], P = PERSONAGGI[k]; if (!St || !P) return null;

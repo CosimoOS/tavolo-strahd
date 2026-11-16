@@ -140,3 +140,26 @@ body.passi-aperta{overflow:hidden}
 .ts-btn{display:flex;gap:6px}
 .ts-btn .btn{min-height:44px}
 .ts-btn .btn[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:#1c140a}
+
+/* pannello di fine scontro */
+.vittoria{position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:10px;padding:44px 16px 34px;text-align:center;
+  border:1px solid var(--gold);border-radius:16px;background:radial-gradient(circle at 50% 35%,color-mix(in srgb,var(--gold) 28%,transparent),var(--gold-soft) 72%)}
+.vittoria b{position:relative;font-family:var(--f-display);font-size:clamp(40px,12vw,56px);font-weight:900;letter-spacing:.06em;line-height:1;color:var(--gold)}
+.vittoria span{position:relative;color:var(--ink);font-size:16px}
+.vittoria.semplice{border-color:var(--line);background:var(--panel)}
+.vittoria.semplice b{font-size:clamp(30px,9vw,40px);color:var(--ink)}
+/* sul telefono il pannello della fine sta a un terzo dell'altezza, non incollato in alto */
+.fine-centro{margin-block:auto;display:flex;flex-direction:column;gap:12px}
+.v-losanghe{position:absolute;inset:0;pointer-events:none}
+.v-losanghe i{position:absolute;left:50%;top:44%;width:12px;height:12px;margin:-6px;transform:rotate(45deg);background:var(--gold);opacity:0}
+.v-danni{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.v-danni li{display:flex;justify-content:space-between;align-items:center;min-height:48px;padding:8px 14px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.v-danni li b{font-family:var(--f-num);font-size:20px;color:var(--gold)}
+@media (prefers-reduced-motion:no-preference){
+  .vittoria{animation:appare .6s cubic-bezier(.2,1.6,.4,1)}
+  .vittoria b{animation:appare .7s .1s cubic-bezier(.2,1.8,.4,1) both}
+  .v-losanghe i{animation:sprizza 1.3s calc(.15s + var(--i) * .04s) ease-out both}
+  @keyframes sprizza{0%{opacity:1;transform:rotate(45deg) translate(0,0) scale(.6)}
+    100%{opacity:0;transform:rotate(calc(45deg + var(--i) * 45deg)) translate(0,-120px) scale(1.2)}}
+  .v-danni li{animation:passo-entra .35s calc(.5s + var(--i) * .12s) ease-out both}
+}

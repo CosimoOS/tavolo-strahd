@@ -138,3 +138,9 @@ test("mostri nascosti: il segno arriva a creature e gruppi", () => {
   assert.deepEqual(creature.map(c => !!c.nascosto), [true, true, false]);
   assert.deepEqual(gruppi.map(g => !!g.nascosto), [true, false]);
 });
+
+test("persone: lo schieramento scelto vale più di quello del modello", () => {
+  const { creature, gruppi } = schiera([{ creatura: "strega", quanti: 1, modo: "uno", lato: "alleato" }], B);
+  assert.equal(creature[0].tipo, "alleato");
+  assert.equal(gruppi[0].tipo, "alleato");
+});

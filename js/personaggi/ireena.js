@@ -3,6 +3,7 @@
 export default {
   id: "ireena", name: "Ireena", classe: "seguace-guerriero", sottoclasse: "attaccante", stemma: "I",
   femminile: true, tags: ["Umana", "Attaccante"], insp: false,
+  png: true,   // seguace: l'iniziativa la tira l'app, come per i PNG del master
   skills: ["Atletica", "Inganno", "Intuizione", "Percezione", "Persuasione"],
   /* correzioni ai dati già salvati: l'ascia di Ezmerelda è un'ascia (accetta) leggera da lancio, 1d6 */
   correggi(S) {

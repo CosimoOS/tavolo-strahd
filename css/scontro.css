@@ -99,26 +99,36 @@ body.master-scontro .dock{background:none;border:0;padding-block:0;backdrop-filt
 .vista-scontro .btn:disabled{opacity:.4;cursor:not-allowed}
 
 /* ===== modalità scontro ===== */
-/* banda in alto quando si guarda la scheda durante uno scontro */
-.banda-scontro{position:fixed;left:0;right:0;top:env(safe-area-inset-top,0px);z-index:16;display:flex;align-items:center;gap:10px;min-height:52px;
-  padding:8px max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px));border:0;border-bottom:1px solid var(--crimson-deep);
-  background:linear-gradient(180deg,var(--crimson),var(--crimson-deep));color:var(--on-accent);font:inherit;text-align:left}
+/* banda in alto durante lo scontro: nello scontro mostra round, PF e il pulsante della scheda;
+   sulla scheda diventa "Torna allo scontro" (dorata quando tocca a te) */
+.banda-scontro{position:fixed;left:0;right:0;top:env(safe-area-inset-top,0px);z-index:16;display:flex;align-items:center;gap:10px;min-height:56px;
+  padding:6px max(12px,env(safe-area-inset-right,0px)) 6px max(16px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--crimson-deep);
+  background:linear-gradient(180deg,var(--crimson),var(--crimson-deep));color:var(--on-accent)}
 .banda-scontro .bs-segno{width:12px;height:12px;transform:rotate(45deg);background:var(--on-accent);flex:none}
 .banda-scontro .bs-testo{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .banda-scontro .bs-testo b{font-family:var(--f-display);letter-spacing:.08em}
-.banda-scontro .bs-vai{flex:none;font-weight:700;padding:6px 12px;border:1px solid color-mix(in srgb,var(--on-accent) 50%,transparent);border-radius:999px;font-size:14px}
+.banda-scontro .bs-pf{flex:none;font-family:var(--f-num);font-size:14px;padding:4px 10px;border-radius:999px;background:rgba(0,0,0,.25)}
+.banda-scontro .bs-pf b{font-size:17px}
+.banda-scontro .bs-pf small{margin-left:3px;opacity:.75}
+.banda-scontro .bs-scheda{flex:none;display:flex;align-items:center;gap:6px;min-height:44px;padding:4px 12px 4px 6px;border:1px solid rgba(255,246,234,.4);border-radius:999px;
+  background:rgba(0,0,0,.2);color:inherit;font:inherit;font-weight:700;font-size:14px}
+.banda-scontro .bs-scheda svg{width:26px;height:30px}
+.banda-scontro .bs-torna{display:flex;align-items:center;gap:10px;flex:1;min-width:0;min-height:44px;border:0;background:transparent;color:inherit;font:inherit;text-align:left;padding:0}
+.banda-scontro .bs-freccia{font-size:30px;line-height:1;flex:none}
 .banda-scontro.tuo{background:linear-gradient(180deg,var(--gold),var(--gold-deep));color:#1c140a;border-bottom-color:var(--gold-deep)}
-.banda-scontro.tuo .bs-segno{background:#1c140a}
-.banda-scontro.tuo .bs-vai{border-color:rgba(28,20,10,.45)}
-@media (prefers-reduced-motion:no-preference){.banda-scontro.tuo .bs-segno{animation:batte 1.2s ease-in-out infinite}
-  @keyframes batte{50%{transform:rotate(45deg) scale(.6)}}}
-body.con-banda{padding-top:calc(env(safe-area-inset-top,0px) + 52px)}
-body.con-banda .dock{top:calc(env(safe-area-inset-top,0px) + 52px)}
+@media (prefers-reduced-motion:no-preference){.banda-scontro.tuo .bs-freccia{animation:batte 1.2s ease-in-out infinite}
+  @keyframes batte{50%{transform:translateX(-4px)}}}
+body.con-banda{padding-top:calc(env(safe-area-inset-top,0px) + 56px)}
+body.con-banda .dock{top:calc(env(safe-area-inset-top,0px) + 56px)}
 
-/* selettore in basso: in scontro "Scontro" sta da parte, in cremisi */
-body.modo-scontro .switch .scontro{background:var(--crimson-soft);border-color:var(--crimson);color:var(--ink);margin-left:6px;position:relative}
-body.modo-scontro .switch .scontro::before{content:"";position:absolute;left:-7px;top:10px;bottom:10px;width:1px;background:var(--line)}
-body.modo-scontro .switch .scontro[aria-pressed="true"]{background:var(--crimson);color:var(--on-accent);border-color:var(--crimson)}
+/* modalità scontro: nella vista dello scontro niente scheda, niente selettore, niente barra dei PF */
+body.scontro-vista .switch,body.scontro-vista #vistaScheda .hero,body.scontro-vista .dock-in{display:none!important}
+/* la barra resta solo come appoggio degli avvisi ("−9 PF da Lupo") */
+body.scontro-vista .dock{background:none;border:0;padding-block:0;backdrop-filter:none;-webkit-backdrop-filter:none}
+body.scontro-vista #vistaScheda .grid{display:none}
+/* sulla scheda durante lo scontro: si cambia personaggio, ma niente "Scontro" e "Profilo" nel selettore */
+body.modo-scontro:not(.scontro-vista) .switch [data-scontro],body.modo-scontro:not(.scontro-vista) .switch [data-esci]{display:none}
+body.master-scontro .dock-in{display:none}
 
 /* il turno adesso: in cima, grande */
 .turno-ora{display:flex;flex-direction:column;gap:14px;border-color:var(--line)}
@@ -153,3 +163,13 @@ body.modo-scontro .switch .scontro[aria-pressed="true"]{background:var(--crimson
 .avviso-conferma{display:flex;align-items:center;gap:10px;width:100%;min-height:56px;padding:10px 16px;border:1px solid var(--crimson);border-radius:12px;
   background:var(--crimson-soft);color:var(--ink);font:inherit;font-weight:600;text-align:left}
 .avviso-conferma b{display:inline-grid;place-items:center;min-width:30px;height:30px;border-radius:999px;background:var(--crimson);color:var(--on-accent);font-family:var(--f-num)}
+
+/* il d20 che rotola per l'iniziativa dei PNG */
+.tiro-auto{display:inline-flex;align-items:center;gap:8px}
+.tiro-auto svg{width:30px;height:30px;color:var(--gold);flex:none}
+@media (prefers-reduced-motion:no-preference){
+  .tiro-auto.rotola svg{animation:rotola 1.1s var(--d) cubic-bezier(.2,.7,.3,1) both}
+  .tiro-auto.rotola .tot,.tiro-auto.rotola small{animation:compare .35s calc(var(--d) + 1.05s) ease-out both}
+  @keyframes rotola{0%{transform:rotate(-540deg) scale(.4);opacity:0}60%{transform:rotate(-30deg) scale(1.15);opacity:1}80%{transform:rotate(10deg) scale(.95)}100%{transform:none}}
+  @keyframes compare{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
+}

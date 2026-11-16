@@ -153,3 +153,9 @@
 .h2-azioni{display:inline-flex;gap:4px;margin-left:auto}
 .btn.rosso{border-color:var(--crimson);color:var(--crimson)}
 .passo .campo-m textarea{font-family:var(--f-body);font-size:15px}
+/* Mostri / Persone nella preparazione */
+.schede-prep{margin:0 0 6px}
+.schede-prep button{min-height:44px;padding:8px 18px}
+.schierati .btn.link.lato-alleato{color:var(--ok);font-weight:700}
+.schierati .btn.link.lato-nemico{color:color-mix(in srgb,var(--crimson) 75%,var(--ink));font-weight:700}
+.vista-scontro .hint b{color:var(--ink)}

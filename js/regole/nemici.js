@@ -32,12 +32,12 @@ export function schiera(scelte, bestiario, gia = []) {
   const creature = [], gruppi = [];
   let n = gia.length;
   const nomiGia = () => [...gia, ...creature];
-  for (const { creatura, quanti, modo, nascosto } of scelte) {
+  for (const { creatura, quanti, modo, nascosto, lato } of scelte) {
     const c = bestiario[creatura]; if (!c || !(quanti > 0)) continue;
     const nomi = nomiNumerati(c.nome, quanti, nomiGia().map(x => x.nome));
     const visti = nomiNumerati(c.giocatori || c.nome, quanti, nomiGia().map(x => x.giocatori));
     const nuove = nomi.map((nome, i) => ({
-      id: `n${++n}`, creatura, nome, giocatori: visti[i], tipo: c.tipo || "nemico",
+      id: `n${++n}`, creatura, nome, giocatori: visti[i], tipo: lato || c.tipo || "nemico",
       pf: c.pf, max: c.pf, ca: c.ca, ini: c.ini ?? 0, pfVisibili: !!c.pfVisibili, ...(nascosto ? { nascosto: true } : {}),
     }));
     const extra = nascosto ? { nascosto: true } : {};

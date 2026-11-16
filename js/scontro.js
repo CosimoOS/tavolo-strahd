@@ -9,10 +9,11 @@
    Ogni scontro ha un id nuovo: i tiri rimasti da uno scontro vecchio non contano più. */
 import { PERSONAGGI, PROFILI } from "./personaggi/index.js";
 import { CONFIG } from "./config.js";
-import { finestra, tastierino, caselleDadi } from "./passi.js";
+import { stemma } from "./stemmi.js";
+import { finestra, finestraAperta, tastierino, caselleDadi, vibra } from "./passi.js";
 import { opzioni } from "./campagna.js";
-import { avviaNemici, fermaNemici, htmlPreparazione, pannelloAperto, schieraScelte, infoGruppo, htmlTurniMaster, nomeGruppo, clic as clicNemici, input as inputNemici } from "./nemici.js";
-import { avviaAttacchi, fermaAttacchi, aggiornaScontro, htmlGiocatore, htmlMaster, clic as clicAttacco, input as inputAttacco } from "./attacco.js";
+import { avviaNemici, fermaNemici, htmlPreparazione, pannelloAperto, schieraScelte, infoGruppo, htmlTurniMaster, nomeGruppo, statoNemici, clic as clicNemici, input as inputNemici } from "./nemici.js";
+import { avviaAttacchi, fermaAttacchi, aggiornaScontro, htmlGiocatore, htmlMaster, danniPerGiocatore, clic as clicAttacco, input as inputAttacco } from "./attacco.js";
 import { sistemaEvocati } from "./regole/nemici.js";
 import { totaleIniziativa, ordina, pariConPrecedente, avanza, indietro } from "./regole/combattimento.js";
 
@@ -23,16 +24,19 @@ const sg = n => (n >= 0 ? "+" : "−") + Math.abs(n);
 
 let arch = null, dm = false, miei = [], info = () => null, toast = () => {};
 let ascolti = [], SC = null, TIRATI = {}, vista = false, rimandato = null, ultimoAvviso = "", inVolo = false;
-let inizioTurno = () => [];
-let chiSono = "", inviando = false, prec = null, congedo = null, visti = new Set();
+let inizioTurno = () => [], pfDi = () => null;
+/* la scheda cambia (PF, nome…): la banda in alto si aggiorna */
+document.addEventListener("scheda:aggiornata", () => { if (SC) modoScontro(); });
+let chiSono = "", inviando = false, prec = null, congedo = null, visti = new Set(), apertoPer = "";
 const secondi = ms => (ms / 1000).toFixed(1).replace(".", ",") + " s";
 
 /* ---------- avvio e arresto (li chiama app.js) ---------- */
-export function avviaScontro({ archivio, profilo, datiIniziativa, datiAttacco, spendiSlot, inizioTurno: iniziaTurno, bersaglioPg, colpisciPg, usaRisorsa, consumaOggetto, curaPg, avvisa }) {
+export function avviaScontro({ archivio, profilo, datiIniziativa, datiAttacco, spendiSlot, inizioTurno: iniziaTurno, bersaglioPg, colpisciPg, usaRisorsa, consumaOggetto, curaPg, pfDi: pf, avvisa }) {
+  pfDi = pf || (() => null);
   inizioTurno = iniziaTurno || (() => []);
   arch = archivio; dm = profilo.id === "dm"; miei = dm ? [] : profilo.personaggi.slice();
   info = datiIniziativa; toast = avvisa; SC = null; TIRATI = {}; rimandato = null; ultimoAvviso = "";
-  chiSono = profilo.id; inviando = false; prec = null; clearTimeout(congedo); congedo = null; visti = new Set(); ultimoTimbro = 0;
+  chiSono = profilo.id; inviando = false; prec = null; apertoPer = ""; clearTimeout(congedo); congedo = null; visti = new Set(); ultimoTimbro = 0;
   ascolti = [
     arch.ascolta(DOC, dati => { SC = dati || { stato: "chiuso" }; aggiornaScontro(SC); if (CONFIG.misura && !dm) misuraMaster(); aggiorna(); },
       () => toast("Scontro non raggiungibile", 5000), { anchePropri: true }),
@@ -101,12 +105,18 @@ function aggiorna() {
   else if (SC.stato !== "chiuso" && congedo) { clearTimeout(congedo); congedo = null; }   // ne è già iniziato un altro
 
   modoScontro();
+  controllaVittoria();
   const b = document.querySelector(".switch [data-scontro]");
   if (b) {
     mostraPulsante(b, dm || SC.stato !== "chiuso");
     b.classList.toggle("avviso", daTirare().length > 0 || !!(attivo() && mio(attivo().id)));
   }
   if (!dm && SC.stato === "chiuso" && vista && !congedo) mostraVista(false);
+  /* "Tirate l'iniziativa" (o l'app riaperta a scontro in corso): a chi partecipa e al master si apre da sola
+     la schermata dello scontro, una volta per scontro; poi ognuno è libero di guardare la scheda */
+  if (SC.stato !== "chiuso" && apertoPer !== SC.id && (dm || (SC.partecipanti || []).some(p => mio(p.id)))) {
+    apertoPer = SC.id; if (!vista) mostraVista(true);
+  }
 
   /* finestra del tiro: si apre da sola ai giocatori che devono ancora tirare */
   if (daTirare().length && rimandato !== SC.id && !(TI && TI.f.aperta)) apriTiro();
@@ -133,23 +143,30 @@ function aggiorna() {
    Durante uno scontro l'app cambia aspetto: il selettore in basso mette in evidenza "Scontro", e quando si guarda
    la scheda una banda cremisi in alto ricorda round e turno (dorata se tocca a te), con un tocco per tornare allo scontro. */
 function modoScontro() {
-  const attivoOra = SC && SC.stato !== "chiuso" && (dm || (SC.partecipanti || []).some(p => mio(p.id)));
-  document.body.classList.toggle("modo-scontro", !!attivoOra);
-  let banda = document.getElementById("bandaScontro");
+  const attivoOra = !!(SC && SC.stato !== "chiuso" && (dm || (SC.partecipanti || []).some(p => mio(p.id))));
+  document.body.classList.toggle("modo-scontro", attivoOra);
+  document.body.classList.toggle("scontro-vista", attivoOra && vista);
+  let banda = $("bandaScontro");
   if (!banda) {
-    banda = document.createElement("button");
+    banda = document.createElement("div");
     banda.id = "bandaScontro"; banda.className = "banda-scontro"; banda.hidden = true;
-    banda.addEventListener("click", () => mostraVista(true));
+    banda.addEventListener("click", e => { const b = e.target.closest("[data-banda]"); if (b) { mostraVista(b.dataset.banda === "scontro"); window.scrollTo({ top: 0 }); } });
     document.body.appendChild(banda);
   }
-  const visibile = !!attivoOra && !vista;
-  banda.hidden = !visibile; document.body.classList.toggle("con-banda", visibile);
-  if (!visibile) return;
-  const a = attivo(), tuo = a && mio(a.id);
-  banda.classList.toggle("tuo", !!tuo);
-  banda.innerHTML = SC.stato === "tiri"
-    ? `<span class="bs-segno" aria-hidden="true"></span><span class="bs-testo"><b>Scontro</b> · tirate l'iniziativa</span><span class="bs-vai">Vai</span>`
-    : `<span class="bs-segno" aria-hidden="true"></span><span class="bs-testo"><b>${tuo ? "Tocca a te" : "Scontro"}</b> · Round ${SC.round}${a && !tuo ? ` · tocca a ${esc(visibile(a) ? nomeVoce(a) : "il master")}` : a ? ` · ${esc(a.nome)}` : ""}</span><span class="bs-vai">Torna allo scontro</span>`;
+  banda.hidden = !attivoOra; document.body.classList.toggle("con-banda", attivoOra);
+  if (!attivoOra) return;
+  const a = attivo(), tuo = !!(a && mio(a.id));
+  const chi = SC.stato === "tiri" ? "tirate l'iniziativa" : `round ${SC.round} · ${tuo ? "tocca a te" : a ? (visibile(a) ? `tocca a ${nomeVoce(a)}` : "turno del master") : ""}`;
+  banda.classList.toggle("tuo", tuo && !vista);
+  if (vista) {
+    /* nello scontro: in alto i tuoi PF e il pulsante per aprire la scheda, come pagina a parte */
+    const k = tuo ? a.id : miei[0], pf = !dm && k ? pfDi(k) : null;
+    banda.innerHTML = `<span class="bs-segno" aria-hidden="true"></span><span class="bs-testo"><b>Scontro</b> · ${esc(chi)}</span>
+      ${pf ? `<span class="bs-pf" title="PF di ${esc(pf.nome)}"><b>${pf.hp}</b>/${pf.max}<small>PF</small></span>` : ""}
+      <button class="bs-scheda" data-banda="scheda" aria-label="${dm ? "Apri le schede" : "Apri la tua scheda"}">${stemma(dm ? "dm" : (pf && pf.stemma) || "dm")}<span>${dm ? "Schede" : "Scheda"}</span></button>`;
+  } else {
+    banda.innerHTML = `<button class="bs-torna" data-banda="scontro"><span class="bs-freccia" aria-hidden="true">‹</span><span class="bs-testo"><b>${tuo ? "Tocca a te" : "Torna allo scontro"}</b> · ${esc(chi)}</span></button>`;
+  }
 }
 
 /* Il pulsante "Scontro" compare e sparisce con un piccolo movimento: si restringe e sfuma (vedi .esce in scontro.css). */
@@ -168,17 +185,57 @@ function salutaFine() {
   if (TI) { TI.f.chiudi(true); TI = null; }
   const f = SC.fine || {};
   if (!f.giocato) { toast("Scontro annullato"); return; }
-  const durata = `Durato ${f.round} round`;
-  if (!vista) { toast(`Scontro concluso · ${durata.toLowerCase()}`, 5000); return; }
-  $("vistaScontro").innerHTML = `<section class="concluso" role="status"><h2>Scontro concluso</h2><p>${durata}</p></section>`;
-  clearTimeout(congedo);
-  congedo = setTimeout(() => { congedo = null; if (SC && SC.stato === "chiuso") mostraVista(false); }, 2800);
+  mostraFine(f);
+}
+/* ---------- fine dello scontro ----------
+   Quando cade l'ultimo nemico (nascosti compresi) il telefono del master propone di chiudere: dopo qualche secondo
+   lo scontro si chiude da solo, a meno che il master tocchi "Non è finito". A tutti compare il pannello di fine. */
+let vittoriaRifiutata = "", vittoriaTimer = null;
+function controllaVittoria() {
+  if (!dm || !SC || SC.stato !== "in corso") return;
+  const st = statoNemici(SC.id), chiave = `${SC.id}:${st.totali}`;
+  if (!st.totali || st.inPiedi > 0 || vittoriaRifiutata === chiave || vittoriaTimer) return;
+  const fa = finestraAperta(); if (fa && fa.chiave === "conferma") return;   // prima la conferma dei danni in corso
+  let resta = 8;
+  const f = finestra({ chiave: "vittoria", titolo: "Fine dello scontro", onChiudi: () => { clearInterval(vittoriaTimer); vittoriaTimer = null; },
+    onClick: async e => {
+      const b = e.target.closest("button"); if (!b) return;
+      if (b.hasAttribute("data-non-finito")) { vittoriaRifiutata = chiave; f.chiudi(); toast("Lo scontro continua"); }
+      if (b.hasAttribute("data-chiudi-ora")) { f.chiudi(); await chiudiScontro(true); }
+    } });
+  f.mostra(`<p class="domanda">Tutti i nemici sono a terra</p>
+    <p class="aiuto">Lo scontro si chiude da solo tra <b class="conto">${resta}</b> secondi. Se stanno per arrivare rinforzi, tocca "Non è finito".</p>
+    <div class="fondo colonna"><button class="btn up grande" data-chiudi-ora>Chiudi ora</button><button class="btn" data-non-finito>Non è finito</button></div>`, { tono: "rosso" });
+  vittoriaTimer = setInterval(async () => {
+    resta--; f.pezzo(".conto", String(resta));
+    if (resta <= 0) { clearInterval(vittoriaTimer); vittoriaTimer = null; f.chiudi(true); await chiudiScontro(true); }
+  }, 1000);
+}
+async function chiudiScontro(vittoria) {
+  const fine = { round: SC.round || 1, giocato: SC.stato === "in corso", vittoria: !!vittoria,
+    sconfitti: statoNemici(SC.id).totali, danni: danniPerGiocatore(SC.id) };
+  await arch.scrivi(DOC, { stato: "chiuso", fine, ...timbro() });
+  if (fine.giocato) mostraFine(fine);
+}
+/* il pannello di fine: vittoria con un po' di festa, oppure semplicemente "scontro concluso" */
+function mostraFine(f) {
+  const danni = Object.entries(f.danni || {}).sort((a, b) => b[1] - a[1]);
+  const fin = finestra({ chiave: "fine", titolo: f.vittoria ? "Vittoria" : "Fine dello scontro", onChiudi: () => { if (SC && SC.stato === "chiuso") mostraVista(false); },
+    onClick: e => { if (e.target.closest("[data-fine-ok]")) fin.chiudi(); } });
+  vibra(f.vittoria ? [80, 60, 80, 60, 160] : 60);
+  fin.mostra(`<div class="fine-centro"><div class="vittoria${f.vittoria ? "" : " semplice"}" role="status">
+      ${f.vittoria ? `<div class="v-losanghe" aria-hidden="true">${Array.from({ length: 8 }, (_, i) => `<i style="--i:${i}"></i>`).join("")}</div>` : ""}
+      <b>${f.vittoria ? "Vittoria!" : "Scontro concluso"}</b>
+      <span>${f.round} ${f.round === 1 ? "round" : "round"}${f.sconfitti ? ` · ${f.sconfitti} ${f.sconfitti === 1 ? "nemico sconfitto" : "nemici sconfitti"}` : ""}</span>
+    </div>
+    ${danni.length ? `<p class="lbl-sez">Danni inflitti</p><ul class="v-danni">${danni.map(([n, d], i) => `<li style="--i:${i}"><span>${esc(n)}</span><b>${d}</b></li>`).join("")}</ul>` : ""}</div>
+    <div class="fondo"><button class="btn up" data-fine-ok>Torna alle schede</button></div>`);
 }
 
 /* i miei personaggi in gara che non hanno ancora tirato (per il master: nessuno, tira dalla sua vista) */
 function daTirare() {
   if (!SC || SC.stato !== "tiri" || dm) return [];
-  return (SC.partecipanti || []).filter(p => mio(p.id) && !tiroDi(p.id));
+  return (SC.partecipanti || []).filter(p => mio(p.id) && !tiroDi(p.id) && !png(p));
 }
 
 /* ---------- campi per scrivere un tiro ---------- */
@@ -211,6 +268,20 @@ function mostraSomma(radice, p) {
   if (p.tipo === "manuale") { out.textContent = ""; return; }
   const d = infoDi(p);
   out.innerHTML = r ? `${r.usato} ${d.mod >= 0 ? "+" : "−"} ${Math.abs(d.mod)} = <b>${r.tot}</b>` : sg(d.mod);
+}
+/* ---------- iniziativa automatica dei PNG ----------
+   Le creature del master e i seguaci come Ireena non tirano a mano: tira il telefono del master, appena si chiede l'iniziativa.
+   È l'unico tiro che fa l'app; attacchi e danni restano dei giocatori e del master. */
+const png = p => nemico(p) || !!(PERSONAGGI[p.id] && PERSONAGGI[p.id].png);
+const d20 = () => { const a = new Uint32Array(1); crypto.getRandomValues(a); return (a[0] % 20) + 1; };
+async function tiraPng(idScontro, partecipanti) {
+  for (const p of partecipanti.filter(png)) {
+    const d = infoDi(p); if (!d) continue;
+    const dadi = d.vantaggio ? [d20(), d20()] : [d20()];
+    const r = totaleIniziativa({ dadi, mod: d.mod, vantaggio: d.vantaggio });
+    await arch.scrivi(`${TIRI}/${p.id}`, { scontro: idScontro, nome: p.nome, tipo: p.tipo, dadi: r.dadi, usato: r.usato, mod: r.mod, tot: r.tot, des: d.des ?? null, auto: true, da: chiSono, inviato: Date.now() });
+    await new Promise(ok => setTimeout(ok, 350));   // uno dopo l'altro: si vedono rotolare in fila
+  }
 }
 /* "inviato" è l'ora d'invio: serve solo a misurare il ritardo con ?misura */
 async function salvaTiro(p, r) {
@@ -284,6 +355,7 @@ async function clicTiro(e) {
 
 /* ---------- vista dello scontro ---------- */
 function disegna(forza) {
+  if (dm) setTimeout(controllaVittoria, 0);   // anche dopo una conferma dei danni: forse era l'ultimo nemico
   if (!vista || !SC || congedo) return;   // durante "Scontro concluso" il riquadro resta fermo
   const el = $("vistaScontro");
   /* mentre il master scrive un modello del bestiario, gli aggiornamenti dall'archivio non devono cancellarlo */
@@ -319,15 +391,26 @@ function vistaPreparazione() {
     <div class="azioni"><button class="btn up" data-az="chiedi">Tirate l'iniziativa</button></div>`;
 }
 
+/* il d20 che rotola: la prima volta che questo telefono vede il tiro parte l'animazione; se la lista si ridisegna
+   a metà, riprende da dove era arrivata (ritardo negativo), così non si interrompe */
+const visto = new Map();
+const D20_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l8.66 5v10L12 22l-8.66-5V7z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 7l4.5 7.5h-9z M12 2v5M20.66 7L16.5 14.5M3.34 7L7.5 14.5M7.5 14.5L3.34 17M16.5 14.5L20.66 17M7.5 14.5L12 22l4.5-7.5" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>`;
+function tiroAnimato(p, t) {
+  const k = `${SC.id}:${p.id}`;
+  if (!visto.has(k)) visto.set(k, Date.now());
+  const trascorso = Date.now() - visto.get(k), fresco = trascorso < 2000;
+  return `<span class="tiro-auto${fresco ? " rotola" : ""}" style="--d:${-trascorso}ms">${D20_SVG}<span class="tot">${t.tot}</span><small>d20 ${t.usato}${t.dadi && t.dadi.length > 1 ? ` (${t.dadi.join(", ")})` : ""} ${sg(t.mod)}</small></span>`;
+}
 function vistaTiri() {
   const parts = (SC.partecipanti || []).filter(visibile), fatti = parts.filter(p => tiroDi(p.id)).length;
   const righe = parts.map(p => {
     const t = tiroDi(p.id);
     let destra;
-    if (t) destra = `<span class="tot">${t.tot}</span><small>${t.tipo === "manuale" ? "a mano" : `d20 ${t.usato} ${sg(t.mod)}`}</small>`;
+    if (t && t.auto) destra = tiroAnimato(p, t);
+    else if (t) destra = `<span class="tot">${t.tot}</span><small>${t.tipo === "manuale" ? "a mano" : `d20 ${t.usato} ${sg(t.mod)}`}</small>`;
     else if (dm) destra = `<button class="btn gold" data-az="mtira" data-id="${p.id}">Tira</button>`;
-    else if (mio(p.id)) destra = `<button class="btn gold" data-az="tira">Tira</button>`;
-    else if (nemico(p)) destra = `<small>tira il master</small>`;
+    else if (mio(p.id) && !png(p)) destra = `<button class="btn gold" data-az="tira">Tira</button>`;
+    else if (png(p)) destra = `<small>tira l'app…</small>`;
     else destra = `<small>in attesa</small>`;
     return `<li class="${t ? "fatto" : ""}" data-p="${p.id}"><span class="nome">${esc(nomeVoce(p))}</span><span class="stato">${destra}</span></li>`;
   }).join("");
@@ -417,6 +500,7 @@ $("vistaScontro").addEventListener("click", async e => {
       const partecipanti = [...catalogo().filter(p => scelti.includes(p.id)), ...nem.partecipanti];
       if (!partecipanti.length) { toast("Scegli almeno un partecipante"); return; }
       await arch.scrivi(DOC, { stato: "tiri", id, partecipanti, campo: nem.campo, ordine: [], turno: 0, round: 1, ...timbro() });
+      tiraPng(id, partecipanti);
     } else if (az === "tira") {
       rimandato = null; apriTiro();
     } else if (az === "mtira") {
@@ -443,8 +527,8 @@ $("vistaScontro").addEventListener("click", async e => {
       await arch.scrivi("campagna/impostazioni", { ...opzioni(), tasha: b.checked });
       toast(b.checked ? "Opzioni di Tasha accese" : "Opzioni di Tasha spente");
     } else if (az === "chiudi") {
-      /* "fine" serve ai giocatori per il messaggio "Scontro concluso · durato N round" */
-      await arch.scrivi(DOC, { stato: "chiuso", fine: { round: SC.round || 1, giocato: SC.stato === "in corso" }, ...timbro() });
+      /* "fine" serve a tutti per il pannello di fine: round, nemici sconfitti, danni di ciascuno */
+      await chiudiScontro(false);
       toast("Scontro chiuso");
     }
   } catch (err) {

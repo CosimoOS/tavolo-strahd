@@ -405,6 +405,12 @@ function apriConferma(a) {
   disegna();
 }
 
+/** Per il riepilogo di fine scontro: quanti danni ha fatto ciascun giocatore. */
+export function danniPerGiocatore(idScontro) {
+  const out = {};
+  A.filter(a => a.scontro === idScontro && a.stato === "applicato" && a.tipo !== "cura").forEach(a => { out[a.pgNome] = (out[a.pgNome] || 0) + (a.applicati || 0); });
+  return out;
+}
 /** Nella vista del master: quanti attacchi aspettano una sua decisione (se ha chiuso la finestra senza decidere). */
 export function htmlMaster() {
   const q = daConfermare();
