@@ -2,11 +2,27 @@
 
 Schede e combattimento per la campagna di D&D del gruppo. L'app fa i conti; i dadi si tirano sempre al tavolo.
 
+**Come si usa l'app** (giocatori e master): vedi [GUIDA.md](GUIDA.md). Questo file è la parte tecnica.
+
 ## Dove si trova online
 
 L'app è pubblicata su <https://cosimoos.github.io/tavolo-strahd/> (GitHub Pages, gratuito).
 Per mandare online una modifica salvata con git basta un comando: `git push`. In un minuto arriva sui telefoni.
 Le cartelle `privato/` (bestiario) e `originali/` restano solo su questo computer.
+
+### Spostarla su Firebase Hosting (per nascondere il codice)
+
+Serve se si vuole rendere **privato** il progetto su GitHub: GitHub pubblica gratis solo i progetti pubblici,
+Firebase Hosting invece è gratis anche così (piano Spark: 10 GB di spazio e 360 MB al giorno; l'app pesa circa 1 MB).
+I file di configurazione ci sono già (`firebase.json`, `.firebaserc`). I passi:
+
+1. **Una volta sola, tu:** nel terminale `npx firebase-tools login` ed entri con l'account Google del progetto.
+2. Pubblicare: `npm run pubblica-firebase`. L'app arriva su <https://tavolo-strahd.web.app>.
+3. Tutti aprono il nuovo indirizzo, rimettono l'icona sulla schermata Home e scrivono il PIN una volta.
+4. Solo quando il nuovo indirizzo funziona: progetto GitHub → *Settings → Change visibility → Private*.
+   Da quel momento il vecchio indirizzo di GitHub smette di funzionare.
+
+Dopo il passaggio, per ogni aggiornamento: `git push` (copia del codice su GitHub, privata) e `npm run pubblica-firebase`.
 
 ## Provarla sul computer
 
@@ -21,7 +37,8 @@ Poi apri <http://localhost:8080> nel browser. Per fermare il server premi `Ctrl+
 L'app usa Firebase: entri con i PIN veri e i dati sono quelli condivisi col gruppo.
 
 Per provare senza toccare i dati veri apri <http://localhost:8080/?prova>: i dati restano solo in quel browser
-e i PIN sono quelli di prova scritti in `js/config.js`. Due schede del browser aperte con `?prova` si parlano,
+e i PIN sono quelli di prova scritti in `js/config.js`. In prova ogni scheda del browser ha il suo profilo
+(sessionStorage) e i dati sono in comune (localStorage): due schede aperte con `?prova` si parlano,
 così puoi fare il master in una e il giocatore nell'altra.
 
 Altri interruttori da aggiungere all'indirizzo, anche insieme (`?misura&robusto`):
@@ -49,12 +66,15 @@ npm test
 | Cartella / file | Cosa contiene |
 |---|---|
 | `index.html` | L'unica pagina dell'app: profili, PIN, scheda |
-| `css/` | Tema Cremesi (`tema.css`), scheda, profili, scontro |
+| `css/` | Tema Cremesi (`tema.css`), scheda, profili, scontro; `vetro.css` (caricato per ultimo) è lo stile "Vetro di Barovia": barra e controlli di vetro, carte, pagine |
 | `js/app.js` | Avvio: decide quale schermata mostrare |
 | `js/config.js` | Prova locale o Firebase; PIN di prova |
 | `js/archivio.js` | L'unico file che parla col database |
 | `js/accesso.js` | Schermata dei profili e tastierino del PIN |
-| `js/scheda.js` | La scheda del personaggio |
+| `js/scheda.js` | La scheda del personaggio divisa in pagine, la barra in basso, l'avatar e il tastierino dei PF |
+| `js/tavolo.js` | Il Tavolo, la pagina di casa del master: scontro in corso, gruppo, strumenti |
+| `js/altro.js` | La pagina Campagna del master: copie di sicurezza, regole del tavolo, accessi |
+| `js/copie.js` | Storico automatico delle schede e copia su file |
 | `js/scontro.js` | Iniziativa e turni, condivisi fra i telefoni |
 | `js/classi/` | Le classi come dati (Guerriero, Paladino, Ranger, Seguace): cosa arriva e cosa si sceglie a ogni livello |
 | `js/regole/talenti.js`, `stili.js` | Talenti (Manuale del Giocatore e Tasha) e stili di combattimento |

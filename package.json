@@ -5,6 +5,7 @@
   "description": "Schede e combattimento per la campagna di D&D del gruppo",
   "scripts": {
     "start": "node strumenti/server.js",
-    "test": "node --test test/"
+    "test": "node --test test/",
+    "pubblica-firebase": "npx --yes firebase-tools deploy --only hosting"
   }
 }

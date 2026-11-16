@@ -70,6 +70,21 @@ service cloud.firestore {
       allow write: if dm();
     }
 
+    // Storico: copie delle schede (e del bestiario, "dm-bestiario") che l'app fa da sola.
+    // Si possono solo aggiungere: nessuno le può modificare o cancellare, nemmeno con il PIN giusto.
+    // Le leggono il master e il proprietario della scheda.
+    match /storico/{scheda}/versioni/{versione} {
+      allow read: if dm() || proprietario(scheda);
+      allow create: if dm() || proprietario(scheda);
+      allow update, delete: if false;
+    }
+
+    // Ultimi accessi: ognuno scrive il proprio, il master li legge tutti.
+    match /accessi/{chi} {
+      allow read: if dm() || (entrato() && profilo() == chi);
+      allow write: if entrato() && profilo() == chi;
+    }
+
     // Tutto il resto è chiuso.
     match /{tutto=**} {
       allow read, write: if false;
