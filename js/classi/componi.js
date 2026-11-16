@@ -43,7 +43,7 @@ export function componi(P, CLASSI, opzioni = () => ({ tasha: false })) {
   const C = {
     /* chi è */
     id: P.id, name: P.name, stemma: P.stemma, femminile: !!P.femminile, tags: P.tags, kv: P.kv, magic: P.magic || /^$/,
-    def: P.def, skills: P.skills, correggi: P.correggi, armor: !!P.armor, insp: P.insp !== false,
+    def: P.def, skills: P.skills, correggi: P.correggi, incantesimiOggetto: P.incantesimiOggetto || [], armor: !!P.armor, insp: P.insp !== false,
     classeId: voci[0].classe, sottoclasseId: voci[0].sottoclasse, multiclasse: voci.length > 1,
     vediStato(S) { St = S; },
     get classe() { const p = parti(); return p.length > 1 ? p.map(x => `${x.cl.nome} ${x.lv}`).join(" · ") : prima.nome; },
@@ -85,6 +85,7 @@ export function componi(P, CLASSI, opzioni = () => ({ tasha: false })) {
         const preparati = !!p.cl.quantiPreparati, tipo = preparati ? "preparati" : "conosciuti";
         return {
           id: p.id, nome: p.cl.nome, testo: p.cl.magiaTesto(p.lv, X), preparati,
+          colpire: X.P + X.M[p.cl.carMagia || "sag"], cd: 8 + X.P + X.M[p.cl.carMagia || "sag"],
           chiave: chiaveInc(p.id, tipo), limite: preparati ? p.cl.quantiPreparati(p.lv, X) : p.cl.quantiConosciuti(p.lv),
           max: p.cl.maxLivelloIncantesimi(p.lv), lista: p.cl.incantesimiClasse ? p.cl.incantesimiClasse(opz()) : [],
           fissi: p.cl.incantesimiSottoclasse ? p.cl.incantesimiSottoclasse(voci.find(v => v.classe === p.id).sottoclasse, p.lv) : [],

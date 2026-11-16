@@ -58,6 +58,7 @@ export default {
   risorse(L) {
     return L >= 2 ? [{ k: "forma", nome: "Forma selvatica", testo: `Azione: ti trasformi in una bestia (GS ${L >= 8 ? 1 : L >= 4 ? "1/2" : "1/4"}) · riposo breve`, max: 2, riposo: "breve" }] : [];
   },
+  carMagia: "sag",
   magiaTesto: (L, X) => `CD ${8 + X.P + X.M.sag} · ${X.P + X.M.sag >= 0 ? "+" : ""}${X.P + X.M.sag} per colpire`,
   quantiPreparati: (L, X) => Math.max(1, X.M.sag + L),
   quantiTrucchetti: trucchetti,

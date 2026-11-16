@@ -69,6 +69,7 @@ export default {
     if (opz.tasha && scelta(S, "nemico-favorito") === "si") r.push({ k: "favorito", nome: "Nemico favorito", testo: "Azione bonus: marchi un bersaglio, +1d4 danni per colpo · riposo lungo", max: X.P, riposo: "lungo" });
     return r;
   },
+  carMagia: "sag",
   magiaTesto: (L, X) => `CD ${8 + X.P + X.M.sag} · ${X.P + X.M.sag >= 0 ? "+" : ""}${X.P + X.M.sag} per colpire`,
   quantiConosciuti: conosciuti,
   maxLivelloIncantesimi: L => slotMezzo(L).length,

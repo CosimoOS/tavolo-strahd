@@ -208,6 +208,18 @@ export function creaturaInCampo(id) {
   const difese = (m.tratti || []).filter(t => /immun|resist|vulnerab|difese/i.test(t.nome + " " + t.testo)).map(t => chiaro(t.testo));
   return { ...c, difese };
 }
+/** Danni a più creature insieme (un incantesimo ad area): un solo salvataggio, così nessun danno va perso. */
+export async function ferisciMolti(lista, SC) {
+  let creature = C.creature.map(c => { const x = lista.find(l => l.id === c.id); return x ? { ...c, pf: danno(c.pf, x.n) } : c; });
+  await arch.aggiorna(CAMPO, { creature });
+  for (const { id } of lista) await ricorda(creature, id);
+  let st = { ordine: SC.ordine || [], turno: SC.turno, round: SC.round }, cambiato = false;
+  for (const g of C.gruppi) {
+    if (st.ordine.some(v => v.id === g.id) && creature.filter(x => g.membri.includes(x.id)).every(x => x.pf <= 0)) { st = togliDaOrdine(st, g.id); cambiato = true; }
+  }
+  lista.forEach(({ id }) => { const c = creature.find(x => x.id === id); if (c && c.pf <= 0) toast(`${c.nome}: sconfitto`); });
+  return { campo: pubblico(creature, C.gruppi), ...(cambiato ? st : {}) };
+}
 /** Un attacco del bestiario usato dal master: chi attacca (nome vero) e l'azione scelta. */
 export function azioneDi(gruppoId, i) {
   const g = C.gruppi.find(x => x.id === gruppoId); if (!g) return null;

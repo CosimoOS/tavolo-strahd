@@ -3,6 +3,7 @@
 import { AB, ABN, STYLES, CONDS, COINS, mod, prof, sg, clone, calcola, attacchiOrdinati, normalizza, quantita, conQuantita, aggiungiOggetto } from "./regole/base.js";
 import { talento, talentiDisponibili, requisiti } from "./regole/talenti.js";
 import { stiliPer } from "./regole/stili.js";
+import { INCANTESIMI_ATTACCO, EXTRA_DANNI, moltTrucchetto, partiDanno } from "./regole/magia.js";
 import { opzioni, suOpzioni } from "./campagna.js";
 import { PERSONAGGI } from "./personaggi/index.js";
 import { stemma } from "./stemmi.js";
@@ -192,9 +193,13 @@ export function apriScheda({ archivio, personaggi, onEsci, scontro }) {
     LOADED[k] = true; if (k === cur) clearTimeout(lento);
     if (timers[k] || saving[k]) return;                    // ho modifiche mie in arrivo: non le sovrascrivo
     const prima = STATE[k] && STATE[k].colpito && STATE[k].colpito.t, primaVolta = !VISTO[k]; VISTO[k] = true;
+    const prima2 = STATE[k] && STATE[k].curato && STATE[k].curato.t;
     if (dati) STATE[k] = normalizza(PERSONAGGI[k].def, dati);
     /* correzioni ai dati vecchi (es. un'arma sistemata): se cambiano qualcosa, la scheda si risalva da sola */
     if (PERSONAGGI[k].correggi && PERSONAGGI[k].correggi(STATE[k]) && canWrite) { clearTimeout(timers[k]); timers[k] = setTimeout(() => flush(k), 800); }
+    /* curato da un compagno (pozione data da un altro giocatore) */
+    const cu = STATE[k].curato;
+    if (!primaVolta && cu && cu.t !== (prima2 || 0) && Date.now() - cu.t < 60000) toast(`${PERSONAGGI[k].name}: +${cu.n} PF da ${cu.da}`, 6000);
     /* colpito da un attacco del master: avviso, e tiro di concentrazione se serve */
     const c = STATE[k].colpito;
     if (!primaVolta && c && c.t !== prima && Date.now() - c.t < 60000) {
@@ -230,11 +235,60 @@ export function datiIniziativa(k) {
     e gli slot liberi per la Punizione divina (se il personaggio ce l'ha). */
 export function datiAttacco(k) {
   if (!STATE[k] || !PERSONAGGI[k]) return null;
-  const P = PERSONAGGI[k], St = STATE[k], X = calcola(P, St);
-  const slot = (P.risorse ? P.risorse(X.L, X, St) : []).filter(r => /^slot\d$/.test(r.k))
+  const P = PERSONAGGI[k], St = STATE[k], X = calcola(P, St), L = X.L;
+  const slot = (P.risorse ? P.risorse(L, X, St) : []).filter(r => /^slot\d$/.test(r.k))
     .map(r => ({ liv: +r.k.slice(4), liberi: Math.max(0, r.max - (St[r.k] || 0)) }));
-  return { nome: P.name, critMin: P.critMin(X.L), attacchi: attacchiOrdinati(X), punizione: !!P.punizione && X.L >= 2, slot };
+  const liberi = liv => (slot.find(s => s.liv === liv) || {}).liberi || 0;
+  /* 1. le armi */
+  const armi = attacchiOrdinati(X).map(a => ({ n: a.n, tipo: "arma", hit: a.hit, t: (a.t || "").toLowerCase(), nota: a.note || "",
+    parti: [{ n: a.dice[0], f: a.dice[1], mod: a.mod, t: (a.t || "").toLowerCase() }], dice: a.dice, mod: a.mod, magic: a.magic }));
+  /* 2. gli incantesimi d'attacco che conosce o ha preparato (trucchetti compresi) */
+  const magie = P.magie ? P.magie(L, X, St) : [], noti = new Set();
+  const incantesimi = [];
+  magie.forEach(m => {
+    const nomi = [...(St[m.chiave] || []), ...m.fissi.map(i => i.n), ...(m.trucchetti ? St[m.trucchetti.chiave] || [] : [])];
+    nomi.forEach(n => {
+      noti.add(n);
+      const e = INCANTESIMI_ATTACCO[n]; if (!e || incantesimi.some(i => i.n === n)) return;
+      incantesimi.push({ n, tipo: e.tipo, hit: m.colpire, cd: m.cd, ts: e.ts, meta: !!e.meta, area: !!e.area, slot: e.slot || 0,
+        parti: partiDanno(e.parti, { molt: e.trucchetto ? moltTrucchetto(L) : 1 }), nota: [e.gittata, e.nota].filter(Boolean).join(" · "),
+        etichetta: e.trucchetto ? "trucchetto" : "incantesimo", disponibile: !e.slot || liberi(e.slot) > 0 });
+    });
+  });
+  /* 3. incantesimi di un oggetto (l'Armatura Cremesi), finché è in sintonia e ha usi */
+  const oggetto = (P.incantesimiOggetto || []).filter(o => !o.richiede || St.attuned.some(a => o.richiede.test(a)))
+    .map(o => ({ ...o, etichetta: "oggetto", disponibile: !o.uso || (St[o.uso] || 0) < o.max, usiRimasti: o.uso ? o.max - (St[o.uso] || 0) : null }));
+  /* 4. acqua santa da lanciare, se ce l'ha */
+  const acqua = St.inv.some(t => /acqua santa/i.test(t)) ? [{ n: "Acqua santa", tipo: "attacco", hit: X.M.des, consuma: "Acqua santa", etichetta: "oggetto",
+    parti: [{ n: 2, f: 6, t: "radianti" }], nota: "lanciata a 6 m: solo contro non morti e immondi", disponibile: true }] : [];
+  /* gli extra ai danni che può accendere quando colpisce con un'arma */
+  const extra = EXTRA_DANNI.filter(e => (!e.incantesimo || noti.has(e.incantesimo)) && (!e.scelta || (St.scelte || []).some(c => c.id === e.scelta[0] && c.valore === e.scelta[1])))
+    .map(e => ({ ...e, disponibile: !e.slot || liberi(e.slot) > 0 }));
+  return { nome: P.name, livello: L, critMin: P.critMin(L), attacchi: armi, opzioni: [...armi, ...incantesimi, ...oggetto, ...acqua], extra,
+    punizione: !!P.punizione && L >= 2, slot, inv: St.inv.slice() };
 }
+/** Segna un uso di una risorsa (es. il Dardo caotico dell'armatura) e salva. */
+export function usaRisorsa(k, chiave) {
+  const St = STATE[k]; if (!St || !chiave) return;
+  St[chiave] = (St[chiave] || 0) + 1; salvaDopo(k);
+}
+/** Un oggetto in meno nell'equipaggiamento (pozione bevuta, acqua santa lanciata). */
+export function consumaOggetto(k, nome) {
+  const St = STATE[k]; if (!St) return;
+  const i = St.inv.findIndex(t => quantita(t).nome.toLowerCase() === quantita(nome).nome.toLowerCase() || t.toLowerCase().includes(nome.toLowerCase()));
+  if (i < 0) return;
+  const q = quantita(St.inv[i]);
+  St.inv = q.n > 1 ? St.inv.map((t, j) => j === i ? conQuantita(q.nome, q.n - 1) : t) : St.inv.filter((_, j) => j !== i);
+  salvaDopo(k);
+}
+/** Cura un personaggio (pozione): PF fino al massimo; da 0 PF si riparte e i tiri contro la morte si azzerano. */
+export function curaPg(k, n, da) {
+  const St = STATE[k]; if (!St) return null;
+  if (St.hp === 0) { St.deathS = 0; St.deathF = 0; }
+  St.hp = Math.min(St.maxhp, St.hp + n); St.curato = { n, da, t: Date.now() };
+  salvaDopo(k); return St.hp;
+}
+function salvaDopo(k) { if (k === cur) change(); else { clearTimeout(timers[k]); timers[k] = setTimeout(() => flush(k), 300); } }
 /** Per gli attacchi del master: nome, CA e resistenze di un personaggio (il telefono del master ha tutte le schede). */
 export function bersaglioPg(k) {
   const St = STATE[k], P = PERSONAGGI[k]; if (!St || !P) return null;

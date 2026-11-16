@@ -93,6 +93,7 @@ export default {
   atkNota: L => L >= 2 ? `Punizione divina: dopo un colpo in mischia spendi uno slot, +2d8 radianti con uno di 1°, +1d8 per ogni livello in più (+1d8 contro non morti e immondi). Con un critico raddoppiano anche questi dadi.${L >= 11 ? " Punizione migliorata: +1d8 radianti a ogni colpo in mischia." : ""}` : "",
 
   /* incantesimi: CD, preparati (Car + metà livello) e quelli del giuramento sempre pronti */
+  carMagia: "car",
   magiaTesto: (L, X) => `CD ${8 + X.P + X.M.car} · ${X.P + X.M.car >= 0 ? "+" : ""}${X.P + X.M.car} per colpire`,
   quantiPreparati: (L, X) => Math.max(1, X.M.car + Math.floor(L / 2)),
   maxLivelloIncantesimi: L => slotMezzo(L).length,

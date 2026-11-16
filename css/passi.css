@@ -128,3 +128,15 @@ body.passi-aperta{overflow:hidden}
 .passi-testa .passi-ind[hidden]{display:block!important;visibility:hidden}
 .tre-btn .btn{display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1.2}
 .tre-btn .btn small{font-size:11px;color:var(--muted);letter-spacing:.04em}
+.carta:disabled{opacity:.45;cursor:not-allowed}
+.passo .lbl-sez{margin:6px 0 -6px}
+.esiti-ts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.esiti-ts li{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;padding:8px 14px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.esiti-ts li b{font-family:var(--f-num)}
+.esiti-ts li small{color:var(--muted)}
+.esiti-ts li.fallisce{border-color:var(--gold-deep)}
+.esiti-ts li.riesce{opacity:.8}
+.carta.ts-riga{flex-wrap:wrap}
+.ts-btn{display:flex;gap:6px}
+.ts-btn .btn{min-height:44px}
+.ts-btn .btn[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:#1c140a}

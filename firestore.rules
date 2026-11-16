@@ -53,13 +53,13 @@ service cloud.firestore {
       allow write: if dm() || proprietario(scheda);
     }
 
-    // Attacchi dal telefono: il giocatore crea il proprio (stato "colpire") e, se il master ha scritto "colpito",
-    // può solo aggiungere i danni. Esito e danni applicati li scrive il master.
+    // Attacchi dal telefono: il giocatore crea il proprio ("colpire", "ts" per i tiri salvezza, "cura" per una pozione data a un compagno)
+    // e, dopo "colpito" o "ts-fatto" scritti dal master, può solo aggiungere i danni. Esiti e danni applicati li scrive il master.
     match /scontro/attuale/attacchi/{attacco} {
       allow read: if entrato();
-      allow create: if dm() || (proprietario(request.resource.data.pg) && request.resource.data.stato == 'colpire');
+      allow create: if dm() || (proprietario(request.resource.data.pg) && request.resource.data.stato in ['colpire', 'ts', 'cura']);
       allow update: if dm() || (proprietario(resource.data.pg)
-        && resource.data.stato == 'colpito' && request.resource.data.stato == 'danni'
+        && resource.data.stato in ['colpito', 'ts-fatto'] && request.resource.data.stato == 'danni'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stato', 'danni']));
       allow delete: if dm();
     }

@@ -7,6 +7,15 @@ export default {
   femminile: false, tags: ["Umano", "Nobile"], armor: true,
   skills: ["Addestrare animali", "Atletica", "Persuasione", "Storia"],
   privilegi: [["Posizione privilegiata", "Accolto nell'alta società; i popolani fanno di tutto per compiacerlo."]],
+  /* incantesimi dell'Armatura Cremesi, usabili in combattimento finché è in sintonia */
+  incantesimiOggetto: [
+    { n: "Stretta folgorante", tipo: "attacco", hit: 5, parti: [{ n: 2, f: 8, t: "fulmine" }], richiede: /cremesi/i,
+      nota: "a contatto; vantaggio contro chi indossa metallo; il bersaglio perde la reazione" },
+    { n: "Dardo caotico", tipo: "attacco", hit: 5, parti: [{ n: 2, f: 8, t: "fulmine" }, { n: 1, f: 6, t: "fulmine" }], richiede: /cremesi/i, uso: "dardo", max: 3,
+      nota: "36 m; se i due d8 sono uguali l'energia balza su un'altra creatura entro 9 m" },
+    { n: "Fulmine", tipo: "ts", ts: "des", cd: 13, parti: [{ n: 8, f: 6, t: "fulmine" }], meta: true, area: true, richiede: /cremesi/i, uso: "fulmine", max: 1,
+      nota: "linea di 30 m" },
+  ],
   kv: [["Armature", "Leggere, medie, pesanti, scudi"], ["Armi", "Semplici e da guerra"], ["Strumenti", "Un tipo di gioco"],
     ["Lingue", "Comune, Elfico, Nanico"], ["Fazione", "Le Sogliole"], ["Aspetto", "27 anni, 189 cm, 107 kg"]],
   magic: /cremesi|spada del sole|inestinguibile/i,

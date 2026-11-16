@@ -28,7 +28,7 @@ let chiSono = "", inviando = false, prec = null, congedo = null, visti = new Set
 const secondi = ms => (ms / 1000).toFixed(1).replace(".", ",") + " s";
 
 /* ---------- avvio e arresto (li chiama app.js) ---------- */
-export function avviaScontro({ archivio, profilo, datiIniziativa, datiAttacco, spendiSlot, inizioTurno: iniziaTurno, bersaglioPg, colpisciPg, avvisa }) {
+export function avviaScontro({ archivio, profilo, datiIniziativa, datiAttacco, spendiSlot, inizioTurno: iniziaTurno, bersaglioPg, colpisciPg, usaRisorsa, consumaOggetto, curaPg, avvisa }) {
   inizioTurno = iniziaTurno || (() => []);
   arch = archivio; dm = profilo.id === "dm"; miei = dm ? [] : profilo.personaggi.slice();
   info = datiIniziativa; toast = avvisa; SC = null; TIRATI = {}; rimandato = null; ultimoAvviso = "";
@@ -44,7 +44,7 @@ export function avviaScontro({ archivio, profilo, datiIniziativa, datiAttacco, s
   ];
   if (dm) avviaNemici({ archivio, aggiorna: () => disegna(true), avvisa });
   avviaAttacchi({ archivio, master: dm, avvisa, aggiorna: () => disegna(true), datiAttacco, spendiSlot, bersaglio: bersaglioPg, colpisci: colpisciPg,
-    scrivi: campi => arch.aggiorna(DOC, { ...campi, ...timbro() }) });
+    scrivi: campi => arch.aggiorna(DOC, { ...campi, ...timbro() }), usa: usaRisorsa, consuma: consumaOggetto, cura: curaPg });
 }
 export function fermaScontro() {
   ascolti.forEach(stop => stop()); ascolti = [];
