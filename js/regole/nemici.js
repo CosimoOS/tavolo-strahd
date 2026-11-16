@@ -174,3 +174,38 @@ export function sistemaEvocati({ ordine, turno, round }) {
   const t = st.ordine.findIndex(v => v.id === attivo);
   return { ordine: st.ordine, turno: turno === 0 || t < 0 ? 0 : t };
 }
+
+/** Il turno di un branco, un membro alla volta: chi agisce adesso tra quelli in piedi (i-esimo), a che punto si è,
+    chi viene dopo e se è l'ultimo (allora si chiude il turno del branco). null se in piedi ce n'è uno solo. */
+export function passoBranco(vivi, i) {
+  if (!vivi || vivi.length < 2) return null;
+  const k = Math.max(0, Math.min(i, vivi.length - 1)), ultimo = k === vivi.length - 1;
+  return { membro: vivi[k], n: k + 1, tot: vivi.length, ultimo, prossimo: ultimo ? null : vivi[k + 1].nome };
+}
+
+/** Lo scontro può partire? Serve qualcuno del gruppo e almeno una creatura messa "contro" (regola del nostro tavolo:
+    è capitato di far partire scontri vuoti). scelte: quelle della preparazione; modelli: il bestiario per id. */
+export function puoIniziare({ gruppo, scelte, modelli }) {
+  const contro = s => (s.lato || (modelli[s.creatura] || {}).tipo || "nemico") !== "alleato";
+  if (!(scelte || []).some(contro)) return { ok: false, perche: "Aggiungi almeno un nemico: senza nemici lo scontro non parte." };
+  if (!gruppo) return { ok: false, perche: "Scegli almeno un personaggio del gruppo." };
+  return { ok: true, perche: "" };
+}
+
+/** Cerca tra le creature del bestiario, per nome vero o per il nome che vedono i giocatori; in ordine alfabetico. */
+export function cercaCreature(creature, testo) {
+  const piano = t => (t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""), q = piano(testo).trim();
+  return creature.filter(c => !q || piano(c.nome).includes(q) || piano(c.giocatori).includes(q)).sort((a, b) => a.nome.localeCompare(b.nome, "it"));
+}
+
+/* i nomi inglesi che i manuali mettono tra parentesi: nell'app resta solo l'italiano */
+const INGLESE = /\s*\((?:tree blight|twig blight|needle blight|vine blight|mongrelfolk|wereraven|werewolf|flameskull|night hag|nightmare|specter|will-o'-wisp|[a-z]+ (?:blight|hag|spawn|swarm|golem|zombie|skeleton))\)\s*$/i;
+/** "Albero avvizzito (tree blight)" → "Albero avvizzito". Le parentesi in italiano restano. */
+export const soloItaliano = nome => typeof nome === "string" ? nome.replace(INGLESE, "") : nome;
+
+/** In che parte del bestiario sta una creatura: "alleati" (combattono con il gruppo), "persone" (abitanti e PNG:
+    la parte si sceglie quando entrano in campo), "mostri" (partono contro il gruppo). */
+export const sezioneBestiario = c => c.tipo === "alleato" ? "alleati" : c.categoria === "persona" ? "persone" : "mostri";
+
+/** Tutti i partecipanti hanno il loro tiro d'iniziativa? Allora lo scontro parte da solo. */
+export const tuttiHannoTirato = (partecipanti, haTirato) => partecipanti.length > 0 && partecipanti.every(p => haTirato(p.id));

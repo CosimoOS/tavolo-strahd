@@ -16,6 +16,7 @@ export default {
 
   novita(l, opz) {
     const f = [];
+    if (l === 1) f.push(["Stile di combattimento", "Scegli uno stile, qui sotto."], ["Recuperare energie", "Azione bonus: recuperi 1d10 + livello da guerriero PF, una volta per riposo."]);
     if (l === 2) f.push(["Azione impetuosa", "Un'azione in più nel turno, una volta per riposo."]);
     if (this.asi.includes(l)) f.push(["Aumento dei punteggi di caratteristica", "+2 a una caratteristica, +1 a due, oppure un talento."]);
     if (opz.tasha && this.asi.includes(l)) f.push(["Versatilità marziale (Tasha)", "Puoi cambiare uno stile di combattimento con un altro."]);

@@ -24,3 +24,9 @@ test("pozioni e tiri salvezza", () => {
   assert.equal(danniTs(13, true, true), 6);
   assert.equal(danniTs(13, true, false), 0);
 });
+
+test("in combattimento si propongono solo gli oggetti che si usano davvero: pozioni e simili, non razioni o abiti", async () => {
+  const { usabileInCombattimento } = await import("../js/regole/magia.js");
+  for (const si of ["Pozione di guarigione", "2 pozioni di guarigione maggiore", "Olio", "Fuoco dell'alchimista", "Pergamena di Benedizione", "Antidoto", "Acqua santa"]) assert.equal(usabileInCombattimento(si), true, si);
+  for (const no of ["Razioni da viaggio", "Abito pregiato", "Spadone", "Corda di canapa", "Armatura Cremesi", "Focus druidico"]) assert.equal(usabileInCombattimento(no), false, no);
+});

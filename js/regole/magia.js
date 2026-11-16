@@ -18,18 +18,19 @@ export const INCANTESIMI_ATTACCO = {
 
 /** Gli extra che si aggiungono ai danni di un colpo con un'arma. Si accendono nel passo dei danni.
     incantesimo: serve averlo tra i conosciuti o i preparati · scelta: [id, valore] serve quella scelta di classe
-    slot: spende uno slot di quel livello (le punizioni) · volte: "turno" = una volta per turno. */
+    slot: spende uno slot di quel livello (le punizioni) · volte: "turno" = una volta per turno.
+   mischia: vale solo con un attacco con un'arma da mischia (quasi tutte le punizioni; la Punizione marchiante anche a distanza). */
 export const EXTRA_DANNI = [
   { id: "marchio", nome: "Marchio del cacciatore", parti: [{ n: 1, f: 6, t: "arma" }], incantesimo: "Marchio del cacciatore", nota: "se il bersaglio è marchiato" },
   { id: "colosso", nome: "Uccisore di colossi", parti: [{ n: 1, f: 8, t: "arma" }], scelta: ["preda", "colosso"], volte: "turno", nota: "una volta per turno, se il bersaglio era già ferito" },
   { id: "zefiro", nome: "Colpo di zefiro", parti: [{ n: 1, f: 8, t: "forza" }], incantesimo: "Colpo di zefiro", nota: "una volta, mentre l'incantesimo è attivo" },
   { id: "favore", nome: "Favore divino", parti: [{ n: 1, f: 4, t: "radianti" }], incantesimo: "Favore divino", nota: "mentre l'incantesimo è attivo" },
-  { id: "ardente", nome: "Punizione ardente", parti: [{ n: 1, f: 6, t: "fuoco" }], incantesimo: "Punizione ardente", slot: 1 },
-  { id: "tonante", nome: "Punizione tonante", parti: [{ n: 2, f: 6, t: "tuono" }], incantesimo: "Punizione tonante", slot: 1 },
-  { id: "iraconda", nome: "Punizione iraconda", parti: [{ n: 1, f: 6, t: "psichici" }], incantesimo: "Punizione iraconda", slot: 1 },
+  { id: "ardente", mischia: true, nome: "Punizione ardente", parti: [{ n: 1, f: 6, t: "fuoco" }], incantesimo: "Punizione ardente", slot: 1 },
+  { id: "tonante", mischia: true, nome: "Punizione tonante", parti: [{ n: 2, f: 6, t: "tuono" }], incantesimo: "Punizione tonante", slot: 1 },
+  { id: "iraconda", mischia: true, nome: "Punizione iraconda", parti: [{ n: 1, f: 6, t: "psichici" }], incantesimo: "Punizione iraconda", slot: 1 },
   { id: "marchiante", nome: "Punizione marchiante", parti: [{ n: 2, f: 6, t: "radianti" }], incantesimo: "Punizione marchiante", slot: 2 },
-  { id: "accecante", nome: "Punizione accecante", parti: [{ n: 3, f: 8, t: "radianti" }], incantesimo: "Punizione accecante", slot: 3 },
-  { id: "sbilanciante", nome: "Punizione sbilanciante", parti: [{ n: 4, f: 6, t: "psichici" }], incantesimo: "Punizione sbilanciante", slot: 4 },
+  { id: "accecante", mischia: true, nome: "Punizione accecante", parti: [{ n: 3, f: 8, t: "radianti" }], incantesimo: "Punizione accecante", slot: 3 },
+  { id: "sbilanciante", mischia: true, nome: "Punizione sbilanciante", parti: [{ n: 4, f: 6, t: "psichici" }], incantesimo: "Punizione sbilanciante", slot: 4 },
 ];
 
 /** Dadi di un trucchetto al livello del personaggio: x2 dal 5°, x3 dall'11°, x4 dal 17°. */
@@ -51,3 +52,8 @@ export const curaDi = nome => CURE.find(c => c.re.test(nome)) || null;
 
 /** Danni finali di un tiro salvezza: chi fallisce prende tutto, chi riesce metà (se l'incantesimo lo prevede) o niente. */
 export const danniTs = (tot, riuscito, meta) => riuscito ? (meta ? Math.floor(tot / 2) : 0) : tot;
+
+/* quello che in uno scontro si usa davvero dallo zaino: pozioni e cose da bere, lanciare o leggere.
+   Razioni, abiti, corde e armi (che stanno tra gli attacchi) non si propongono. */
+const DA_USARE = /pozion|elisir|filtro|olio\b|unguento|antidoto|antitossina|pergamena|acqua santa|fuoco dell'alchimista|acido|fiala|ampolla|bomba|granata|bacchetta|verga/i;
+export const usabileInCombattimento = nome => !!curaDi(nome) || DA_USARE.test(nome || "");

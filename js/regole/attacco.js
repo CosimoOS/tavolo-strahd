@@ -72,3 +72,10 @@ export function conResistenze(perTipo, resistenze = []) {
   }
   return { tot, dimezzati };
 }
+
+/** Dardo caotico: l'energia balza su un'altra creatura se due d8 sono uguali. Con un critico i d8 sono quattro
+    e basta una coppia qualsiasi (regola del master). I dadi ancora da scrivere non contano. */
+export function balzaDardo(d8) {
+  const v = (d8 || []).map(x => leggiDado(x, 8)).filter(x => x !== null);
+  return new Set(v).size < v.length;
+}

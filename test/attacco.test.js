@@ -1,7 +1,7 @@
 /* Test dell'attacco: per colpire, vantaggio, critici, danni. */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { leggiDado, tiroPerColpire, esito, dadiDanno, sommaDanni, danniFinali } from "../js/regole/attacco.js";
+import { leggiDado, tiroPerColpire, esito, dadiDanno, sommaDanni, danniFinali, balzaDardo } from "../js/regole/attacco.js";
 
 test("per colpire: dado più bonus, con vantaggio il più alto, con svantaggio il più basso", () => {
   assert.equal(tiroPerColpire({ dadi: [12], bonus: 7 }).tot, 19);
@@ -52,4 +52,13 @@ test("formule di danno del bestiario lette a pezzi", () => {
 test("resistenze del personaggio: quel tipo di danno si dimezza", () => {
   assert.deepEqual(conResistenze({ taglienti: 9, fulmine: 7 }, ["Fulmine"]), { tot: 12, dimezzati: ["fulmine"] });
   assert.deepEqual(conResistenze({ perforanti: 7 }, []), { tot: 7, dimezzati: [] });
+});
+
+test("Dardo caotico: balza se due d8 sono uguali; con il critico basta una coppia tra i quattro (regola del master)", () => {
+  assert.equal(balzaDardo(["3", "3"]), true);
+  assert.equal(balzaDardo(["3", "4"]), false);
+  assert.equal(balzaDardo(["1", "5", "7", "5"]), true, "critico: il secondo e il quarto sono uguali");
+  assert.equal(balzaDardo(["1", "2", "3", "4"]), false);
+  assert.equal(balzaDardo(["6", ""]), false, "un dado ancora da scrivere non conta");
+  assert.equal(balzaDardo(["9", "9"]), false, "9 non è un d8");
 });

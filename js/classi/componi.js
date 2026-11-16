@@ -7,6 +7,7 @@
    opzioni() dà le regole del tavolo, per ora { tasha: true/false } (opzioni del Calderone di Tasha). */
 import { talento } from "../regole/talenti.js";
 import { slotMezzo } from "./comune.js";
+import { classiPrendibili } from "../regole/multiclasse.js";
 
 /* slot di un incantatore "pieno" per livello da incantatore (serve anche per sommare i multiclasse) */
 const PIENO = [[], [2], [3], [4, 2], [4, 3], [4, 3, 2], [4, 3, 3], [4, 3, 3, 1], [4, 3, 3, 2], [4, 3, 3, 3, 1], [4, 3, 3, 3, 2],
@@ -24,17 +25,25 @@ export function slotMulticlasse(parti) {
 }
 
 export function componi(P, CLASSI, opzioni = () => ({ tasha: false })) {
-  const voci = P.classi || [{ classe: P.classe, sottoclasse: P.sottoclasse }];
+  const base = P.classi || [{ classe: P.classe, sottoclasse: P.sottoclasse }];
   const opz = () => opzioni() || {};
-  const prima = CLASSI[voci[0].classe];
+  const prima = CLASSI[base[0].classe];
   let St = P.def;                                          // ultimo stato visto (lo aggiorna calcola)
-  const livelli = S => (S && S.livelli) || { [voci[0].classe]: (S || St).level };
+  const livelli = S => (S && S.livelli) || { [base[0].classe]: (S || St).level };
+  /* una classe presa col multiclasse durante il gioco: se ha una sola sottoclasse scritta, è quella */
+  const nuova = (id, S) => ({ classe: id, sottoclasse: ((S && S.sottoclassi) || {})[id] || (Object.keys(CLASSI[id].sottoclassi || {}).length === 1 ? Object.keys(CLASSI[id].sottoclassi)[0] : undefined) });
+  /* le classi del personaggio: quelle di partenza più quelle prese salendo di livello (stanno in S.livelli) */
+  const vociDi = (S = St) => {
+    const altre = Object.keys((S && S.livelli) || {}).filter(id => S.livelli[id] > 0 && CLASSI[id] && !base.some(v => v.classe === id));
+    return altre.length ? [...base, ...altre.map(id => nuova(id, S))] : base;
+  };
   /* le classi con il loro livello; L (se dato) vale per chi ha una sola classe, come nei calcoli "a quel livello" */
-  const parti = (S = St, L = null) => voci.map(v => {
+  const parti = (S = St, L = null) => { const voci = vociDi(S); return voci.map(v => {
     const cl = CLASSI[v.classe];
     return { id: v.classe, cl, sub: (cl.sottoclassi || {})[v.sottoclasse] || {}, lv: L != null && voci.length === 1 ? L : (livelli(S)[v.classe] || 0) };
-  }).filter(p => p.lv > 0);
-  const tutte = () => voci.map(v => ({ id: v.classe, cl: CLASSI[v.classe], sub: (CLASSI[v.classe].sottoclassi || {})[v.sottoclasse] || {} }));
+  }).filter(p => p.lv > 0); };
+  const conSub = v => ({ id: v.classe, cl: CLASSI[v.classe], sub: (CLASSI[v.classe].sottoclassi || {})[v.sottoclasse] || {} });
+  const tutte = (S = St) => vociDi(S).map(conSub);
   const max = (f, d = 0, L = null) => parti(St, L).reduce((m, p) => Math.max(m, f(p) || 0), d);
   const prima1 = (f, L = null) => { for (const p of parti(St, L)) { const v = f(p); if (v) return v; } return null; };
   const talentiPresi = S => (S.asi || []).filter(a => a.feat).map(a => ({ a, t: talento(a.feat) }));
@@ -44,7 +53,7 @@ export function componi(P, CLASSI, opzioni = () => ({ tasha: false })) {
     /* chi è */
     id: P.id, name: P.name, stemma: P.stemma, femminile: !!P.femminile, tags: P.tags, kv: P.kv, magic: P.magic || /^$/,
     def: P.def, skills: P.skills, correggi: P.correggi, png: !!P.png, incantesimiOggetto: P.incantesimiOggetto || [], armor: !!P.armor, insp: P.insp !== false,
-    classeId: voci[0].classe, sottoclasseId: voci[0].sottoclasse, multiclasse: voci.length > 1,
+    classeId: base[0].classe, sottoclasseId: base[0].sottoclasse, get multiclasse() { return vociDi().length > 1; },
     vediStato(S) { St = S; },
     get classe() { const p = parti(); return p.length > 1 ? p.map(x => `${x.cl.nome} ${x.lv}`).join(" · ") : prima.nome; },
     get sub() { return parti().map(p => p.sub.nome).filter(Boolean).join(" · "); },
@@ -88,16 +97,23 @@ export function componi(P, CLASSI, opzioni = () => ({ tasha: false })) {
           colpire: X.P + X.M[p.cl.carMagia || "sag"], cd: 8 + X.P + X.M[p.cl.carMagia || "sag"],
           chiave: chiaveInc(p.id, tipo), limite: preparati ? p.cl.quantiPreparati(p.lv, X) : p.cl.quantiConosciuti(p.lv),
           max: p.cl.maxLivelloIncantesimi(p.lv), lista: p.cl.incantesimiClasse ? p.cl.incantesimiClasse(opz()) : [],
-          fissi: p.cl.incantesimiSottoclasse ? p.cl.incantesimiSottoclasse(voci.find(v => v.classe === p.id).sottoclasse, p.lv) : [],
+          fissi: p.cl.incantesimiSottoclasse ? p.cl.incantesimiSottoclasse(vociDi(S).find(v => v.classe === p.id).sottoclasse, p.lv) : [],
           trucchetti: p.cl.trucchettiClasse ? { chiave: `trucchetti_${p.id}`, limite: p.cl.quantiTrucchetti(p.lv), lista: p.cl.trucchettiClasse() } : null,
         };
       });
     },
 
     /* passaggio di livello: le classi tra cui scegliere e cosa porta un livello in più in quella scelta */
-    classiPerLivello: S => tutte().map(t => ({ id: t.id, nome: t.cl.nome, livello: livelli(S)[t.id] || 0 })),
+    classiPerLivello: S => tutte(S).map(t => ({ id: t.id, nome: t.cl.nome, livello: livelli(S)[t.id] || 0 })),
+    /* multiclasse: le classi nuove che si possono prendere (requisiti del manuale); i seguaci non lo fanno */
+    classiNuove: S => P.png ? [] : classiPrendibili(S.scores, vociDi(S).map(v => v.classe), Object.keys(CLASSI).filter(id => !CLASSI[id].seguace)),
+    /* i livelli per classe dopo essere saliti in `id`; null per chi ha una classe sola e resta in quella */
+    livelliDopo(S, id) {
+      const lv = livelli(S);
+      return !S.livelli && id === base[0].classe ? null : { ...lv, [id]: (lv[id] || 0) + 1 };
+    },
     passo(S, id) {
-      const t = tutte().find(x => x.id === id) || tutte()[0], l = (livelli(S)[t.id] || 0) + 1;
+      const t = tutte(S).find(x => x.id === id) || (CLASSI[id] ? conSub(nuova(id, S)) : tutte(S)[0]), l = (livelli(S)[t.id] || 0) + 1;
       return {
         id: t.id, nome: t.cl.nome, livello: l, dado: t.cl.dadoVita, pfMedia: t.cl.pfMedia,
         asi: t.cl.asi.includes(l), stile: (t.cl.stileAl && l === t.cl.stileAl) || (t.sub.stileExtraAl && l === t.sub.stileExtraAl),

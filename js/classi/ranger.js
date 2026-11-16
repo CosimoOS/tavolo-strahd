@@ -77,6 +77,8 @@ export default {
 
   novita(l, opz) {
     const f = [];
+    if (l === 1) f.push(["Nemico prescelto", "Scegli un tipo di creatura: vantaggio a seguirne le tracce e a ricordare informazioni su di loro."],
+      ["Esploratore naturale", "Scegli un terreno: lì non ti perdi, viaggi più veloce e trovi il doppio del cibo."]);
     if (l === 2) f.push(["Incantesimi", "Slot di 1° livello e due incantesimi conosciuti."]);
     if (l === 3) f.push([opz.tasha ? "Consapevolezza primordiale (Tasha) o Consapevolezza primeva" : "Consapevolezza primeva", opz.tasha ? "Puoi sostituire la versione del manuale con quella di Tasha." : "Spendi uno slot per percepire certi tipi di creature entro 1,5 km."]);
     if (this.asi.includes(l)) f.push(["Aumento dei punteggi di caratteristica", "+2 a una caratteristica, +1 a due, oppure un talento."]);

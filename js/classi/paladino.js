@@ -105,6 +105,8 @@ export default {
 
   novita(l, opz) {
     const f = [];
+    if (l === 1) f.push(["Percezione del divino", "Azione: senti celestiali, immondi e non morti entro 18 m; 1 + Carisma volte per riposo lungo."],
+      ["Imposizione delle mani", "Una riserva di PF pari a 5 × il livello da paladino, per curare con il tocco."]);
     if (l === 2) f.push(["Incantesimi e Punizione divina", "Slot di 1° livello; dopo un colpo in mischia uno slot diventa +2d8 radianti."]);
     if (l === 3) f.push(["Salute divina", "Immune alle malattie."]);
     if (l === 3 && opz.tasha) f.push(["Potere divino (Tasha)", "Incanalare divinità: recuperi uno slot di livello pari a metà del bonus di competenza."]);

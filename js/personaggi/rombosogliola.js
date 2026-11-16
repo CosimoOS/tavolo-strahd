@@ -11,7 +11,7 @@ export default {
   incantesimiOggetto: [
     { n: "Stretta folgorante", tipo: "attacco", hit: 5, parti: [{ n: 2, f: 8, t: "fulmine" }], richiede: /cremesi/i,
       nota: "a contatto; vantaggio contro chi indossa metallo; il bersaglio perde la reazione" },
-    { n: "Dardo caotico", tipo: "attacco", hit: 5, parti: [{ n: 2, f: 8, t: "fulmine" }, { n: 1, f: 6, t: "fulmine" }], richiede: /cremesi/i, uso: "dardo", max: 3,
+    { n: "Dardo caotico", tipo: "attacco", hit: 5, parti: [{ n: 2, f: 8, t: "fulmine" }, { n: 1, f: 6, t: "fulmine" }], richiede: /cremesi/i, uso: "dardo", max: 3, balzo: true,
       nota: "36 m; se i due d8 sono uguali l'energia balza su un'altra creatura entro 9 m" },
     { n: "Fulmine", tipo: "ts", ts: "des", cd: 13, parti: [{ n: 8, f: 6, t: "fulmine" }], meta: true, area: true, richiede: /cremesi/i, uso: "fulmine", max: 1,
       nota: "linea di 30 m" },

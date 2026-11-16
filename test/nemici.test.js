@@ -144,3 +144,58 @@ test("persone: lo schieramento scelto vale più di quello del modello", () => {
   assert.equal(creature[0].tipo, "alleato");
   assert.equal(gruppi[0].tipo, "alleato");
 });
+
+test("branco: un membro alla volta, saltando chi è caduto; l'ultimo chiude il turno del branco", async () => {
+  const { passoBranco } = await import("../js/regole/nemici.js");
+  const vivi = [{ id: "a", nome: "Lupo 1" }, { id: "c", nome: "Lupo 3" }, { id: "d", nome: "Lupo 4" }];
+  assert.deepEqual(passoBranco(vivi, 0), { membro: vivi[0], n: 1, tot: 3, ultimo: false, prossimo: "Lupo 3" });
+  assert.deepEqual(passoBranco(vivi, 2), { membro: vivi[2], n: 3, tot: 3, ultimo: true, prossimo: null });
+  assert.equal(passoBranco(vivi, 9).n, 3, "se nel frattempo uno è caduto, si resta sull'ultimo");
+  assert.equal(passoBranco([vivi[0]], 0), null, "uno solo non è un branco");
+});
+
+test("niente scontro senza nemici: serve almeno una creatura messa 'contro'", async () => {
+  const { puoIniziare } = await import("../js/regole/nemici.js");
+  const modelli = { lupo: { tipo: "nemico" }, guardia: { tipo: "alleato" } };
+  assert.deepEqual(puoIniziare({ gruppo: 4, scelte: [], modelli }), { ok: false, perche: "Aggiungi almeno un nemico: senza nemici lo scontro non parte." });
+  assert.equal(puoIniziare({ gruppo: 4, scelte: [{ creatura: "guardia", quanti: 2 }], modelli }).ok, false, "solo alleati: non basta");
+  assert.equal(puoIniziare({ gruppo: 4, scelte: [{ creatura: "guardia", quanti: 1, lato: "nemico" }], modelli }).ok, true, "una persona messa contro è un nemico");
+  assert.deepEqual(puoIniziare({ gruppo: 4, scelte: [{ creatura: "lupo", quanti: 3 }], modelli }), { ok: true, perche: "" });
+  assert.equal(puoIniziare({ gruppo: 0, scelte: [{ creatura: "lupo", quanti: 3 }], modelli }).perche, "Scegli almeno un personaggio del gruppo.");
+});
+
+test("cercare una creatura: per nome vero o nome per i giocatori, senza badare ad accenti e maiuscole", async () => {
+  const { cercaCreature } = await import("../js/regole/nemici.js");
+  const c = [{ id: "a", nome: "Zombi di Strahd", giocatori: "Morto che cammina" }, { id: "b", nome: "Lupo crudele" }, { id: "c", nome: "Lupo" }, { id: "d", nome: "Megera notturna" }];
+  assert.deepEqual(cercaCreature(c, "lup").map(x => x.id), ["c", "b"], "in ordine alfabetico");
+  assert.deepEqual(cercaCreature(c, "CAMMINA").map(x => x.id), ["a"]);
+  assert.deepEqual(cercaCreature(c, "megèra").map(x => x.id), ["d"]);
+  assert.equal(cercaCreature(c, "  ").length, 4, "senza testo: tutte");
+  assert.deepEqual(cercaCreature(c, "drago"), []);
+});
+
+test("solo nomi italiani: la traduzione inglese tra parentesi sparisce, le altre parentesi restano", async () => {
+  const { soloItaliano } = await import("../js/regole/nemici.js");
+  assert.equal(soloItaliano("Albero avvizzito (tree blight)"), "Albero avvizzito");
+  assert.equal(soloItaliano("Megera notturna (night hag)"), "Megera notturna");
+  assert.equal(soloItaliano("Fuoco fatuo (will-o'-wisp)"), "Fuoco fatuo");
+  assert.equal(soloItaliano("Strahd (forma di lupo)"), "Strahd (forma di lupo)");
+  assert.equal(soloItaliano("Lupo"), "Lupo");
+  assert.equal(soloItaliano(undefined), undefined);
+});
+
+test("bestiario in tre parti: alleati del gruppo, persone, mostri", async () => {
+  const { sezioneBestiario } = await import("../js/regole/nemici.js");
+  assert.equal(sezioneBestiario({ tipo: "nemico" }), "mostri");
+  assert.equal(sezioneBestiario({ tipo: "nemico", categoria: "persona" }), "persone");
+  assert.equal(sezioneBestiario({ tipo: "alleato", categoria: "persona" }), "alleati", "chi combatte con il gruppo sta tra gli alleati, anche se è una persona");
+  assert.equal(sezioneBestiario({ tipo: "alleato" }), "alleati");
+});
+
+test("lo scontro parte da solo quando tutti hanno tirato l'iniziativa", async () => {
+  const { tuttiHannoTirato } = await import("../js/regole/nemici.js");
+  const p = [{ id: "petrus" }, { id: "gn1" }];
+  assert.equal(tuttiHannoTirato(p, id => id === "petrus"), false);
+  assert.equal(tuttiHannoTirato(p, () => true), true);
+  assert.equal(tuttiHannoTirato([], () => true), false, "senza nessuno non parte");
+});

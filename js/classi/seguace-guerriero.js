@@ -1,7 +1,7 @@
 /* Seguace di classe Guerriero (Calderone omnicomprensivo di Tasha): i compagni gestiti dai giocatori, come Ireena.
    Il ruolo marziale (Attaccante o Difensore) è la sottoclasse. */
 export default {
-  id: "seguace-guerriero", nome: "Guerriero", dadoVita: 8, pfMedia: 5, ts: ["cos"],
+  id: "seguace-guerriero", seguace: true, nome: "Guerriero", dadoVita: 8, pfMedia: 5, ts: ["cos"],
   armature: ["leggera", "media", "pesante"], magia: () => false,
   asi: [4, 8, 12, 14, 16, 19], stileAl: 0,
   attacchi: l => l >= 15 ? 3 : l >= 6 ? 2 : 1, recuperi: l => l >= 20 ? 2 : 1,
