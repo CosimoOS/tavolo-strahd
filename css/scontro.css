@@ -129,9 +129,14 @@ body.modo-scontro .switch .scontro[aria-pressed="true"]{background:var(--crimson
 .turno-ora .to-attesa{margin:0;color:var(--muted)}
 .turno-ora.mio{border-color:var(--gold);background:linear-gradient(180deg,var(--gold-soft),var(--panel) 70%)}
 .turno-ora.mio .to-chi{color:var(--gold)}
-.turno-ora.lato-nemico{border-left:4px solid var(--crimson)}
-.turno-ora.lato-alleato{border-left:4px solid var(--ok)}
-.turno-ora.lato-gruppo{border-left:4px solid var(--gold)}
+/* da che parte sta chi agisce: bordo appena tinto e una losanga del suo colore accanto al round */
+.turno-ora .to-round{display:flex;align-items:center;gap:8px}
+.turno-ora[class*="lato-"] .to-round::before{content:"";width:9px;height:9px;transform:rotate(45deg);background:var(--line)}
+.turno-ora.lato-nemico{border-color:color-mix(in srgb,var(--crimson) 45%,var(--line))}
+.turno-ora.lato-nemico .to-round::before{background:var(--crimson)}
+.turno-ora.lato-alleato{border-color:color-mix(in srgb,var(--ok) 45%,var(--line))}
+.turno-ora.lato-alleato .to-round::before{background:var(--ok)}
+.turno-ora.lato-gruppo .to-round::before{background:var(--gold)}
 .turno-ora .fine-turno{min-height:52px;font-size:16px}
 .turno-ora.mio .fine-turno{align-self:stretch}
 .azioni-turno{display:grid;grid-template-columns:1fr;gap:10px}
