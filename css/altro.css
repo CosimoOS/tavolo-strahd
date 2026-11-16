@@ -1,0 +1,29 @@
+/* Profilo (giocatori) e Campagna (master): uscire, copie di sicurezza, regole del tavolo, accessi.
+   Stessi pannelli della scheda; qui niente fretta, quindi testi un po' più distesi. */
+.vista-altro{margin-top:20px;display:flex;flex-direction:column;gap:18px}
+.al-testa{display:flex;align-items:center;gap:16px;padding:4px 0 2px}
+.al-stemma{flex:none}
+.al-stemma svg{width:56px;height:66px}
+.al-testa h1{font-size:clamp(28px,7vw,40px);margin:0;white-space:normal}
+.al-testa p{margin:2px 0 0;color:var(--muted)}
+.al-sez p{margin:0 0 12px;line-height:1.5}
+.al-sez .hint{margin:8px 0 0}
+.al-sez .lbl-sez{margin-top:20px}
+.al-azioni{display:flex;flex-wrap:wrap;gap:10px;margin:4px 0}
+.al-azioni .btn{min-height:52px;flex:1 1 12em;display:inline-flex;align-items:center;justify-content:center;text-align:center}
+.al-chips{display:flex;flex-wrap:wrap;gap:8px}
+.al-chips .chip{min-height:44px;font-weight:600}
+.al-chips .chip.on{background:var(--gold-soft);border-color:var(--gold-deep);color:var(--gold)}
+.al-versioni,.al-accessi{list-style:none;margin:12px 0 0;padding:0}
+.al-versioni li{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:64px;padding:10px 0;border-top:1px solid var(--line)}
+.al-versioni li > span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.al-versioni b{font-size:15px}
+.al-versioni small{color:var(--muted);font-size:13px;line-height:1.4}
+.al-versioni .btn{min-height:44px;flex:none;max-width:11em;white-space:normal}
+.al-accessi li{display:flex;flex-direction:column;gap:2px;padding:10px 0;border-top:1px solid var(--line)}
+.al-accessi li:first-child{border-top:0}
+.al-accessi span{font-size:15px}
+.al-accessi small{color:var(--muted);font-size:13px}
+.al-conferma{margin:14px 0 4px;padding:14px;border:1px solid var(--gold-deep);border-radius:12px;background:var(--gold-soft)}
+.al-conferma p{margin:0 0 10px}
+.esci-btn{width:100%;min-height:52px;font-weight:700;border-color:color-mix(in srgb,var(--crimson) 55%,var(--line));color:color-mix(in srgb,var(--crimson) 65%,var(--ink))}

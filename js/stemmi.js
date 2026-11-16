@@ -43,3 +43,19 @@ export function stemma(tipo, { piena = false, classe = "" } = {}) {
     `<path d="${s.interna}" fill="none" stroke="url(#${g})" stroke-width="1.2" opacity=".7"/>` +
     s.emblema(`url(#${g})`, true) + `</svg>`;
 }
+
+/* ---------- avatar rotondo ----------
+   Per l'angolo in alto a destra (chi sei) e per le carte del Tavolo: un cerchio nei colori dello stemma,
+   l'emblema grande al centro e un filo d'oro intorno. Centro e grandezza dell'emblema per ogni stemma. */
+const CENTRO = { pesce: [50, 60, 1.3], I: [50, 58, 1.45], P: [50, 55, 1.45], R: [50, 55, 1.45], dm: [50, 56, 1.12] };
+export function avatar(tipo, { classe = "" } = {}) {
+  const s = STEMMI[tipo] || STEMMI.dm, [cx, cy, k] = CENTRO[tipo] || CENTRO.dm;
+  const n = ++uid, c = `av${n}`, g = `ag${n}`, cls = classe ? ` class="${classe}"` : "";
+  return `<svg${cls} viewBox="0 0 100 100" aria-hidden="true"><defs>` +
+    `<radialGradient id="${c}" cx="38%" cy="30%" r="78%"><stop offset="0" stop-color="${s.fondo[0]}"/><stop offset="1" stop-color="${s.fondo[1]}"/></radialGradient>` +
+    `<linearGradient id="${g}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6dc9c"/><stop offset="1" stop-color="#b08636"/></linearGradient></defs>` +
+    `<circle cx="50" cy="50" r="48" fill="url(#${c})"/>` +
+    `<g transform="translate(50 50) scale(${k}) translate(${-cx} ${-cy})">${s.emblema(`url(#${g})`, true)}</g>` +
+    `<ellipse cx="44" cy="22" rx="30" ry="12" fill="#fff" opacity=".09"/>` +
+    `<circle cx="50" cy="50" r="47" fill="none" stroke="url(#${g})" stroke-width="2.6"/></svg>`;
+}

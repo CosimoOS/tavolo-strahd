@@ -7,6 +7,8 @@
 
    Tastierini: al posto della tastiera del telefono, una griglia con tutte le facce del dado: un tocco e basta. */
 
+import { icona } from "./icone.js";
+
 const $ = id => document.getElementById(id);
 let aperta = null;   // la finestra aperta adesso (una alla volta)
 
@@ -28,7 +30,7 @@ export function finestra({ chiave, titolo, onChiudi = () => {}, onClick = () => 
       el.querySelector(".passi-tit b").textContent = titolo;
       el.querySelector(".passi-pallini").innerHTML = di ? Array.from({ length: di }, (_, i) => `<i class="${i < passo ? "fatto" : ""}${i === passo - 1 ? " ora" : ""}"></i>`).join("") : "";
       el.querySelector(".passi-ind").hidden = !indietro;
-      el.dataset.tono = tono;
+      el.dataset.tono = tono; el.dataset.chiave = chiave;   // lo stile può allargare una finestra precisa (l'editor dei mostri su PC)
       corpo.innerHTML = `<div class="passo${nuovoPasso ? " entra" : ""}">${html}</div>`;
       if (nuovoPasso) corpo.scrollTop = 0;
       el.hidden = false; document.body.classList.add("passi-aperta");
@@ -66,9 +68,10 @@ export function caselleDadi(valori, n, facce, chiave) {
   }).join("")}</div>`;
 }
 
-/** Il risultato che si rivela: colpito, critico, mancato. L'animazione la fa il CSS (e si spegne con "riduci movimento"). */
+/** Il risultato che si rivela: colpito, critico, mancato, danno, cura, attesa, ognuno con la sua icona (js/icone.js).
+    L'animazione la fa il CSS (e si spegne con "riduci movimento"). */
 export function rivelazione(tipo, titolo, sotto = "") {
-  return `<div class="rivela ${tipo}" role="status"><div class="rivela-segno" aria-hidden="true"></div><b>${titolo}</b>${sotto ? `<span>${sotto}</span>` : ""}</div>`;
+  return `<div class="rivela ${tipo}" role="status"><div class="rivela-segno" aria-hidden="true">${icona(tipo)}</div><b>${titolo}</b>${sotto ? `<span>${sotto}</span>` : ""}</div>`;
 }
 
 /** Vibrazione breve, se il telefono la permette. */

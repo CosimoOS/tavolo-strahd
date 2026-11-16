@@ -4,8 +4,10 @@
 
      dm/bestiario → { creature:[...], gruppi:[...] }   i modelli, importati dal file privato o scritti a mano
      dm/campo     → { scontro, creature:[...], gruppi:[...] }   chi è in campo adesso, con i PF veri          */
-import { ferite, danno, cura, schiera, togliDaOrdine, inserisciInOrdine, inserisciDopo, trasforma, leggiTratti, scriviTratti, chiaro, fonteChiara, incantesimi, media } from "./regole/nemici.js";
+import { passoBranco, cercaCreature, soloItaliano, sezioneBestiario, ferite, danno, cura, schiera, togliDaOrdine, inserisciInOrdine, inserisciDopo, trasforma, leggiTratti, scriviTratti, chiaro, fonteChiara, incantesimi, media } from "./regole/nemici.js";
 import { finestra } from "./passi.js";
+import { reazioneLibera } from "./regole/turno.js";
+import { versione } from "./copie.js";
 
 const BEST = "dm/bestiario", CAMPO = "dm/campo", PNG = "dm/png";
 /* dm/png → { <modello>: { pf, slotUsati } }: i compagni del master (alleati come Ezmerelda) e chi lancia incantesimi
@@ -16,13 +18,22 @@ const sg = n => (n >= 0 ? "+" : "−") + Math.abs(n);
 
 let arch = null, ridisegna = () => {}, toast = () => {}, ascolti = [];
 let B = { creature: [], gruppi: [] }, C = { scontro: null, creature: [], gruppi: [] }, R = {};
-let scelte = [], pannello = null, cerca = "", aperte = new Set(), daEliminare = null, apriRinforzi = false;
+let scelte = [], pannello = null, cerca = "", aperte = new Set(), daEliminare = null;
+let qta = {}, schedeAperte = new Set();   // il numero scritto col tastierino di ogni creatura; le schede aperte nel pannello
 const perId = () => Object.fromEntries(B.creature.map(c => [c.id, c]));
 
 export function avviaNemici({ archivio, aggiorna, avvisa }) {
   arch = archivio; ridisegna = aggiorna; toast = avvisa; scelte = []; pannello = null; aperte = new Set();
   ascolti = [
-    arch.ascolta(BEST, d => { B = { creature: [], gruppi: [], ...(d || {}) }; ridisegna(); }, null, { anchePropri: true }),
+    arch.ascolta(BEST, d => {
+      B = { creature: [], gruppi: [], ...(d || {}) };
+      /* solo i nomi italiani: le traduzioni inglesi tra parentesi dei manuali si tolgono, e il bestiario si risalva pulito */
+      const puliti = B.creature.map(c => ({ ...c, nome: soloItaliano(c.nome), ...(c.giocatori ? { giocatori: soloItaliano(c.giocatori) } : {}) }));
+      const cambiato = puliti.some((c, i) => c.nome !== B.creature[i].nome || c.giocatori !== B.creature[i].giocatori);
+      B.creature = puliti;
+      if (cambiato) salvaBestiario(puliti).catch(() => {});
+      ridisegna();
+    }, null, { anchePropri: true }),
     arch.ascolta(CAMPO, d => { C = { scontro: null, creature: [], gruppi: [], ...(d || {}) }; ridisegna(); }, null, { anchePropri: true }),
     arch.ascolta(PNG, d => { R = d || {}; }, null, { anchePropri: true }),
   ];
@@ -37,31 +48,44 @@ export const pannelloAperto = () => !!pannello;
    dalla vostra parte o contro di voi: lo si sceglie quando le si mette in campo. */
 const persona = c => c && c.categoria === "persona";
 let catPrep = "mostri";
+let cercaPrep = "", appena = { id: null, t: 0 };   // appena: l'ultima creatura messa in campo, per farla notare un attimo
+/** Per la regola "niente scontro senza nemici": cosa è stato scelto finora e i modelli del bestiario. */
+export const statoPreparazione = () => ({ scelte, modelli: perId() });
+/* Secondo passo della preparazione: chi combatte. Si cerca per nome (niente lista da scorrere), oppure un gruppo pronto;
+   sotto, chi è in campo, con quanti sono e da che parte stanno. */
 export function htmlPreparazione() {
   if (pannello === "bestiario") return htmlBestiario();
-  const P = perId(), pers = catPrep === "persone";
-  const ordinate = B.creature.filter(c => persona(c) === pers).sort((a, b) => a.nome.localeCompare(b.nome, "it"));
+  const P = perId(), pers = catPrep === "persone", q = cercaPrep.trim();
   const gruppi = B.gruppi.filter(g => g.membri.every(m => persona(P[m.id]) === pers));
+  const trovate = q ? cercaCreature(B.creature, q).slice(0, 8) : [];
   const lato = s => s.lato || (P[s.creatura] || {}).tipo || "nemico";
-  const righe = scelte.map((s, i) => `<li><span class="nome">${s.quanti > 1 ? s.quanti + " × " : ""}${esc(P[s.creatura]?.nome || s.creatura)}</span>
-      <button class="btn link lato-${lato(s)}" data-nz="lato-scelta" data-i="${i}">${lato(s) === "alleato" ? "con noi" : "contro"}</button>
-      ${s.quanti > 1 ? `<button class="btn link" data-nz="modo" data-i="${i}">${s.modo === "branco" ? "in branco" : "uno per uno"}</button>` : ""}
-      <button class="btn link${s.nascosto ? " acceso" : ""}" data-nz="nasc" data-i="${i}" aria-pressed="${!!s.nascosto}">${s.nascosto ? "nascosti" : "visibili"}</button>
-      <button class="btn link" data-nz="togli" data-i="${i}" aria-label="Togli">Togli</button></li>`).join("");
-  return `<section><h2>Chi altro combatte <span class="h2-azioni"><button class="btn link" data-nz="nuovo">Nuovo</button><button class="btn link" data-nz="bestiario">Bestiario</button></span></h2>
-    <div class="seg schede-prep"><button data-nz="cat" data-cat="mostri" aria-pressed="${!pers}">Mostri</button><button data-nz="cat" data-cat="persone" aria-pressed="${pers}">Persone</button></div>
-    ${!B.creature.length ? `<p class="vuoto">Il bestiario è vuoto: aprilo e importa il file, oppure crea un modello.</p>` : `
-    ${pers ? `<p class="hint">Paesani, guardie e personaggi che possono unirsi a voi. Messi in campo, scegli se stanno <b>con noi</b> o <b>contro</b>.</p>` : ""}
-    ${gruppi.length ? `<p class="lbl-sez">Gruppi pronti</p><div class="gruppi">${gruppi.map(g =>
-      `<button class="btn" data-nz="gruppo" data-id="${esc(g.id)}">${esc(g.nome)}<small>${g.membri.map(m => `${m.quanti} ${esc(P[m.id]?.nome || m.id)}`).join(", ")}</small></button>`).join("")}</div>` : ""}
-    <p class="lbl-sez">${pers ? "Aggiungi una persona" : "Aggiungi una creatura"}</p>
-    <div class="aggiungi">
-      <select id="nzCreatura" aria-label="${pers ? "Persona" : "Creatura"}">${ordinate.map(c => `<option value="${esc(c.id)}">${esc(c.nome)}${c.tipo === "alleato" ? " (di solito con noi)" : ""}</option>`).join("")}</select>
-      <input id="nzQuanti" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="1" aria-label="Quanti">
-      <select id="nzModo" aria-label="Iniziativa"><option value="branco">in branco</option><option value="uno">uno per uno</option></select>
-      <button class="btn gold" data-nz="aggiungi">Aggiungi</button>
-    </div>`}
-    ${scelte.length ? `<p class="lbl-sez">In campo</p><ul class="schierati">${righe}</ul>` : ""}
+  /* una scelta tra due, con il suo titolo: si capisce cosa cambia e qual è quella accesa */
+  const due = (titolo, az, i, primo, a, b, cls = "") => `<div class="due-scelte ${cls}"><span class="lbl">${titolo}</span><div class="seg">
+    <button data-nz="${az}" data-i="${i}" data-v="1" aria-pressed="${primo}"${primo ? " disabled" : ""}>${a}</button><button data-nz="${az}" data-i="${i}" data-v="0" aria-pressed="${!primo}"${primo ? "" : " disabled"}>${b}</button></div></div>`;
+  const fresca = Date.now() - appena.t < 1500 ? appena.id : null;
+  const righe = scelte.map((s, i) => `<li${s.creatura === fresca ? ' class="appena"' : ""}><span class="nome"><i class="lato-${lato(s) === "alleato" ? "alleati" : "mostri"}" aria-hidden="true"></i>${esc(P[s.creatura]?.nome || s.creatura)}</span>
+      <span class="stepper"><button class="btn step" data-nz="meno" data-i="${i}" aria-label="Uno in meno">−</button><b class="num">${s.quanti}</b><button class="btn step" data-nz="piu" data-i="${i}" aria-label="Uno in più">+</button></span>
+      <button class="x" data-nz="togli" data-i="${i}" aria-label="Togli ${esc(P[s.creatura]?.nome || s.creatura)} dallo scontro">×</button>
+      <div class="sch-opz">
+        ${due("Da che parte", "lato-scelta", i, lato(s) !== "alleato", "Contro di voi", "Con voi", "lato")}
+        ${s.quanti > 1 ? due("Il turno", "modo", i, s.modo === "branco", "Tutti insieme", "Uno per uno") : ""}
+        ${due("I giocatori", "nasc", i, !s.nascosto, "Li vedono", "Nascosti")}
+      </div></li>`).join("");
+  return `<section class="prep-cerca"><h2>Aggiungi chi combatte <span class="h2-azioni"><button class="btn link" data-nz="nuovo">Crea un mostro</button><button class="btn link" data-nz="bestiario">Apri il bestiario</button></span></h2>
+    ${!B.creature.length ? `<p class="vuoto">Il bestiario è vuoto: aprilo e importa il file, oppure crea un mostro.</p>` : `
+    <input id="nzCercaPrep" type="search" value="${esc(cercaPrep)}" placeholder="Cerca per nome: lupo, guardia, zombi…" aria-label="Cerca una creatura nel bestiario" autocomplete="off">
+    ${q ? (trovate.length ? `<ul class="trovate">${trovate.map(c => `<li><button data-nz="aggiungi-c" data-id="${esc(c.id)}" type="button">
+        <i class="lato-${sezioneBestiario(c)}" aria-hidden="true"></i><span class="riga-t"><b>${esc(c.nome)}</b><small>${{ mostri: "Mostro", persone: "Persona", alleati: "Alleato del gruppo" }[sezioneBestiario(c)]} · CA ${c.ca} · PF ${c.pf}</small></span><span class="piu">Aggiungi</span></button></li>`).join("")}</ul>`
+        : `<p class="vuoto">Nessuna creatura con questo nome. <button class="btn link" data-nz="nuovo">Creala adesso</button></p>`)
+      : `<details class="apribile gruppi-pronti" data-apri="gruppi-pronti"><summary>${rigaApribile("Gruppi pronti", "scontri già composti: un tocco e sono in campo", B.gruppi.length)}</summary>
+      <div class="ap-corpo">
+      <div class="seg schede-prep"><button data-nz="cat" data-cat="mostri" aria-pressed="${!pers}">Mostri</button><button data-nz="cat" data-cat="persone" aria-pressed="${pers}">Persone</button></div>
+      ${gruppi.length ? `<div class="gruppi">${gruppi.map(g =>
+        `<button class="btn" data-nz="gruppo" data-id="${esc(g.id)}">${esc(g.nome)}<small>${g.membri.map(m => `${m.quanti} ${esc(P[m.id]?.nome || m.id)}`).join(", ")}</small></button>`).join("")}</div>` : `<p class="hint">Nessun gruppo pronto di ${pers ? "persone" : "mostri"}.</p>`}
+      </div></details>`}`}
+  </section>
+  <section class="prep-campo"><h2>In campo <span>${scelte.reduce((n, s) => n + s.quanti, 0)} ${scelte.reduce((n, s) => n + s.quanti, 0) === 1 ? "creatura" : "creature"}</span></h2>
+    ${scelte.length ? `<ul class="schierati">${righe}</ul>` : `<p class="vuoto">Ancora nessuno. Cerca una creatura qui sopra o scegli un gruppo pronto.</p>`}
   </section>`;
 }
 
@@ -80,7 +104,7 @@ async function ricorda(creature, id) {
 export async function schieraScelte(idScontro) {
   const s0 = schiera(scelte, perId()), gruppi = s0.gruppi, creature = conMemoria(s0.creature);
   await arch.scrivi(CAMPO, { scontro: idScontro, creature, gruppi });
-  scelte = [];
+  scelte = []; cercaPrep = "";
   return {
     /* i nascosti: i giocatori non li vedono (nome "???"); il master sì, con il nome vero */
     partecipanti: gruppi.map(g => ({ id: g.id, nome: g.nascosto ? "???" : g.nome, tipo: g.tipo === "alleato" ? "alleato" : "nemico", ...(g.nascosto ? { nascosto: true } : {}) })),
@@ -100,6 +124,12 @@ export function statoNemici(idScontro) {
   const n = C.creature.filter(c => c.tipo !== "alleato");
   return { totali: n.length, inPiedi: n.filter(c => c.pf > 0).length };
 }
+/** Quante creature ha un gruppo e quante sono ancora in piedi (per le viste del master). */
+export function contaGruppo(id) {
+  const g = C.gruppi.find(x => x.id === id); if (!g) return null;
+  const m = C.creature.filter(c => g.membri.includes(c.id)), vivi = m.filter(c => c.pf > 0);
+  return { tot: m.length, vivi: vivi.length, nomeVivo: vivi.length === 1 ? vivi[0].nome : null };
+}
 /** Il nome vero di un gruppo del master (per le sue viste, anche quando è nascosto ai giocatori). */
 export const nomeGruppo = id => { const g = C.gruppi.find(x => x.id === id); return g ? g.nome : null; };
 /** Modificatore d'iniziativa di un gruppo del master (solo lui lo conosce). */
@@ -108,55 +138,104 @@ export function infoGruppo(id) {
   return g ? { mod: g.ini ?? 0, des: null, vantaggio: false } : null;
 }
 
-/* ---------- durante i turni: in campo e scheda rapida ---------- */
-/** Vista del master durante i turni: sotto l'ordine dei turni la scheda di chi agisce ora, poi tutte le creature in campo con i PF. */
+/* ---------- durante i turni: le creature dentro l'ordine dei turni ----------
+   Il master non ha più una lista "In campo" a parte: ogni creatura sta nella sua riga dell'ordine, con CA e PF.
+   Un tocco apre il pannello con il tastierino (Danno, Cura), la reazione e le altre azioni. */
+const FRECCIA = `<svg class="apri" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 8 5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+/* la riga di un pannello che si apre: titolo, cosa c'è dentro, quanti (se serve) e la freccia.
+   data-apri dà un nome al pannello: resta aperto anche quando lo scontro si ridisegna */
+const rigaApribile = (titolo, sotto, n) => `<span class="ap-testo"><b>${titolo}</b>${sotto ? `<small>${sotto}</small>` : ""}</span>${n != null ? `<span class="ap-n">${n}</span>` : ""}${FRECCIA}`;
+const sbarra = c => c.pf * 2 > c.max ? "" : c.pf * 4 > c.max ? "mid" : "low";
+const reazioneUsata = (c, SC) => !reazioneLibera(c.reazione, SC, (C.gruppi.find(g => g.membri.includes(c.id)) || {}).id);
+
+/** In cima, quando tocca a una creatura del master: la sua scheda con gli attacchi (pulsante Attacca). */
+let passo = { chiave: "", i: 0 };
 export function htmlTurniMaster(SC) {
-  if (!C.creature.length || C.scontro !== SC.id) return { rapida: "", campo: "" };
+  let branco = null;
+  if (!C.creature.length || C.scontro !== SC.id) return { rapida: "", rinforzi: "", sconfitti: "" };
   const P = perId(), voce = SC.ordine && SC.ordine[SC.turno];
   const g = voce && C.gruppi.find(x => x.id === voce.id);
   let rapida = "";
   if (g) {
-    const membri = C.creature.filter(c => g.membri.includes(c.id));
+    const membri = C.creature.filter(c => g.membri.includes(c.id) && c.pf > 0);
     const modello = P[membri[0]?.creatura];
-    rapida = `<section class="rapida"><h2>Di turno: ${esc(membri.length > 1 ? `${modello?.nome || ""} ×${membri.filter(m => m.pf > 0).length}` : membri[0]?.nome)}</h2>
-      ${modello ? schedaModello(modello, membri.length === 1 ? membri[0] : null, g.id) : ""}</section>`;
+    /* un branco gioca un membro alla volta: "Lupo 1 → Lupo 2 → …"; il passo si ricorda finché dura il suo turno */
+    const chiave = `${SC.id}:${SC.round}:${SC.turno}`; if (passo.chiave !== chiave) passo = { chiave, i: 0 };
+    branco = passoBranco(membri, passo.i);
+    const fila = branco ? `<ol class="branco-fila" aria-label="Il branco, uno alla volta">${membri.map((c, i) =>
+      `<li class="${i + 1 < branco.n ? "fatto" : i + 1 === branco.n ? "ora" : ""}"${i + 1 === branco.n ? ' aria-current="step"' : ""}>${esc(c.nome)}</li>`).join("")}</ol>` : "";
+    if (modello) rapida = `${fila}<div class="rapida">${schedaModello(modello, membri.length === 1 ? membri[0] : null, g.id)}</div>`;
   }
+  return { rapida, branco, rinforzi: htmlRinforzi(SC), sconfitti: htmlSconfitti() };
+}
+/** Le creature di un gruppo, una riga ciascuna, per l'ordine dei turni del master.
+    testa: per una creatura da sola nel suo gruppo, il posto del nome (losanga e nome del gruppo) · uscenti: appena sconfitte, ancora visibili mentre escono. */
+export function righeCreature(gruppoId, SC, { testa = "", uscenti = new Map(), ritardo = () => 0 } = {}) {
+  const g = C.gruppi.find(x => x.id === gruppoId); if (!g || C.scontro !== SC.id) return "";
+  const lista = C.creature.filter(c => g.membri.includes(c.id) && (c.pf > 0 || uscenti.has(c.id)));
+  if (!lista.length) return "";
+  return `<ul class="q-membri m">${lista.map(c => {
+    const aperta = aperte.has(c.id) && c.pf > 0, giu = c.pf <= 0;
+    return `<li class="m-crea${aperta ? " aperta" : ""}${c.nascosto ? " nascosto" : ""}${giu ? " esce-presto" : ""}"${giu ? ` style="--d:${ritardo(c.id)}ms"` : ""} data-crea="${c.id}">
+      <button class="m-testa" data-nz="apri" data-id="${c.id}" aria-expanded="${aperta}"${giu ? " disabled" : ""}>
+        ${testa || `<span class="nome">${esc(c.nome)}${c.nascosto ? ` <small>nascosto</small>` : ""}</span>`}
+        ${reazioneUsata(c, SC) ? `<span class="m-tag">reazione usata</span>` : ""}
+        <span class="ca">CA ${c.ca}</span><span class="pf"><b>${c.pf}</b>/${c.max}</span>${FRECCIA}</button>
+      <div class="m-barra" data-s="${sbarra(c)}"><i style="width:${Math.round(100 * Math.max(0, c.pf) / c.max)}%"></i></div>
+      ${aperta ? pannelloCreatura(c, g, SC) : ""}</li>`;
+  }).join("")}</ul>`;
+}
+function pannelloCreatura(c, g, SC) {
+  const m = perId()[c.creatura], q = qta[c.id] || "";
+  const attacchi = ((m && m.azioni) || []).map((a, i) => [a, i]).filter(([a]) => a.colpire != null);
+  const usata = reazioneUsata(c, SC);
   const ordinate = B.creature.slice().sort((a, b) => a.nome.localeCompare(b.nome, "it"));
-  const righe = C.creature.map(c => {
-    const st = ferite(c.pf, c.max), aperta = aperte.has(c.id), m = P[c.creatura];
-    return `<li class="${c.pf <= 0 ? "giu" : ""}${c.tipo === "alleato" ? " alleato" : ""}" data-c="${c.id}">
-      ${c.nascosto ? `<div class="nascosto-riga"><span>Nascosto ai giocatori</span><button class="btn gold" data-nz="rivela" data-id="${c.id}">Rivela</button></div>` : ""}
-      <div class="riga"><button class="nome-c" data-nz="apri" data-id="${c.id}" aria-expanded="${aperta}">${esc(c.nome)}</button>
-        <span class="ca" title="Classe Armatura">CA ${c.ca}</span>
-        <span class="pf"><b>${c.pf}</b>/${c.max}</span></div>
-      <div class="hpbar" data-state="${c.pf * 2 > c.max ? "" : c.pf * 4 > c.max ? "mid" : "low"}"><i style="width:${Math.round(100 * c.pf / c.max)}%"></i></div>
-      <div class="colpo"><span class="parola">${st}</span>
-        <input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" min="0" placeholder="0" data-qta="${c.id}" data-foco="q-${c.id}" aria-label="Quantità per ${esc(c.nome)}">
-        <button class="btn dmg" data-nz="danno" data-id="${c.id}">Danno</button>
-        <button class="btn heal" data-nz="cura" data-id="${c.id}">Cura</button></div>
-      ${aperta ? `<div class="dettaglio">
-        <div class="cambi">
-          <button class="btn" data-nz="lato" data-id="${c.id}">${c.tipo === "alleato" ? "Passa ai nemici" : "Passa agli alleati"}</button>
-          ${persiste(c, C.creature) ? `<button class="btn" data-nz="riposo" data-id="${c.id}">Riposo lungo (PF e slot)</button>` : ""}
-          <div class="aggiungi"><select data-trasf="${c.id}" aria-label="Nuovo modello per ${esc(c.nome)}">${ordinate.map(x => `<option value="${esc(x.id)}"${x.id === c.creatura ? " selected" : ""}>${esc(x.nome)}</option>`).join("")}</select>
-            <button class="btn" data-nz="trasforma" data-id="${c.id}">Trasforma</button></div>
-        </div>${m ? schedaModello(m, c) : ""}</div>` : ""}</li>`;
-  }).join("");
-  const rinforzi = `<details class="rinforzi"${apriRinforzi ? " open" : ""}><summary data-nz="rinf-apri">Arrivano rinforzi</summary>
-    <div class="aggiungi">
-      <select id="nzRCreatura" aria-label="Creatura">${ordinate.map(x => `<option value="${esc(x.id)}">${esc(x.nome)}${x.tipo === "alleato" ? " (alleato)" : ""}</option>`).join("")}</select>
-      <input id="nzRQuanti" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" min="1" max="30" value="1" aria-label="Quanti">
-      <select id="nzRModo" aria-label="Iniziativa"><option value="branco">in branco</option><option value="uno">uno per uno</option></select>
+  return `<div class="m-pannello">
+    ${c.nascosto ? `<div class="nascosto-riga"><span>Nascosto ai giocatori</span><button class="btn gold" data-nz="rivela" data-id="${c.id}">Rivela</button></div>` : ""}
+    <div class="m-qta"><span>Quanti PF</span><output aria-live="polite">${q || "0"}</output></div>
+    <div class="tast5">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(n => `<button data-nz="cifra" data-id="${c.id}" data-v="${n}">${n}</button>`).join("")}<button class="canc" data-nz="canc" data-id="${c.id}">Cancella</button></div>
+    <div class="m-bott"><button class="btn dmg" data-nz="danno" data-id="${c.id}"${q ? "" : " disabled"}>Danno${q ? ` ${q}` : ""}</button><button class="btn heal" data-nz="cura" data-id="${c.id}"${q ? "" : " disabled"}>Cura${q ? ` ${q}` : ""}</button></div>
+    ${attacchi.length || (m && m.reazioni && m.reazioni.length) ? `<p class="lbl-sez">Reazione${usata ? " · già usata in questo round" : ""}</p>
+      <div class="m-reaz">${attacchi.map(([a, i]) => `<button class="btn" data-at="m-nuovo" data-g="${g.id}" data-i="${i}" data-r="${c.id}">${esc(a.nome)}<small>attacco di opportunità</small></button>`).join("")}
+      ${(m.reazioni || []).map((r, i) => `<button class="btn" data-nz="reaz-usa" data-id="${c.id}" data-k="${i}">${esc(r.nome)}<small>${esc(chiaro(r.testo || "").slice(0, 70))}${(r.testo || "").length > 70 ? "…" : ""}</small></button>`).join("")}</div>` : ""}
+    <div class="m-altro">
+      ${m ? `<button class="btn link" data-nz="scheda-c" data-id="${c.id}">${schedeAperte.has(c.id) ? "Nascondi la scheda" : `Scheda: ${esc(m.nome)}`}</button>` : ""}
+      <button class="btn link" data-nz="lato" data-id="${c.id}">${c.tipo === "alleato" ? "Passa ai nemici" : "Passa agli alleati"}</button>
+      ${persiste(c, C.creature) ? `<button class="btn link" data-nz="riposo" data-id="${c.id}">Riposo lungo</button>` : ""}
     </div>
+    <details class="apribile piccola" data-apri="trasforma-${c.id}"><summary>${rigaApribile("Trasforma", "in un altro modello del bestiario")}</summary><div class="ap-corpo aggiungi"><select data-trasf="${c.id}" aria-label="Nuovo modello per ${esc(c.nome)}">${ordinate.map(x => `<option value="${esc(x.id)}"${x.id === c.creatura ? " selected" : ""}>${esc(x.nome)}</option>`).join("")}</select>
+      <button class="btn" data-nz="trasforma" data-id="${c.id}">Trasforma</button></div></details>
+    ${m && schedeAperte.has(c.id) ? schedaModello(m, c) : ""}
+  </div>`;
+}
+/* chi è a terra: resta qui sotto, per rimediare a un errore */
+function htmlSconfitti() {
+  const giu = C.creature.filter(c => c.pf <= 0);
+  if (!giu.length) return "";
+  return `<details class="apribile m-sconfitti" data-apri="sconfitti"><summary>${rigaApribile("Sconfitti", "per rimediare a un errore: rimettili in campo", giu.length)}</summary>
+    <ul class="ap-corpo">${giu.map(c => `<li><span class="riga-t"><b>${esc(c.nome)}</b><small>a terra · aveva ${c.max} PF</small></span><button class="btn" data-nz="rimetti" data-id="${c.id}">Rimetti in campo</button></li>`).join("")}</ul></details>`;
+}
+function htmlRinforzi(SC) {
+  const per = k => cercaCreature(B.creature, "").filter(c => sezioneBestiario(c) === k).map(x => `<option value="${esc(x.id)}">${esc(x.nome)}</option>`).join("");
+  return `<details class="apribile rinforzi" data-apri="rinforzi"><summary>${rigaApribile("Arrivano rinforzi", "aggiungi creature a scontro iniziato")}</summary>
+    <div class="ap-corpo">
+    <label class="campo-m"><span class="lbl">Chi arriva</span><select id="nzRCreatura" aria-label="Creatura"><optgroup label="Mostri">${per("mostri")}</optgroup><optgroup label="Persone">${per("persone")}</optgroup><optgroup label="Alleati del gruppo">${per("alleati")}</optgroup></select></label>
+    <div class="rinf-due">
+      <label class="campo-m"><span class="lbl">Quanti</span><input id="nzRQuanti" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="1" aria-label="Quanti"></label>
+      <label class="campo-m"><span class="lbl">Il turno</span><select id="nzRModo" aria-label="Il turno"><option value="branco">Tutti insieme</option><option value="uno">Uno per uno</option></select></label>
+    </div>
+    <label class="campo-m"><span class="lbl">Quando giocano</span><select id="nzREvoca" aria-label="Quando giocano"><option value="">Da soli, alla loro iniziativa</option>
+      ${(SC.ordine || []).filter(v => C.gruppi.some(g => g.id === v.id)).map(v => `<option value="${v.id}"${SC.ordine[SC.turno] && SC.ordine[SC.turno].id === v.id ? " selected" : ""}>Subito dopo ${esc(C.gruppi.find(g => g.id === v.id).nome)} (evocati)</option>`).join("")}</select></label>
     <label class="spunta"><input type="checkbox" id="nzRNasc"> Nascosti ai giocatori (li riveli quando si fanno vedere)</label>
-    <div class="aggiungi"><select id="nzREvoca" aria-label="Chi li evoca"><option value="">Arrivano da soli: contano la loro iniziativa</option>
-      ${(SC.ordine || []).filter(v => C.gruppi.some(g => g.id === v.id)).map(v => `<option value="${v.id}"${SC.ordine[SC.turno] && SC.ordine[SC.turno].id === v.id ? " selected" : ""}>Evocati da ${esc(C.gruppi.find(g => g.id === v.id).nome)}</option>`).join("")}</select></div>
-    <div class="aggiungi"><label class="dado"><span class="lbl">d20 iniziativa</span><input id="nzRD20" data-foco="rd20" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" min="1" max="20" aria-label="d20 d'iniziativa dei rinforzi"></label>
-      <button class="btn gold" data-nz="rinforzi">Entrano in campo</button></div>
+    <button class="btn up rinf-ok" data-nz="rinforzi">Entrano in campo</button>
+    <p class="hint">L'iniziativa la tira l'app, come per gli altri mostri. Gli evocati in questo round giocano subito dopo chi li ha evocati; dal round dopo prendono il posto della loro iniziativa.</p>
     <button class="btn link" data-nz="nuovo">Non c'è nel bestiario? Crea un mostro nuovo</button>
-    <p class="hint">Un d20 per tutti quelli che entrano. Se sono evocati, in questo round giocano subito dopo chi li ha evocati; dal round dopo prendono il posto della loro iniziativa.</p>
-  </details>`;
-  return { rapida, campo: `<section><h2>In campo</h2>${rinforzi}<ul class="campo">${righe}</ul></section>` };
+  </div></details>`;
+}
+/** La reazione di una creatura è stata usata (attacco di opportunità o una reazione del manuale): torna al suo turno. */
+export async function segnaReazioneCreatura(id, SC) {
+  const creature = C.creature.map(c => c.id !== id ? c : { ...c, reazione: { scontro: SC.id, round: SC.round, turno: SC.turno } });
+  await arch.aggiorna(CAMPO, { creature });
 }
 
 /* La scheda di un modello, per il master:
@@ -201,7 +280,7 @@ function schedaModello(m, c, gruppo) {
     ${testi("Reazioni", m.reazioni)}
     ${m.leggendarie ? testi(`Azioni leggendarie · ${m.leggendarie.quante} per round, alla fine del turno di un altro`, m.leggendarie.azioni) : ""}
     ${m.tana ? `<h3 class="sez-m">Azioni di tana</h3><p class="testo">${T(m.tana)}</p>` : ""}
-    ${altri.length ? `<details class="tratti-tutti"><summary>Tratti e capacità <small>${altri.length}</small></summary>${testi("", altri).replace('<h3 class="sez-m"></h3>', "")}</details>` : ""}
+    ${altri.length ? `<details class="apribile tratti-tutti" data-apri="tratti-${esc(m.id || m.nome)}${c ? "-" + c.id : ""}"><summary>${rigaApribile("Tratti e capacità", "difese, sensi e capacità speciali", altri.length)}</summary><div class="ap-corpo">${testi("", altri).replace('<h3 class="sez-m"></h3>', "")}</div></details>` : ""}
     ${m.fonte ? `<p class="fonte">Dal manuale: ${esc(fonteChiara(m.fonte))}</p>` : ""}</div>`;
 }
 
@@ -214,12 +293,18 @@ async function colpisci(id, n, comeCura, SC) {
   const c = creature.find(x => x.id === id);
   const campi = { campo: pubblico(creature, C.gruppi) };
   const g = C.gruppi.find(x => x.membri.includes(id));
-  if (!comeCura && c.pf <= 0) {
-    toast(`${c.nome}: sconfitto`);
-    if (g && SC.stato === "in corso" && creature.filter(x => g.membri.includes(x.id)).every(x => x.pf <= 0) && SC.ordine.some(v => v.id === g.id))
-      Object.assign(campi, togliDaOrdine(SC, g.id));
+  if (!comeCura && c.pf <= 0 && g && SC.stato === "in corso" && creature.filter(x => g.membri.includes(x.id)).every(x => x.pf <= 0) && SC.ordine.some(v => v.id === g.id)) {
+    await ricordaPosto(g.id, SC);
+    Object.assign(campi, togliDaOrdine(SC, g.id));
   }
   return campi;
+}
+
+/* il totale d'iniziativa di un gruppo che esce dall'ordine: se il master lo rimette in campo, torna al suo posto */
+async function ricordaPosto(gid, SC) {
+  const v = (SC.ordine || []).find(x => x.id === gid); if (!v) return;
+  C = { ...C, gruppi: C.gruppi.map(g => g.id === gid ? { ...g, tot: v.tot, des: v.des ?? null } : g) };
+  await arch.aggiorna(CAMPO, { gruppi: C.gruppi });
 }
 
 /* ---------- per l'attacco dal telefono dei giocatori (attacco.js) ---------- */
@@ -237,9 +322,8 @@ export async function ferisciMolti(lista, SC) {
   for (const { id } of lista) await ricorda(creature, id);
   let st = { ordine: SC.ordine || [], turno: SC.turno, round: SC.round }, cambiato = false;
   for (const g of C.gruppi) {
-    if (st.ordine.some(v => v.id === g.id) && creature.filter(x => g.membri.includes(x.id)).every(x => x.pf <= 0)) { st = togliDaOrdine(st, g.id); cambiato = true; }
+    if (st.ordine.some(v => v.id === g.id) && creature.filter(x => g.membri.includes(x.id)).every(x => x.pf <= 0)) { await ricordaPosto(g.id, st); st = togliDaOrdine(st, g.id); cambiato = true; }
   }
-  lista.forEach(({ id }) => { const c = creature.find(x => x.id === id); if (c && c.pf <= 0) toast(`${c.nome}: sconfitto`); });
   return { campo: pubblico(creature, C.gruppi), ...(cambiato ? st : {}) };
 }
 /** Un attacco del bestiario usato dal master: chi attacca (nome vero) e l'azione scelta. */
@@ -264,27 +348,40 @@ export const latoGruppo = gruppoId => {
 export const ferisci = (id, n, SC) => colpisci(id, n, false, SC);
 
 /* ---------- bestiario ---------- */
+/** Il Bestiario come sezione della barra in basso (master): stessa lista, con il titolo grande e senza "Fatto". */
+/* Il bestiario in tre parti, perché "alleato" da solo non diceva niente:
+   Mostri (partono contro il gruppo) · Persone (la parte si sceglie in campo) · Alleati (combattono con il gruppo). */
+const PARTI = [["mostri", "Mostri", "Partono contro il gruppo."], ["persone", "Persone", "Abitanti e PNG: quando entrano in campo scegli se stanno con voi o contro."],
+  ["alleati", "Alleati", "Combattono con il gruppo e ricordano ferite e slot tra uno scontro e l'altro."]];
+let parteBest = "mostri";
+export function htmlBestiarioSezione() {
+  return `<header class="testa-pagina"><h1>Bestiario</h1><p>${B.creature.length} modelli · tocca per modificarli</p></header>` +
+    htmlBestiario().replace(/<h2>Bestiario[^<]*<small>[^<]*<\/small><\/h2>/, "").replace(/<div class="azioni"><button class="btn up" data-nz="chiudi">Fatto<\/button><\/div>/, "");
+}
 function htmlBestiario() {
-  const q = cerca.trim().toLowerCase();
-  const lista = B.creature.filter(c => !q || c.nome.toLowerCase().includes(q) || (c.giocatori || "").toLowerCase().includes(q))
-    .sort((a, b) => a.nome.localeCompare(b.nome, "it"));
+  const q = cerca.trim(), conta = k => B.creature.filter(c => sezioneBestiario(c) === k).length;
+  const lista = q ? cercaCreature(B.creature, q) : cercaCreature(B.creature, "").filter(c => sezioneBestiario(c) === parteBest);
+  const nomeParte = k => PARTI.find(p => p[0] === k)[1];
   return `<section><h2>Bestiario <small>${B.creature.length} modelli</small></h2>
-    <div class="aggiungi">
-      <input id="nzCerca" type="search" placeholder="Cerca" value="${esc(cerca)}" aria-label="Cerca nel bestiario">
+    <div class="best-cima">
+      <input id="nzCerca" type="search" placeholder="Cerca in tutto il bestiario" value="${esc(cerca)}" aria-label="Cerca nel bestiario">
       <button class="btn gold" data-nz="nuovo">Nuovo modello</button>
       <label class="btn">Importa dal file<input id="nzFile" type="file" accept=".json,application/json" hidden></label>
     </div>
-    <ul class="bestiario">${lista.map(c => `<li><button data-nz="modifica" data-id="${esc(c.id)}"><span class="nome">${esc(c.nome)}</span>
-      <small>${c.tipo === "alleato" ? "alleato · " : ""}CA ${c.ca} · PF ${c.pf} · ${(c.azioni || []).filter(a => a.colpire != null).map(a => esc(a.nome)).join(", ")}</small></button></li>`).join("")}</ul>
+    ${q ? "" : `<div class="seg best-parti">${PARTI.map(([k, n]) => `<button data-nz="parte" data-parte="${k}" aria-pressed="${parteBest === k}">${n} <small>${conta(k)}</small></button>`).join("")}</div>
+    <p class="hint best-spiega">${PARTI.find(p => p[0] === parteBest)[2]}</p>`}
+    ${lista.length ? `<ul class="bestiario">${lista.map(c => `<li><button data-nz="modifica" data-id="${esc(c.id)}"><span class="nome"><i class="lato-${sezioneBestiario(c)}" aria-hidden="true"></i>${esc(c.nome)}</span>
+      <small>${q ? nomeParte(sezioneBestiario(c)) + " · " : ""}CA ${c.ca} · PF ${c.pf}${(c.azioni || []).some(a => a.colpire != null) ? " · " + (c.azioni || []).filter(a => a.colpire != null).map(a => esc(a.nome)).join(", ") : ""}</small></button></li>`).join("")}</ul>`
+      : `<p class="vuoto">${q ? "Nessun modello con questo nome." : "Ancora nessuno in questa parte."}</p>`}
     <div class="azioni"><button class="btn up" data-nz="chiudi">Fatto</button></div></section>`;
 }
 
 const slug = t => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "modello";
 /* ---------- editor di un mostro, in una finestra (si apre anche a scontro iniziato) ---------- */
 let ED = null;
-function apriEditor(id) {
+function apriEditor(id, perScontro = false) {
   const c = B.creature.find(x => x.id === id);
-  ED = { id: id || "", elimina: false, bozza: structuredClone(c || { nome: "", giocatori: "", tipo: "nemico", ca: 12, pf: 10, ini: 0, vel: "9 m",
+  ED = { id: id || "", perScontro, elimina: false, bozza: structuredClone(c || { nome: "", giocatori: "", tipo: "nemico", ca: 12, pf: 10, ini: 0, vel: "9 m",
     azioni: [{ nome: "", colpire: 3, danni: "" }], tratti: [], tattica: "", ...(catPrep === "persone" ? { categoria: "persona" } : {}) }) };
   ED.f = finestra({ chiave: "editor", titolo: id ? "Modifica mostro" : "Nuovo mostro", onClick: clicEditor, onChiudi: () => { ED = null; ridisegna(); } });
   disegnaEditor();
@@ -293,12 +390,12 @@ function disegnaEditor(nuovo = true) {
   const c = ED.bozza, num = 'type="text" inputmode="numeric" pattern="-?[0-9]*" autocomplete="off"';
   const campo = (k, lbl, v, extra = "", ph = "") => `<label class="campo-m"><span class="lbl">${lbl}</span><input data-ed="${k}" value="${esc(v ?? "")}" ${extra} placeholder="${esc(ph)}"></label>`;
   ED.f.mostra(`<div class="modulo">
+      ${ED.id ? "" : `<p class="hint ed-nota">Si salva nel Bestiario: lo ritrovi in ogni scontro${ED.perScontro ? ", ed entra subito in questo" : ""}.</p>`}
       ${campo("nome", "Nome (lo vedi solo tu)", c.nome, "", "es. Capo dei lupi")}
       ${campo("giocatori", "Nome per i giocatori", c.giocatori, "", "es. Lupo enorme")}
-      <div class="tre">${campo("ca", "CA", c.ca, num)}${campo("pf", "PF", c.pf, num)}${campo("ini", "Iniziativa", c.ini ?? 0, num)}</div>
-      ${campo("vel", "Velocità", c.vel, "", "9 m")}
+      <div class="tre quattro">${campo("ca", "CA", c.ca, num)}${campo("pf", "PF", c.pf, num)}${campo("ini", "Iniziativa", c.ini ?? 0, num)}${campo("vel", "Velocità", c.vel, "", "9 m")}</div>
       <div class="campo-m"><span class="lbl">Che cos'è</span><div class="seg"><button data-ed-cat="mostro" aria-pressed="${!persona(c)}">Mostro</button><button data-ed-cat="persona" aria-pressed="${persona(c)}">Persona</button></div></div>
-      <div class="campo-m"><span class="lbl">Da che parte sta di solito</span><div class="seg"><button data-ed-tipo="nemico" aria-pressed="${c.tipo !== "alleato"}">Nemico</button><button data-ed-tipo="alleato" aria-pressed="${c.tipo === "alleato"}">Alleato del master</button></div></div>
+      <div class="campo-m"><span class="lbl">Da che parte sta di solito</span><div class="seg"><button data-ed-tipo="nemico" aria-pressed="${c.tipo !== "alleato"}">Contro il gruppo</button><button data-ed-tipo="alleato" aria-pressed="${c.tipo === "alleato"}">Con il gruppo</button></div></div>
       ${c.tipo === "alleato" ? `<label class="spunta"><input type="checkbox" data-ed="pfVisibili"${c.pfVisibili ? " checked" : ""}> I giocatori vedono i suoi PF veri</label>` : ""}
       <p class="lbl-sez">Attacchi</p>
       <div class="ed-attacchi">${(c.azioni || []).map((a, i) => `<div class="ed-att">
@@ -352,16 +449,21 @@ async function clicEditor(e) {
     if (!c.giocatori) c.giocatori = c.nome;
     if (!ED.id) { let id = slug(c.nome), k = 2; while (B.creature.some(x => x.id === id)) id = `${slug(c.nome)}-${k++}`; c.id = id; }
     await salvaBestiario(ED.id ? B.creature.map(x => x.id === c.id ? c : x) : [...B.creature, c]);
-    toast(ED.id ? "Mostro salvato" : `${c.nome}: aggiunto al bestiario`); ED.f.chiudi();
+    if (!ED.id && ED.perScontro) { scelte.push({ creatura: c.id, quanti: 1, modo: "branco" }); cercaPrep = ""; }
+    toast(ED.id ? "Mostro salvato" : ED.perScontro ? `${c.nome}: salvato nel bestiario e aggiunto allo scontro` : `${c.nome}: salvato nel bestiario, lo ritrovi in ogni scontro`, 5000); ED.f.chiudi();
   }
 }
-async function salvaBestiario(creature, gruppi = B.gruppi) { await arch.scrivi(BEST, { versione: 1, creature, gruppi }); }
+async function salvaBestiario(creature, gruppi = B.gruppi) {
+  await arch.scrivi(BEST, { versione: 1, creature, gruppi });
+  versione("dm-bestiario", { versione: 1, creature, gruppi });   // nello storico al massimo ogni mezz'ora
+}
 
 /* il file privato (privato/bestiario.json): i modelli con lo stesso nome tecnico vengono sostituiti, gli altri restano */
 async function importa(file) {
   let dati;
   try { dati = JSON.parse(await file.text()); } catch (_) { toast("Il file non è leggibile", 5000); return; }
   if (!dati || !Array.isArray(dati.creature)) { toast("Questo file non è un bestiario", 5000); return; }
+  if (B.creature.length) await versione("dm-bestiario", { versione: 1, creature: B.creature, gruppi: B.gruppi }, "prima dell'importazione", true);
   const nuove = new Map(B.creature.map(c => [c.id, c])), gruppi = new Map(B.gruppi.map(g => [g.id, g]));
   dati.creature.forEach(c => c && c.id && c.nome && nuove.set(c.id, c));
   (dati.gruppi || []).forEach(g => g && g.id && gruppi.set(g.id, g));
@@ -378,6 +480,8 @@ export async function clic(b, SC, scrivi) {
     case "gruppo": {
       const g = B.gruppi.find(x => x.id === b.dataset.id); if (!g) break;
       g.membri.forEach(m => scelte.push({ creatura: m.id, quanti: m.quanti, modo: g.iniziativa === "uno" ? "uno" : "branco" }));
+      appena = { id: g.membri[g.membri.length - 1].id, t: Date.now() };
+      toast(`${g.nome}: in campo (${g.membri.map(m => `${m.quanti} ${perId()[m.id]?.nome || m.id}`).join(", ")})`, 4000);
       break;
     }
     case "aggiungi": {
@@ -385,6 +489,16 @@ export async function clic(b, SC, scrivi) {
       scelte.push({ creatura: $("nzCreatura").value, quanti: q, modo: $("nzModo").value });
       break;
     }
+    /* dalla ricerca: un tocco ne aggiunge uno; se c'è già, uno in più (da due in su giocano in branco, se non dici altro) */
+    case "aggiungi-c": {
+      const gia = scelte.find(x => x.creatura === b.dataset.id);
+      if (gia) gia.quanti = Math.min(30, gia.quanti + 1); else scelte.push({ creatura: b.dataset.id, quanti: 1, modo: "branco" });
+      appena = { id: b.dataset.id, t: Date.now() };
+      { const nome = perId()[b.dataset.id]?.nome || "Creatura"; toast(gia ? `${nome}: ora sono ${gia.quanti}` : `${nome}: in campo`, 3000); }
+      break;
+    }
+    case "piu": { const x = scelte[+b.dataset.i]; x.quanti = Math.min(30, x.quanti + 1); break; }
+    case "meno": { const x = scelte[+b.dataset.i]; if (x.quanti > 1) x.quanti--; else scelte.splice(+b.dataset.i, 1); break; }
     case "togli": scelte.splice(+b.dataset.i, 1); break;
     case "modo": { const s = scelte[+b.dataset.i]; s.modo = s.modo === "branco" ? "uno" : "branco"; break; }
     case "nasc": { const s = scelte[+b.dataset.i]; s.nascosto = !s.nascosto; break; }
@@ -403,7 +517,11 @@ export async function clic(b, SC, scrivi) {
     }
     case "bestiario": pannello = "bestiario"; window.scrollTo({ top: 0 }); break;
     case "chiudi": pannello = null; break;
-    case "nuovo": apriEditor(""); return true;
+    case "parte": parteBest = b.dataset.parte; break;
+    case "branco-avanti": passo.i++; window.scrollTo({ top: 0 }); break;
+    case "branco-indietro": passo.i = Math.max(0, passo.i - 1); break;
+    /* creato mentre si prepara uno scontro: oltre a finire nel bestiario entra subito tra chi combatte */
+    case "nuovo": apriEditor("", SC.stato === "chiuso" && pannello !== "bestiario" && !$("vistaScontro").hidden); return true;
     case "modifica": apriEditor(b.dataset.id); return true;
     case "slot": {
       /* tocco su una losanga: piena = slot usato. Toccare l'ultima piena la libera, una vuota la riempie fin lì */
@@ -424,8 +542,8 @@ export async function clic(b, SC, scrivi) {
       await ricorda(creature, b.dataset.id);
       await scrivi({ campo: pubblico(creature, C.gruppi) });
       toast("Riposo lungo: PF pieni e slot liberi");
+      break;
     }
-    case "rinf-apri": apriRinforzi = !apriRinforzi; break;
     case "lato": {
       const creature = C.creature.map(c => c.id !== b.dataset.id ? c : { ...c, tipo: c.tipo === "alleato" ? "nemico" : "alleato" });
       await arch.aggiorna(CAMPO, { creature });
@@ -449,8 +567,8 @@ export async function clic(b, SC, scrivi) {
       break;
     }
     case "rinforzi": {
-      const d20 = parseInt($("nzRD20").value, 10);
-      if (!(d20 >= 1 && d20 <= 20)) { toast("Scrivi il d20 d'iniziativa (da 1 a 20)"); return true; }
+      /* l'iniziativa dei rinforzi la tira l'app, come per gli altri mostri: niente dado da scrivere */
+      const caso = new Uint32Array(1); crypto.getRandomValues(caso); const d20 = (caso[0] % 20) + 1;
       const q = Math.min(30, Math.max(1, parseInt($("nzRQuanti").value, 10) || 1));
       const nasc = $("nzRNasc").checked;
       const nuovi = schiera([{ creatura: $("nzRCreatura").value, quanti: q, modo: $("nzRModo").value, nascosto: nasc }], perId(), C.creature);
@@ -465,18 +583,43 @@ export async function clic(b, SC, scrivi) {
       }
       await scrivi({ ...st, campo: pubblico(creature, gruppi),
         partecipanti: [...(SC.partecipanti || []), ...nuovi.gruppi.map(g => ({ id: g.id, nome: g.nascosto ? "???" : g.nome, tipo: g.tipo === "alleato" ? "alleato" : "nemico", ...(g.nascosto ? { nascosto: true } : {}) }))] });
-      $("nzRD20").value = ""; apriRinforzi = false;
+      toast(`Rinforzi in campo · iniziativa: d20 ${d20}`, 5000);
+      const pr = document.querySelector('details[data-apri="rinforzi"]'); if (pr) pr.open = false;   // entrati: il pannello si richiude
       toast(`In campo: ${nuovi.creature.length > 1 ? nuovi.creature.length + " " : ""}${nuovi.creature[0].nome.replace(/ \d+$/, "")}`);
       break;
     }
-    case "apri": { const id = b.dataset.id; aperte.has(id) ? aperte.delete(id) : aperte.add(id); break; }
+    case "apri": { const id = b.dataset.id; aperte = aperte.has(id) ? new Set() : new Set([id]); break; }
+    case "cifra": { const id = b.dataset.id, ora = qta[id] || ""; qta[id] = (ora === "0" ? "" : ora).slice(0, 2) + b.dataset.v; if (qta[id] === "0") qta[id] = ""; break; }
+    case "canc": qta[b.dataset.id] = ""; break;
+    case "scheda-c": { const id = b.dataset.id; schedeAperte.has(id) ? schedeAperte.delete(id) : schedeAperte.add(id); break; }
+    case "reaz-usa": {
+      const c = C.creature.find(x => x.id === b.dataset.id), m = c && perId()[c.creatura], r = m && (m.reazioni || [])[+b.dataset.k];
+      await segnaReazioneCreatura(b.dataset.id, SC);
+      toast(`${c ? c.nome : ""}: ${r ? r.nome : "reazione"}`);
+      break;
+    }
     case "danno": case "cura": {
-      const id = b.dataset.id, inp = vista.querySelector(`[data-qta="${id}"]`);
-      const n = Math.max(0, parseInt(inp && inp.value, 10) || 0);
-      if (!n) { toast("Scrivi quanti PF"); return true; }
+      const id = b.dataset.id, n = Math.max(0, parseInt(qta[id], 10) || 0);
+      if (!n) { toast("Tocca quanti PF"); return true; }
+      qta[id] = "";
       const campi = await colpisci(id, n, az === "cura", SC);
-      if (inp) inp.value = "";
+      if (az === "danno" && campi.campo.find(x => x.id === id)?.ferite === "sconfitto") aperte.delete(id);
       await scrivi(campi);
+      break;
+    }
+    case "rimetti": {
+      /* torna in piedi con 1 PF; se il suo gruppo era uscito dall'ordine, rientra al suo posto */
+      const id = b.dataset.id;
+      const creature = C.creature.map(c => c.id !== id ? c : { ...c, pf: Math.max(1, c.pf) });
+      await arch.aggiorna(CAMPO, { creature });
+      const g = C.gruppi.find(x => x.membri.includes(id)), campi = { campo: pubblico(creature, C.gruppi) };
+      if (g && SC.stato === "in corso" && !(SC.ordine || []).some(v => v.id === g.id)) {
+        const voce = { id: g.id, nome: g.nascosto ? "???" : g.nome, tot: g.tot ?? 0, des: g.des ?? null, ...(g.nascosto ? { nascosto: true } : {}) };
+        Object.assign(campi, inserisciInOrdine({ ordine: SC.ordine || [], turno: SC.turno || 0 }, voce));
+      }
+      await scrivi(campi);
+      aperte = new Set([id]);
+      toast(`${creature.find(c => c.id === id).nome}: di nuovo in campo con 1 PF`);
       break;
     }
     default: return false;
@@ -486,6 +629,11 @@ export async function clic(b, SC, scrivi) {
 }
 /* la ricerca nel bestiario e il file da importare */
 export function input(e) {
+  if (e.target.id === "nzCercaPrep") {
+    cercaPrep = e.target.value; const pos = e.target.selectionStart; ridisegna();
+    const n = $("nzCercaPrep"); if (n) { n.focus({ preventScroll: true }); try { n.setSelectionRange(pos, pos); } catch (_) {} }
+    return true;
+  }
   if (e.target.id === "nzCerca") {
     cerca = e.target.value; const pos = e.target.selectionStart; ridisegna();
     const n = $("nzCerca"); if (n) { n.focus(); n.setSelectionRange(pos, pos); }

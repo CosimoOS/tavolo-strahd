@@ -11,18 +11,7 @@
   --f-num:"IBM Plex Mono",ui-monospace,Menlo,monospace;
   color-scheme:dark;
 }
-@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){
-  --bg:#efe7d8; --bg2:#e7dcc8; --panel:#f8f2e6; --panel2:#f1e8d6; --ink:#2a1d1a; --muted:#76665a; --line:#d9c9ae;
-  --crimson:#9b1d30; --crimson-deep:#6e1222; --crimson-soft:#f3dcdc; --gold:#8f6a24; --gold-deep:#6d5019; --gold-soft:#f1e3c2;
-  --ok:#2c6b45; --ok-soft:#dcebdf; --warn:#9a5b12; --on-accent:#fff8ee;
-  --glow:radial-gradient(1200px 500px at 50% -120px,rgba(155,29,48,.14),transparent 70%);
-  color-scheme:light}}
-:root[data-theme="light"]{
-  --bg:#efe7d8; --bg2:#e7dcc8; --panel:#f8f2e6; --panel2:#f1e8d6; --ink:#2a1d1a; --muted:#76665a; --line:#d9c9ae;
-  --crimson:#9b1d30; --crimson-deep:#6e1222; --crimson-soft:#f3dcdc; --gold:#8f6a24; --gold-deep:#6d5019; --gold-soft:#f1e3c2;
-  --ok:#2c6b45; --ok-soft:#dcebdf; --warn:#9a5b12; --on-accent:#fff8ee;
-  --glow:radial-gradient(1200px 500px at 50% -120px,rgba(155,29,48,.14),transparent 70%);
-  color-scheme:light}
+/* niente tema chiaro: il nuovo stile (vetro.css) è una notte di Barovia, uguale con l'iPhone in modalità chiara o scura */
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 body{background:var(--bg);background-image:var(--glow);background-repeat:no-repeat;color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.45;

@@ -16,31 +16,14 @@
 .schierati li{display:flex;align-items:center;gap:8px;min-height:48px;border-top:1px solid var(--line)}
 .schierati .nome{flex:1;font-size:17px;font-weight:500}
 
-/* in campo: una riga per creatura, con PF, danno e cura */
-.campo{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
-.campo li{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg)}
-.campo li.alleato{border-color:var(--gold-deep)}
-.campo li.giu{opacity:.55}
-.campo .riga{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-.campo .nome-c{flex:1;min-width:0;text-align:left;border:0;background:transparent;color:var(--ink);font:inherit;font-size:17px;font-weight:600;padding:6px 0;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:underline dotted var(--muted);text-underline-offset:4px}
-.campo .ca{font-family:var(--f-num);color:var(--muted);font-size:14px}
-.campo .pf{font-family:var(--f-num);font-size:15px;color:var(--muted)}
-.campo .pf b{font-size:20px;color:var(--ink)}
-.campo .hpbar{height:12px}
-.campo .colpo{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
-.campo .parola{flex:1;color:var(--muted);font-size:14px}
-.campo .colpo input{width:4.5em;min-height:48px;text-align:center;font-family:var(--f-num);font-size:18px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);color:var(--ink)}
-.campo .colpo .btn{min-height:48px}
-.campo .dettaglio{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
 
 /* scheda rapida di chi è di turno */
-.rapida{border-color:var(--gold-deep)}
 .modello{display:flex;flex-direction:column;gap:14px}
 .modello .cifre{display:grid;grid-template-columns:repeat(auto-fit,minmax(64px,1fr));border:1px solid var(--line);border-radius:10px;padding:8px 0;text-align:center}
 .modello .cifre .stat{padding:4px 6px}
 .modello .dati{margin:-4px 0 0;color:var(--muted);font-size:14px}
-.modello .tattica{padding:12px 14px;border-left:3px solid var(--gold);background:var(--gold-soft);border-radius:0 10px 10px 0}
+.modello .tattica{padding:12px 14px;border:1px solid var(--gold-deep);background:var(--gold-soft);border-radius:10px}
 .modello .tattica b{display:block;font-family:var(--f-display);letter-spacing:.12em;font-size:12px;text-transform:uppercase;color:var(--gold);margin-bottom:4px}
 .modello .tattica p{margin:0;line-height:1.5}
 .sez-m{margin:6px 0 -4px;font-family:var(--f-display);font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);
@@ -55,7 +38,7 @@
 .az .portata{color:var(--muted);font-size:13px}
 .az-numeri{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 .az .num{display:flex;flex-direction:column;gap:2px;padding:8px 12px;border-radius:8px;background:var(--bg);min-width:0}
-.az .num small{font-family:var(--f-display);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.az .num small{font-family:var(--f-display);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .az .num b{font-family:var(--f-num);font-size:18px;font-weight:600}
 .az .num b.oro{color:var(--gold)}
 .az .num.danni{grid-column:1/-1}
@@ -76,10 +59,6 @@
 .tratti{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
 .tratti li{display:flex;flex-direction:column;gap:2px;font-size:15px;line-height:1.5}
 .tratti li span{color:var(--muted)}
-.tratti-tutti{border:1px solid var(--line);border-radius:10px;padding:0 14px}
-.tratti-tutti summary{min-height:48px;display:flex;align-items:center;gap:8px;cursor:pointer;font-family:var(--f-display);font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
-.tratti-tutti summary small{font-family:var(--f-num);color:var(--muted);letter-spacing:0}
-.tratti-tutti[open]{padding-bottom:14px}
 .modello .fonte{margin:0;font-size:13px;color:var(--muted)}
 
 /* bestiario e modulo di modifica */
@@ -97,41 +76,14 @@
 .spunta input{width:22px;height:22px;accent-color:var(--gold)}
 .btn.link.rosso{color:var(--crimson)}
 
-/* come stanno le creature del master, nell'ordine dei turni (lo vedono tutti) */
-.turni li{flex-wrap:wrap}
+/* come stanno le creature del master, nella coda dei turni (lo vedono tutti) */
 .stato-c{flex:none;padding:3px 10px;border-radius:999px;border:1px solid var(--line);font-size:13px;line-height:1.4;color:var(--muted);white-space:nowrap}
 .stato-c[data-s="ferito"]{border-color:#c97d22;color:#f2b45a;background:color-mix(in srgb,#c97d22 14%,transparent)}
 .stato-c[data-s="in fin di vita"]{border-color:var(--crimson);color:var(--ink);background:var(--crimson-soft)}
 .stato-c[data-s="sconfitto"]{text-decoration:line-through}
-.membri{flex-basis:100%;list-style:none;margin:2px 0 4px;padding:0 0 0 calc(1.5em + 12px);display:flex;flex-direction:column;gap:6px}
-.membri li{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:32px;padding:0;border:0;background:none;border-radius:0;font-size:15px}
-.membri li.giu span:first-child{color:var(--muted);text-decoration:line-through}
 
-/* schieramenti nell'ordine dei turni: striscia a sinistra (oro il gruppo, verde gli alleati, cremisi i nemici) */
-.turni > li{position:relative}
-.turni > li::before{content:"";position:absolute;left:-1px;top:10px;bottom:10px;width:4px;border-radius:0 4px 4px 0;background:var(--line)}
-.turni > li.lato-gruppo::before{background:var(--gold)}
-.turni > li.lato-alleato::before{background:var(--ok)}
-.turni > li.lato-nemico::before{background:var(--crimson)}
-.turni > li.lato-misto::before{background:linear-gradient(180deg,var(--ok),var(--crimson))}
-.membri li{position:relative;padding-left:12px}
-.membri li::before{content:"";position:absolute;left:0;top:50%;width:6px;height:6px;margin-top:-3px;transform:rotate(45deg)}
-.membri li.lato-alleato::before{background:var(--ok)}
-.membri li.lato-nemico::before{background:var(--crimson)}
-.legenda{display:flex;flex-wrap:wrap;gap:6px 16px;margin:0 0 10px;font-size:13px;color:var(--muted)}
-.legenda span{display:inline-flex;align-items:center;gap:6px}
-.legenda span::before{content:"";width:4px;height:14px;border-radius:2px}
-.legenda .l-gruppo::before{background:var(--gold)}
-.legenda .l-alleato::before{background:var(--ok)}
-.legenda .l-nemico::before{background:var(--crimson)}
 
-/* master: cambio di schieramento, trasformazione, rinforzi */
-.campo .cambi{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
-.campo .cambi .btn{min-height:48px;align-self:flex-start}
-.campo li.alleato{border-color:color-mix(in srgb,var(--ok) 60%,var(--line))}
-.rinforzi{border:1px solid var(--line);border-radius:10px;padding:0 14px;margin-bottom:12px}
-.rinforzi[open]{padding-bottom:14px}
-.rinforzi summary{min-height:48px;display:flex;align-items:center;cursor:pointer;font-family:var(--f-display);font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
+/* master: rinforzi */
 .rinforzi .aggiungi{margin-top:8px}
 .rinforzi .hint{margin:10px 0 0}
 .attacca-pg{margin-left:auto;min-height:40px;padding:6px 14px}
@@ -139,9 +91,8 @@
 .stato-c[data-s="a metà"]{border-color:var(--warn);color:var(--ink);background:color-mix(in srgb,var(--warn) 22%,transparent)}
 .stato-c b{font-family:var(--f-num);font-weight:600;margin-left:2px}
 /* mostri nascosti ai giocatori */
-.turni > li.nascosto{border-style:dashed;opacity:.85}
-.campo .nascosto-riga{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:-2px 0 8px;padding:6px 10px;border:1px dashed var(--line);border-radius:8px;color:var(--muted);font-size:14px}
-.campo .nascosto-riga .btn{min-height:40px}
+.nascosto-riga{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 10px;border:1px dashed var(--line);border-radius:8px;color:var(--muted);font-size:14px}
+.nascosto-riga .btn{min-height:40px}
 .schierati .btn.link.acceso{color:var(--gold);font-weight:700}
 .rinforzi .spunta{margin-top:8px}
 /* editor del mostro (nella finestra) */

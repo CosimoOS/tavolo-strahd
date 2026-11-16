@@ -39,9 +39,10 @@ body.passi-aperta{overflow:hidden}
 .carta .c-nome b{font-size:18px}
 .carta .c-nome small{color:var(--muted);font-size:14px}
 .carta .c-num{font-family:var(--f-num);font-size:20px;font-weight:600;color:var(--gold)}
-.carta.nemico{border-left:4px solid var(--crimson)}
-.carta.alleato{border-left:4px solid var(--ok)}
-.carta.gruppo{border-left:4px solid var(--gold)}
+/* da che parte sta: una losanga accanto al nome, come nell'ordine dei turni */
+.carta.nemico::before,.carta.alleato::before,.carta.gruppo::before{content:"";flex:none;width:8px;height:8px;transform:rotate(45deg);background:var(--gold)}
+.carta.nemico::before{background:var(--crimson)}
+.carta.alleato::before{background:var(--ok)}
 .carta .tag-inc{font-family:var(--f-display);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);border:1px solid var(--gold-deep);border-radius:999px;padding:2px 8px;margin-left:6px}
 
 /* tastierino: tutte le facce del dado */
@@ -123,7 +124,7 @@ body.passi-aperta{overflow:hidden}
 .passo .fondo .btn.grande{min-height:64px;font-size:20px}
 .tre-btn{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .tre-btn .btn{min-height:52px;padding:8px}
-.difese-nota{margin:0;padding:10px 14px;border-left:3px solid var(--crimson);background:var(--crimson-soft);border-radius:0 10px 10px 0;font-size:14px;line-height:1.5}
+.difese-nota{margin:0;padding:10px 14px;border:1px solid color-mix(in srgb,var(--crimson) 60%,var(--line));background:var(--crimson-soft);border-radius:10px;font-size:14px;line-height:1.5}
 .totale span{font-size:15px}
 .passi-testa .passi-ind[hidden]{display:block!important;visibility:hidden}
 .tre-btn .btn{display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1.2}

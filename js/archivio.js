@@ -3,6 +3,7 @@
 
      profiloCorrente()        → chi è già entrato su questo telefono (o null)
      entra(profilo, pin)      → controlla il PIN; se è sbagliato lancia un ErroreAccesso
+     leggi(p), leggiRaccolta(r) → una lettura sola (copie di sicurezza e storico)
      esci()
      ascolta(percorso, cb)    → chiama cb(dati, info) ora e a ogni cambiamento; restituisce la funzione per smettere
      ascoltaRaccolta(p, cb)   → come ascolta, ma per tutti i documenti di una raccolta: cb([{id, dati}])
@@ -17,7 +18,8 @@
 export class ErroreAccesso extends Error {}
 
 export async function creaArchivio(cfg) {
-  return cfg.modalita === "firebase" ? archivioFirebase(cfg) : archivioLocale(cfg);
+  const a = await (cfg.modalita === "firebase" ? archivioFirebase(cfg) : archivioLocale(cfg));
+  return cfg.solaLettura ? soloLettura(a) : a;
 }
 
 /* ---------------- modalità locale ---------------- */
@@ -48,13 +50,15 @@ function archivioLocale(cfg) {
   });
   return {
     modalita: "locale",
-    async profiloCorrente() { try { return localStorage.getItem(CHIAVE_PROFILO); } catch (_) { return null; } },
+    /* in prova il profilo vale per QUESTA scheda del browser (sessionStorage), i dati sono in comune (localStorage):
+       due schede dello stesso indirizzo fanno da due telefoni, per esempio il master e un giocatore */
+    async profiloCorrente() { try { return sessionStorage.getItem(CHIAVE_PROFILO); } catch (_) { return null; } },
     async entra(profilo, pin) {
       await new Promise(r => setTimeout(r, 200));
       if (cfg.pinLocali[profilo] !== pin) throw new ErroreAccesso("PIN errato");
-      localStorage.setItem(CHIAVE_PROFILO, profilo);
+      sessionStorage.setItem(CHIAVE_PROFILO, profilo);
     },
-    async esci() { localStorage.removeItem(CHIAVE_PROFILO); },
+    async esci() { sessionStorage.removeItem(CHIAVE_PROFILO); },
     ascolta(p, cb, errore, { anchePropri = false } = {}) {
       if (!ascoltatori.has(p)) ascoltatori.set(p, new Set());
       const a = { cb, anchePropri };
@@ -68,6 +72,9 @@ function archivioLocale(cfg) {
       setTimeout(() => cb(elenco(r)), 0);
       return () => raccolte.get(r).delete(cb);
     },
+    /* una lettura sola, senza ascoltare (copie di sicurezza, storico) */
+    async leggi(p) { return leggi(p); },
+    async leggiRaccolta(r) { return elenco(r); },
     async scrivi(p, dati) { localStorage.setItem(PREF + p, JSON.stringify(dati)); avvisa(p, true); },
     async aggiorna(p, campi) {
       const v = leggi(p); if (!v) throw new Error("Documento assente: " + p);
@@ -116,6 +123,9 @@ async function archivioFirebase(cfg) {
       return F.onSnapshot(F.collection(db, r), s => cb(s.docs.map(d => ({ id: d.id, dati: d.data() }))),
         e => errore && errore(e));
     },
+    /* una lettura sola, senza ascoltare (copie di sicurezza, storico) */
+    async leggi(p) { const d = await F.getDoc(F.doc(db, p)); return d.exists() ? d.data() : null; },
+    async leggiRaccolta(r) { const q = await F.getDocs(F.collection(db, r)); return q.docs.map(d => ({ id: d.id, dati: d.data() })); },
     async scrivi(p, dati) {
       try { await F.setDoc(F.doc(db, p), dati); }
       catch (e) { if (e && e.code === "permission-denied") e.solaLettura = true; throw e; }
@@ -125,4 +135,10 @@ async function archivioFirebase(cfg) {
       catch (e) { if (e && e.code === "permission-denied") e.solaLettura = true; throw e; }
     },
   };
+}
+
+/** Sola lettura (?sololettura nell'indirizzo): l'app legge e mostra tutto, ma non scrive niente nell'archivio,
+    nemmeno le correzioni automatiche. Serve per scaricare una copia dei dati veri prima di pubblicare una versione nuova. */
+export function soloLettura(a) {
+  return { ...a, solaLettura: true, async scrivi() {}, async aggiorna() {} };
 }

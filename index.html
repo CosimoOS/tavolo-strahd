@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#141116">
+<meta name="robots" content="noindex, nofollow">
 <title>Il tavolo</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icone/icona.svg" type="image/svg+xml">
@@ -14,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="Il tavolo">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Alegreya+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Alegreya+Sans:wght@400;500;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <link rel="stylesheet" href="css/tema.css">
 <link rel="stylesheet" href="css/scheda.css">
 <link rel="stylesheet" href="css/profili.css">
@@ -22,6 +23,8 @@
 <link rel="stylesheet" href="css/nemici.css">
 <link rel="stylesheet" href="css/attacco.css">
 <link rel="stylesheet" href="css/passi.css">
+<link rel="stylesheet" href="css/altro.css">
+<link rel="stylesheet" href="css/vetro.css">
 </head>
 <body>
 
@@ -42,184 +45,172 @@
 </main>
 
 <!-- ============ Scheda ============ -->
-<div id="vistaScheda" hidden>
-<div class="wrap">
-  <nav class="switch open" id="switch" aria-label="Scheda"></nav>
-  <header class="hero">
-    <div id="crest" class="crestbox"></div>
-    <div class="name">
+<div id="vistaScheda" hidden data-pagina="scheda">
+<!-- comandi di vetro: in alto chi sei (e il titolo che compare scorrendo), in basso le sezioni -->
+<div class="bordo-alto" aria-hidden="true"></div>
+<nav class="navalto" id="navAlto" aria-label="Chi sei">
+  <span class="nav-tit" id="navTit"></span>
+  <span class="capsula vetro" id="navPf" hidden><span class="num"><b id="miniHp">50</b><span id="miniMax">/50</span></span><small>PF</small></span>
+  <span class="nav-conto" id="navConto"></span>
+</nav>
+<div class="bordo-basso" aria-hidden="true"></div>
+<nav class="tabbar vetro" id="barra" aria-label="Sezioni"></nav>
+
+<div class="wrap pagine">
+  <!-- il master che apre una scheda dal Tavolo: si vede subito che è la sua vista -->
+  <div class="vista-master" id="vistaMaster" hidden><button class="bv piccolo" id="tornaTavolo" type="button"><svg class="ico-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Tavolo</button><span>Scheda di <b id="vmNome"></b> · vista del master</span></div>
+  <nav class="segmenti vetro" id="segScheda" hidden aria-label="Pagine della scheda"></nav>
+
+  <!-- 1 · SCHEDA: quello che serve al tavolo -->
+  <div class="pagina" data-pagina="scheda">
+    <header class="eroe">
+      <div id="crest" class="eroe-stemma"></div>
       <h1 id="charName">Rombosogliola</h1>
-      <div class="klass"><strong id="klassName">Guerriero</strong> <span id="subclass">Campione</span></div>
-      <div class="lvline">
-        <span class="lvbadge">Livello <b id="lvV">6</b></span>
-        <button class="btn up" id="lvUp">Sali di livello</button>
-        <button class="btn link" id="undoLv" hidden>Annulla l'ultimo</button>
-      </div>
+      <p class="eroe-classe"><span id="klassName">Guerriero</span> · <span id="subclass">Campione</span> · <b>Livello <span id="lvV">6</span></b></p>
       <div class="tags" id="tags"></div>
-    </div>
-    <div class="ring">
-      <div class="hpblock">
-        <div class="hprow"><span class="lbl">Punti ferita</span><span><span class="hpnow" id="hpNow">52</span><span class="hpmax"> / <span id="hpMax">52</span></span></span></div>
-        <div class="hpbar" role="meter" aria-label="Punti ferita" id="hpBar"><i id="gFill"></i></div>
-      </div>
-      <div class="stats">
-        <div class="stat ca"><b id="caV">21</b><span>CA</span></div>
-        <div class="stat"><b id="iniV">+2</b><span id="iniL">Iniz.</span></div>
-        <div class="stat"><b id="spdV">9 m</b><span>Vel.</span></div>
-      </div>
+      <button class="salita-fascia" id="salitaFascia" type="button" hidden><span><small>Il master ti ha concesso un livello</small><b id="salitaFasciaTxt">Sali al livello 7</b></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+      <div class="eroe-az"><button class="bv oro piccolo" id="lvUp" type="button">Sali di livello</button><button class="btn link" id="undoLv" type="button" hidden>Annulla l'ultimo</button></div>
+    </header>
+
+    <section class="pf ring" aria-label="Punti ferita">
+      <div class="pf-testa"><span class="lbl">Punti ferita</span><span class="dot busy" id="sync" title="Caricamento della scheda" role="status"><i></i><em id="syncTxt">Caricamento</em></span></div>
+      <div class="pf-num"><b id="hpNow">52</b><em class="pf-piu" id="hpTemp" hidden></em><small>/ <span id="hpMax">52</span></small></div>
+      <div class="hpbar" role="meter" aria-label="Punti ferita" id="hpBar"><i id="gFill"></i><i class="pf-temp" id="gTemp" hidden></i><i class="pf-perso" id="gPerso" hidden></i></div>
       <div class="resist" id="resist" hidden></div>
+      <div class="pf-azioni"><button class="bv cremisi" id="bDmg" type="button">Danno</button><button class="bv verde" id="bHeal" type="button">Cura</button><button class="bv" id="bTemp" type="button">Temporanei</button></div>
+      <button class="bv piccolo pf-max" id="bMax" type="button" hidden>Massimo ridotto</button>
+    </section>
+    <div class="stats">
+      <div class="stat"><b id="caV">21</b><span>CA</span></div>
+      <div class="stat"><b id="iniV">+2</b><span id="iniL">Iniziativa</span></div>
+      <div class="stat"><b id="spdV">9 m</b><span>Velocità</span></div>
+      <div class="stat"><b id="ppNum">10</b><span>Percezione</span></div>
     </div>
-  </header>
-</div>
+    <section class="ispira" id="inspRow">
+      <div><b>Ispirazione</b><small id="inspTxt">vantaggio a un tiro</small></div>
+      <div class="pips grandi" data-res="insp" data-max="4" data-avere="1"></div>
+    </section>
 
-<div class="dock">
-  <div class="dock-in">
-    <span class="minihp"><span id="miniHp">50</span><small id="miniMax"> / 50</small></span>
-    <input id="amt" type="number" inputmode="numeric" min="0" placeholder="0" aria-label="Quantità">
-    <button class="btn dmg" id="bDmg">Danno</button>
-    <button class="btn heal" id="bHeal">Cura</button>
-    <button class="btn" id="bTemp" title="Imposta i PF temporanei">Temp</button>
-    <span class="dot busy" id="sync" title="Caricamento della scheda" role="status"><i></i><em id="syncTxt">Caricamento</em></span>
-  </div>
-  <div class="float" id="float" hidden aria-live="polite"><span id="floatTxt"></span><button class="btn link" id="undoHp" hidden>Annulla</button></div>
-</div>
+    <h2 class="sez">Condizioni</h2>
+    <section>
+      <div class="chips" id="conds"></div>
+      <div class="durata" id="durata" hidden></div>
+      <div class="conc-riga" id="concRiga"></div>
+    </section>
+    <section class="morte" id="morteSec">
+      <div class="morte-r"><span class="lbl">Successi contro la morte</span><div class="pips" data-death="s"></div></div>
+      <div class="morte-r"><span class="lbl">Fallimenti</span><div class="pips" data-death="f"></div></div>
+      <div class="morte-r"><span class="lbl">Indebolimento</span><div class="exh"><button class="btn step" data-exh="-1" aria-label="Riduci indebolimento">−</button><b class="num" id="exh">0</b><button class="btn step" data-exh="1" aria-label="Aumenta indebolimento">+</button></div></div>
+    </section>
 
-<!-- Scontro: prende il posto della scheda quando lo si apre dal selettore in basso; la barra dei PF resta -->
-<div class="wrap"><main id="vistaScontro" class="vista-scontro" hidden aria-live="polite"></main></div>
+    <h2 class="sez">Risorse <span>piene = disponibili</span></h2>
+    <section class="lista" id="risorse">
+      <div class="res" id="reRow">
+        <div class="what"><div>Recuperare energie</div><small id="reTxt">Azione bonus · 1d10 + 6 PF · riposo breve</small></div>
+        <div class="act"><div class="pips" data-res="re" data-max="1" id="rePips"></div></div>
+      </div>
+      <div class="res" id="aiRow">
+        <div class="what"><div>Azione impetuosa</div><small>Un'azione in più nel turno · riposo breve</small></div>
+        <div class="act"><div class="pips" data-res="ai" data-max="1" id="aiPips"></div></div>
+      </div>
+      <div class="res">
+        <div class="what"><div id="dvName">Dadi vita d10</div><small id="dvTxt">Durante un riposo breve · 1d10 + 2 PF ciascuno</small></div>
+        <div class="act"><div class="pips" data-res="dv" data-max="6" id="dvPips"></div></div>
+      </div>
+      <div id="extraRes"></div>
+      <div class="res" id="indRow" hidden>
+        <div class="what"><div id="indName">Indomito</div><small>Ripeti un tiro salvezza fallito · riposo lungo</small></div>
+        <div class="act"><div class="pips" data-res="ind" data-max="1" id="indPips"></div></div>
+      </div>
+    </section>
 
-<div class="wrap">
-  <div class="grid">
-    <div class="col">
-
-      <section>
-        <h2>Risorse <small id="bcV">BC +3</small></h2>
-        <div class="res" id="reRow">
-          <div class="what"><div>Recuperare energie</div><small id="reTxt">Azione bonus · 1d10 + 6 PF · riposo breve</small></div>
-          <div class="act"><div class="pips" data-res="re" data-max="1" id="rePips"></div></div>
+    <h2 class="sez">Attacchi <span id="atkTxt">due per azione</span></h2>
+    <section class="lista attacchi">
+      <div id="atkBody"></div>
+      <form class="wform" id="wForm" hidden>
+        <span class="lbl">Nuova arma</span>
+        <input id="wName" placeholder="Nome, es. Spadone" aria-label="Nome dell'arma">
+        <div class="wf-grid">
+          <label><span class="lbl">Dado</span><select id="wDice"><option>1d4</option><option>1d6</option><option selected>1d8</option><option>1d10</option><option>1d12</option><option>2d6</option></select></label>
+          <label><span class="lbl">Caratteristica</span><select id="wAb"><option value="for">Forza</option><option value="des">Destrezza</option><option value="fin">Accurata (la migliore)</option></select></label>
+          <label><span class="lbl">Danno</span><select id="wType"><option>Taglienti</option><option>Perforanti</option><option>Contundenti</option></select></label>
+          <label><span class="lbl">Bonus magico</span><select id="wMagic"><option value="0">nessuno</option><option value="1">+1</option><option value="2">+2</option><option value="3">+3</option></select></label>
         </div>
-        <div class="res" id="aiRow">
-          <div class="what"><div>Azione impetuosa</div><small>Un'azione in più nel turno · riposo breve</small></div>
-          <div class="act"><div class="pips" data-res="ai" data-max="1" id="aiPips"></div></div>
-        </div>
-        <div class="res">
-          <div class="what"><div id="dvName">Dadi vita d10</div><small id="dvTxt">Durante un riposo breve · 1d10 + 2 PF ciascuno</small></div>
-          <div class="act"><div class="pips" data-res="dv" data-max="6" id="dvPips"></div></div>
-        </div>
-        <div id="extraRes"></div>
-        <div class="res" id="indRow" hidden>
-          <div class="what"><div id="indName">Indomito</div><small>Ripeti un tiro salvezza fallito · riposo lungo</small></div>
-          <div class="act"><div class="pips" data-res="ind" data-max="1" id="indPips"></div></div>
-        </div>
-        <div class="res" id="inspRow">
-          <div class="what"><div>Ispirazione</div><small>Fino a 4 · vantaggio a un tiro</small></div>
-          <div class="act"><div class="pips" data-res="insp" data-max="4" data-invert="1"></div></div>
-        </div>
-        <p class="hint">Le losanghe piene sono gli usi spesi; per i PF recuperati usa Cura.</p>
-        <div class="rests">
-          <button class="btn" id="shortRest">Riposo breve</button>
-          <button class="btn" id="longRest">Riposo lungo</button>
-        </div>
-      </section>
-
-      <section>
-        <h2>Attacchi <small id="atkTxt">Critico 19–20 · due attacchi</small><button class="btn link wedit" id="wEdit" type="button">Modifica</button></h2>
-        <table class="atk">
-          <thead><tr><th>Arma</th><th>Colpire</th><th>Danni</th><th class="wcol" hidden></th></tr></thead>
-          <tbody id="atkBody"></tbody></table>
-        <form class="wform" id="wForm" hidden>
-          <div class="lbl">Nuova arma</div>
-          <input id="wName" placeholder="Nome, es. Spadone" aria-label="Nome dell'arma">
-          <div class="wf-grid">
-            <label><span class="lbl">Dado</span><select id="wDice"><option>1d4</option><option>1d6</option><option selected>1d8</option><option>1d10</option><option>1d12</option><option>2d6</option></select></label>
-            <label><span class="lbl">Caratteristica</span><select id="wAb"><option value="for">Forza</option><option value="des">Destrezza</option><option value="fin">Accurata (la migliore)</option></select></label>
-            <label><span class="lbl">Danno</span><select id="wType"><option>Taglienti</option><option>Perforanti</option><option>Contundenti</option></select></label>
-            <label><span class="lbl">Bonus magico</span><select id="wMagic"><option value="0">nessuno</option><option value="1">+1</option><option value="2">+2</option><option value="3">+3</option></select></label>
+        <input id="wNote" placeholder="Nota (facoltativa), es. versatile 1d10" aria-label="Nota sull'arma">
+        <div class="wf-checks"><label><input type="checkbox" id="wRanged"> A distanza</label></div>
+        <div class="wf-mun" id="wMunWrap" hidden>
+          <label><span class="lbl">Munizioni</span><select id="wMun" aria-label="Munizioni dell'arma"></select></label>
+          <div class="wf-grid" id="wMunNuove" hidden>
+            <label><span class="lbl">Nome</span><input id="wMunNome" placeholder="es. Frecce d'argento" aria-label="Nome delle munizioni speciali"></label>
+            <label><span class="lbl">Quante</span><input id="wMunN" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="20" aria-label="Quante munizioni"></label>
           </div>
-          <input id="wNote" placeholder="Nota (facoltativa), es. versatile 1d10" aria-label="Nota sull'arma">
-          <div class="wf-checks"><label><input type="checkbox" id="wRanged"> A distanza</label><label id="wAmmoWrap" hidden><input type="checkbox" id="wAmmo" checked> Usa munizioni</label></div>
-          <button class="btn gold" type="submit">Aggiungi l'arma</button>
-        </form>
-        <p class="hint" id="atkNota" hidden></p>
-        <div class="ammo" id="ammoRow"><span>Munizioni</span>
-          <button class="btn step" data-ammo="-1" aria-label="Togli una munizione">−</button>
-          <b class="num" id="ammo">20</b>
-          <button class="btn step" data-ammo="1" aria-label="Aggiungi una munizione">+</button>
         </div>
-      </section>
+        <button class="bv oro" type="submit">Aggiungi l'arma</button>
+      </form>
+      <p class="hint" id="atkNota" hidden></p>
+      <div id="munRow"></div>
+      <button class="btn link wedit" id="wEdit" type="button">Modifica le armi</button>
+    </section>
+    <div class="riposi"><button class="bv" id="shortRest" type="button">Riposo breve</button><button class="bv" id="longRest" type="button">Riposo lungo</button></div>
+  </div>
 
-      <section id="spellSec" hidden>
-        <h2>Incantesimi <small id="spellTxt"></small></h2>
-        <div id="spellList"></div>
-      </section>
-
-      <section class="armor" id="armorSec">
-        <h2>Armatura Cremesi <small>In sintonia</small></h2>
-        <div class="spell">
-          <div class="top"><b>Stretta folgorante</b></div>
-          <div class="meta"><span class="tag">a volontà · CD 5</span></div>
-          <p>Trucchetto a contatto. Vantaggio se il bersaglio indossa metallo. 2d8 danni da fulmine e niente reazioni fino al suo prossimo turno.</p>
-        </div>
-        <div class="spell">
-          <div class="top"><b>Dardo caotico</b><div class="pips" data-res="dardo" data-max="3"></div></div>
-          <div class="meta"><span class="tag">3 al giorno · CD 5</span></div>
-          <p>1° livello, 36 m. 2d8 + 1d6 danni da fulmine. Se i due d8 sono uguali, l'energia balza su un'altra creatura entro 9 m.</p>
-        </div>
-        <div class="spell">
-          <div class="top"><b>Fulmine</b><div class="pips" data-res="fulmine" data-max="1"></div></div>
-          <div class="meta"><span class="tag">1 al giorno · CD 13</span></div>
-          <p>3° livello, linea di 30 m. Tiro salvezza su Destrezza: 8d6 danni da fulmine, metà se lo supera.</p>
-        </div>
-      </section>
-
-      <section>
-        <h2>Condizioni</h2>
-        <div class="chips" id="conds"></div>
-        <div class="durata" id="durata" hidden></div>
-        <div class="conc-riga" id="concRiga"></div>
-        <div class="row2 death">
-          <div class="ok"><div class="lbl">Successi contro morte</div><div class="pips" data-death="s"></div></div>
-          <div class="ko"><div class="lbl">Fallimenti</div><div class="pips" data-death="f"></div></div>
-          <div><div class="lbl">Indebolimento</div><div class="exh" style="margin-top:6px">
-            <button class="btn step" data-exh="-1" aria-label="Riduci indebolimento">−</button>
-            <b class="num" id="exh">0</b>
-            <button class="btn step" data-exh="1" aria-label="Aumenta indebolimento">+</button></div></div>
-        </div>
-      </section>
-    </div>
-
-    <div class="col">
-      <section>
-        <h2>Caratteristiche <small id="ppV">Percezione passiva 10</small></h2>
-        <div class="abil" id="abil"></div>
-        <div class="skills" id="skills"></div>
-      </section>
-
-      <section>
-        <h2>Borsa <small id="attTxt">Sintonia 1/3</small></h2>
-        <div class="purse" id="purse"></div>
-        <div class="lbl" style="margin:4px 0 6px">Equipaggiamento <span class="attnote">· tocca <span class="att-mini" aria-hidden="true"></span> per la sintonia</span></div>
-        <ul class="inv" id="inv"></ul>
-        <form class="add" id="addForm">
-          <input id="newItem" placeholder="Aggiungi un oggetto" aria-label="Nuovo oggetto">
-          <button class="btn gold" type="submit">Aggiungi</button>
-          <label class="isw"><input type="checkbox" id="isWeapon"> È un'arma: aggiungila anche agli attacchi</label>
-        </form>
-      </section>
-
-      <section>
-        <h2>Privilegi</h2>
-        <div id="feats"></div>
-        <dl class="kv" id="kv"></dl>
-      </section>
-
-      <section>
-        <h2>Note di sessione</h2>
-        <textarea id="notes" placeholder="Appunti, nomi, cose da ricordare…"></textarea>
+  <!-- 2 · INCANTESIMI: divisi per livello, con gli slot accanto -->
+  <div class="pagina" data-pagina="magia">
+    <header class="testa-pagina"><h1>Incantesimi</h1><p id="spellTxt"></p></header>
+    <div id="concBanner"></div>
+    <section id="spellSec" class="nudo" hidden><div id="spellList"></div></section>
+    <div id="armorSec" class="armatura">
+      <h2 class="sez">Armatura Cremesi <span>in sintonia</span></h2>
+      <section class="lista">
+        <div class="inc-riga"><span class="riga-t"><b>Stretta folgorante</b><small>a volontà · a contatto · 2d8 fulmine</small><p>Vantaggio se il bersaglio indossa metallo; il bersaglio perde la reazione fino al suo prossimo turno.</p></span></div>
+        <div class="inc-riga"><span class="riga-t"><b>Dardo caotico</b><small>3 al giorno · 36 m · 2d8 + 1d6 fulmine</small><p>Se i due d8 sono uguali, l'energia balza su un'altra creatura entro 9 m.</p></span><span class="inc-az"><span class="pips" data-res="dardo" data-max="3"></span></span></div>
+        <div class="inc-riga"><span class="riga-t"><b>Fulmine</b><small>1 al giorno · linea di 30 m · tiro su Destrezza CD 13</small><p>8d6 danni da fulmine, metà se lo supera.</p></span><span class="inc-az"><span class="pips" data-res="fulmine" data-max="1"></span></span></div>
       </section>
     </div>
   </div>
+
+  <!-- 3 · ABILITÀ -->
+  <div class="pagina" data-pagina="abilita">
+    <header class="testa-pagina"><h1>Abilità</h1><p>Bonus di competenza <b id="bcV">+3</b> · <span id="ppV">Percezione passiva 10</span></p></header>
+    <section><div class="abil" id="abil"></div></section>
+    <h2 class="sez">Abilità <span>◆ con competenza</span></h2>
+    <section class="lista"><div class="skills" id="skills"></div></section>
+    <h2 class="sez">Privilegi e tratti</h2>
+    <section class="lista"><div id="feats"></div></section>
+    <h2 class="sez">Competenze</h2>
+    <section><dl class="kv" id="kv"></dl></section>
+  </div>
+
+  <!-- 4 · ZAINO -->
+  <div class="pagina" data-pagina="zaino">
+    <header class="testa-pagina"><h1>Zaino</h1><p id="attTxt">Sintonia 1/3</p></header>
+    <section><div class="purse" id="purse"></div></section>
+    <h2 class="sez">Equipaggiamento <span>◆ in sintonia</span></h2>
+    <section class="lista">
+      <ul class="inv" id="inv"></ul>
+      <form class="add" id="addForm">
+        <input id="newItem" placeholder="Aggiungi un oggetto" aria-label="Nuovo oggetto">
+        <button class="bv oro" type="submit">Aggiungi</button>
+        <label class="isw"><input type="checkbox" id="isWeapon"> È un'arma: aggiungila anche agli attacchi</label>
+      </form>
+    </section>
+    <h2 class="sez">Note di sessione</h2>
+    <section><textarea id="notes" placeholder="Appunti, nomi, cose da ricordare…"></textarea></section>
+  </div>
 </div>
+
+<!-- le altre sezioni: scontro, Tavolo e Bestiario del master, Profilo/Campagna -->
+<main id="vistaScontro" class="wrap vista-scontro" hidden aria-live="polite"></main>
+<main id="vistaTavolo" class="wrap vista-tavolo" hidden></main>
+<main id="vistaBestiario" class="wrap vista-bestiario" hidden></main>
+<main id="vistaAltro" class="wrap vista-altro" hidden></main>
+
+<div class="toast vetro" id="float" hidden aria-live="polite"><span id="floatTxt"></span><button class="btn link" id="undoHp" type="button" hidden>Annulla</button></div>
 </div>
+
+<!-- chi sei: si apre dall'avatar in alto a destra -->
+<div class="veil-conto" id="contoVeil"></div>
+<section class="foglio-conto vetro" id="contoFoglio" aria-label="Chi sei" aria-hidden="true"></section>
 
 <!-- ============ Finestre ============ -->
 <div class="veil" id="veil" hidden>
@@ -275,5 +266,28 @@
 </div>
 
 <script type="module" src="js/app.js"></script>
+<!-- il master ha concesso un livello: una finestra grande, non un pulsantino -->
+<div class="veil" id="salitaVeil" hidden>
+  <div class="sheet salita" role="dialog" aria-modal="true" aria-labelledby="salitaTit">
+    <p class="salita-sopra">Il master ti ha concesso un livello</p>
+    <h3 id="salitaTit">Sali di livello</h3>
+    <p class="intro">Scegli con calma cosa cambia: punteggi o talento, classe, stile. Puoi anche farlo più tardi dalla scheda.</p>
+    <div class="salita-az"><button class="bv oro" id="salitaOk" type="button">Sali di livello</button><button class="btn link" id="salitaDopo" type="button">Più tardi</button></div>
+  </div>
+</div>
+<div class="veil" id="pfVeil" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pfTit">
+    <h3 id="pfTit">Danno</h3>
+    <p class="intro" id="pfIntro">Quanti punti ferita?</p>
+    <div class="pf-display"><b id="pfNum">0</b><small>PF</small></div>
+    <div class="pf-tasti" id="pfTasti">
+      <button data-pf="1">1</button><button data-pf="2">2</button><button data-pf="3">3</button>
+      <button data-pf="4">4</button><button data-pf="5">5</button><button data-pf="6">6</button>
+      <button data-pf="7">7</button><button data-pf="8">8</button><button data-pf="9">9</button>
+      <button class="canc" data-pf="c">Cancella</button><button data-pf="0">0</button><button class="canc" data-pf="x" aria-label="Togli l'ultima cifra"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M9 5h11v14H9l-6-7z"/><path d="M12 9l5 6M17 9l-5 6" stroke-linecap="round"/></svg></button>
+    </div>
+    <div class="foot"><button class="btn" id="pfNo" type="button">Annulla</button><button class="btn up" id="pfOk" type="button">Applica</button></div>
+  </div>
+</div>
 </body>
 </html>

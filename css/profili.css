@@ -43,5 +43,3 @@
 .pinpad[aria-busy="true"]{opacity:.5;pointer-events:none}
 
 /* pulsante del profilo nel selettore in basso */
-.switch .esci{color:var(--muted)}
-.switch .esci svg{width:24px;height:24px}

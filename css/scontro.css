@@ -42,42 +42,6 @@
 .somma b{color:var(--gold);font-size:24px;margin-left:4px}
 .dadi .aiuto{flex-basis:100%;color:var(--muted);font-size:13px}
 
-/* ordine dei turni */
-.tuo{margin:0 0 12px;padding:10px 14px;border-radius:10px;background:var(--crimson-soft);border:1px solid var(--crimson);
-  font-family:var(--f-display);font-weight:700;letter-spacing:.06em;color:var(--ink)}
-.turni{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
-.turni li{display:flex;align-items:center;gap:12px;min-height:52px;padding:6px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
-.turni .pos{font-family:var(--f-num);color:var(--muted);min-width:1.5em}
-.turni .nome{flex:1;font-size:17px;font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.turni .tot{font-family:var(--f-num);font-weight:600;font-size:18px;color:var(--muted)}
-.turni li.mio .nome{color:var(--gold)}
-.turni li.attivo{border-color:var(--gold);background:var(--gold-soft);box-shadow:0 0 0 1px var(--gold-deep) inset}
-.turni li.attivo .pos{color:var(--gold)}
-.turni li.attivo .pos::before{content:"";display:inline-block;width:8px;height:8px;transform:rotate(45deg);background:var(--gold);margin-right:8px;vertical-align:1px}
-.turni li.attivo .tot{color:var(--gold)}
-.turni .btn.link{padding:6px 8px;font-size:13px;min-height:40px}
-.vista-scontro .fine{min-width:9em}
-
-/* il pulsante "Scontro" nel selettore in basso: un punto cremisi fermo quando serve la tua attenzione */
-.switch .scontro{position:relative;color:var(--muted)}
-.switch .scontro svg{width:24px;height:24px}
-.switch .scontro.avviso::after{content:"";position:absolute;top:8px;right:10px;width:9px;height:9px;border-radius:50%;
-  background:var(--crimson);box-shadow:0 0 0 2px var(--panel)}
-.switch.open .scontro.avviso::after{right:12px}
-
-/* Con il pulsante "Scontro" il selettore aperto non sta più in un telefono stretto:
-   lì il nome resta scritto solo sulla voce attiva, le altre mostrano l'icona. */
-.switch{max-width:calc(100vw - 24px)}
-@media (max-width:520px){
-  .switch.open button:not([aria-pressed="true"]) .nm{max-width:0;opacity:0;margin-left:0}
-  .switch.open button:not([aria-pressed="true"]){padding:8px 12px}
-}
-
-/* fine dello scontro: il pulsante "Scontro" si restringe e sfuma prima di sparire */
-.switch .scontro{transition:max-width .35s ease,opacity .3s ease,padding .35s ease,margin .35s ease,transform .35s ease;max-width:220px}
-.switch .scontro.esce{max-width:0;min-width:0;opacity:0;padding-left:0;padding-right:0;margin:0;transform:scale(.6);border-color:transparent;overflow:hidden;pointer-events:none}
-.switch .scontro.esce::after{display:none}
-
 /* riquadro "Scontro concluso" che i giocatori vedono per qualche secondo */
 .concluso{text-align:center;padding-block:28px}
 .concluso h2{justify-content:center;margin-bottom:0}
@@ -110,9 +74,7 @@ body.master-scontro .dock{background:none;border:0;padding-block:0;backdrop-filt
 .banda-scontro .bs-pf{flex:none;font-family:var(--f-num);font-size:14px;padding:4px 10px;border-radius:999px;background:rgba(0,0,0,.25)}
 .banda-scontro .bs-pf b{font-size:17px}
 .banda-scontro .bs-pf small{margin-left:3px;opacity:.75}
-.banda-scontro .bs-scheda{flex:none;display:flex;align-items:center;gap:6px;min-height:44px;padding:4px 12px 4px 6px;border:1px solid rgba(255,246,234,.4);border-radius:999px;
-  background:rgba(0,0,0,.2);color:inherit;font:inherit;font-weight:700;font-size:14px}
-.banda-scontro .bs-scheda svg{width:26px;height:30px}
+.banda-scontro .bs-pf svg{width:16px;height:19px;vertical-align:-4px;margin-right:6px}
 .banda-scontro .bs-torna{display:flex;align-items:center;gap:10px;flex:1;min-width:0;min-height:44px;border:0;background:transparent;color:inherit;font:inherit;text-align:left;padding:0}
 .banda-scontro .bs-freccia{font-size:30px;line-height:1;flex:none}
 .banda-scontro.tuo{background:linear-gradient(180deg,var(--gold),var(--gold-deep));color:#1c140a;border-bottom-color:var(--gold-deep)}
@@ -122,43 +84,13 @@ body.con-banda{padding-top:calc(env(safe-area-inset-top,0px) + 56px)}
 body.con-banda .dock{top:calc(env(safe-area-inset-top,0px) + 56px)}
 
 /* modalità scontro: nella vista dello scontro niente scheda, niente selettore, niente barra dei PF */
-body.scontro-vista .switch,body.scontro-vista #vistaScheda .hero,body.scontro-vista .dock-in{display:none!important}
+body.scontro-vista #vistaScheda .hero,body.scontro-vista .dock-in{display:none!important}
 /* la barra resta solo come appoggio degli avvisi ("−9 PF da Lupo") */
 body.scontro-vista .dock{background:none;border:0;padding-block:0;backdrop-filter:none;-webkit-backdrop-filter:none}
 body.scontro-vista #vistaScheda .grid{display:none}
-/* sulla scheda durante lo scontro: si cambia personaggio, ma niente "Scontro" e "Profilo" nel selettore */
-body.modo-scontro:not(.scontro-vista) .switch [data-scontro],body.modo-scontro:not(.scontro-vista) .switch [data-esci]{display:none}
 body.master-scontro .dock-in{display:none}
 
-/* il turno adesso: in cima, grande */
-.turno-ora{display:flex;flex-direction:column;gap:14px;border-color:var(--line)}
-.turno-ora .to-round{margin:0;font-family:var(--f-display);letter-spacing:.14em;text-transform:uppercase;font-size:13px;color:var(--muted)}
-.turno-ora .to-chi{margin:0;display:flex;flex-direction:column;gap:2px;font-size:14px;letter-spacing:.14em;color:var(--muted)}
-.turno-ora .to-chi::after{display:none}
-.turno-ora .to-chi span{font-size:clamp(26px,8vw,34px);letter-spacing:.04em;color:var(--ink);text-transform:none;line-height:1.1}
-.turno-ora .to-attesa{margin:0;color:var(--muted)}
-.turno-ora.mio{border-color:var(--gold);background:linear-gradient(180deg,var(--gold-soft),var(--panel) 70%)}
-.turno-ora.mio .to-chi{color:var(--gold)}
-/* da che parte sta chi agisce: bordo appena tinto e una losanga del suo colore accanto al round */
-.turno-ora .to-round{display:flex;align-items:center;gap:8px}
-.turno-ora[class*="lato-"] .to-round::before{content:"";width:9px;height:9px;transform:rotate(45deg);background:var(--line)}
-.turno-ora.lato-nemico{border-color:color-mix(in srgb,var(--crimson) 45%,var(--line))}
-.turno-ora.lato-nemico .to-round::before{background:var(--crimson)}
-.turno-ora.lato-alleato{border-color:color-mix(in srgb,var(--ok) 45%,var(--line))}
-.turno-ora.lato-alleato .to-round::before{background:var(--ok)}
-.turno-ora.lato-gruppo .to-round::before{background:var(--gold)}
-.turno-ora .fine-turno{min-height:52px;font-size:16px}
-.turno-ora.mio .fine-turno{align-self:stretch}
-.azioni-turno{display:grid;grid-template-columns:1fr;gap:10px}
-.azione-grande{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:14px;align-items:center;min-height:76px;padding:12px 18px;
-  border:1px solid var(--gold-deep);border-radius:14px;background:linear-gradient(180deg,var(--gold),var(--gold-deep));color:#1c140a;text-align:left;font:inherit}
-.azione-grande .az-icona{grid-row:1 / 3;width:32px;height:32px}
-.azione-grande b{font-family:var(--f-display);font-size:22px;letter-spacing:.06em}
-.azione-grande small{font-size:14px;opacity:.8}
-.azione-grande:active{transform:scale(.98)}
-.azione-grande.secondaria{background:var(--panel2);border-color:var(--line);color:var(--ink)}
 .ultimo-att{margin:0;color:var(--muted);font-size:14px}
-.ordine h2 small{font-family:var(--f-body)}
 /* conferme in attesa per il master */
 .avviso-conferma{display:flex;align-items:center;gap:10px;width:100%;min-height:56px;padding:10px 16px;border:1px solid var(--crimson);border-radius:12px;
   background:var(--crimson-soft);color:var(--ink);font:inherit;font-weight:600;text-align:left}
@@ -173,3 +105,200 @@ body.master-scontro .dock-in{display:none}
   @keyframes rotola{0%{transform:rotate(-540deg) scale(.4);opacity:0}60%{transform:rotate(-30deg) scale(1.15);opacity:1}80%{transform:rotate(10deg) scale(.95)}100%{transform:none}}
   @keyframes compare{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
 }
+
+/* ===== la schermata dei turni: chi agisce, la coda, il master dentro la coda ===== */
+/* chi agisce adesso: un titolo solo, la losanga dice da che parte sta */
+.ora-testa{display:flex;flex-direction:column;gap:8px}
+.ora-testa h2,.mio-turno h2{margin:0;display:flex;align-items:center;gap:12px;font-size:26px;line-height:1.15;letter-spacing:.03em;text-transform:none;color:var(--ink)}
+.ora-testa h2::after,.mio-turno h2::after{display:none}
+.ora-testa h2 .segno{width:12px;height:12px;flex:none;transform:rotate(45deg)}
+.ora-testa > p{margin:0;color:var(--muted);font-size:16px}
+.ora-testa > p b{color:var(--gold);font-weight:700}
+.ora-testa .riga-az{display:flex;gap:10px;margin-top:4px}
+.ora-testa .riga-az .btn{flex:1;min-height:52px;font-size:16px}
+.reazione-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-weight:700}
+.reazione-btn small{font-weight:400;font-size:13px;color:var(--muted)}
+.ora-testa .rapida{margin-top:4px}
+.segno{display:inline-block;background:var(--line)}
+.lato-gruppo .segno,.segno.lato-gruppo{background:var(--gold)}
+.lato-alleato .segno,.segno.lato-alleato{background:var(--ok)}
+.lato-nemico .segno,.segno.lato-nemico{background:var(--crimson)}
+.lato-misto .segno{background:linear-gradient(135deg,var(--ok) 50%,var(--crimson) 50%)}
+
+/* tocca a te: gettoni, Attacca e Oggetto affiancati, Fine turno */
+.mio-turno{display:flex;flex-direction:column;gap:14px;padding:18px 16px 16px;border:1px solid var(--gold-deep);border-radius:16px;
+  background:linear-gradient(180deg,var(--gold-soft),var(--bg2) 75%)}
+.mio-turno h2{color:var(--gold)}
+.gettoni{display:flex;gap:8px}
+.gettone{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:0 6px;border:1px solid var(--gold-deep);border-radius:999px;
+  background:transparent;color:var(--gold);font:inherit;font-size:14px;font-weight:700;transition:color .2s,border-color .2s,background-color .2s}
+.gettone::before{content:"";width:7px;height:7px;transform:rotate(45deg);background:currentColor;flex:none}
+.gettone small{font-family:var(--f-num);font-size:12px}
+.gettone.usato{color:var(--muted);border-color:var(--line)}
+.gettone.usato::before{background:transparent;box-shadow:inset 0 0 0 1.5px currentColor}
+.azioni2{display:grid;grid-template-columns:1.35fr 1fr;gap:10px}
+.az-grande{display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:12px;min-height:100px;padding:14px;border-radius:14px;text-align:left;font:inherit}
+.az-grande .az-icona{width:28px;height:28px}
+.az-grande b{display:block;font-family:var(--f-display);font-size:20px;letter-spacing:.05em;line-height:1.1}
+.az-grande small{display:block;margin-top:3px;font-size:13px;opacity:.85}
+.az-grande.prima{background:linear-gradient(180deg,var(--gold),var(--gold-deep));border:1px solid var(--gold-deep);color:#1c140a}
+.az-grande.seconda{background:var(--panel2);border:1px solid var(--line);color:var(--ink)}
+.az-grande.seconda .az-icona{color:var(--gold)}
+.az-grande:disabled{background:var(--panel);border-color:var(--line);color:var(--muted);cursor:not-allowed}
+.az-grande:disabled .az-icona{color:var(--muted)}
+.az-grande:not(:disabled):active{transform:scale(.98)}
+.impetuosa{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:52px;padding:10px 14px;font-weight:700;text-align:left}
+.impetuosa small{font-weight:400;font-size:13px;color:var(--muted)}
+.impetuosa.pronta{border-color:var(--gold);color:var(--gold);background:var(--gold-soft)}
+.mio-turno .fine-t{min-height:52px;font-size:16px}
+.mio-turno .ultimo-att{margin:0}
+
+/* la coda: parte da chi agisce; chi ha già giocato va sotto "Round N+1" */
+.coda-blocco h3{margin:0 0 6px;font-family:var(--f-display);font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.coda{list-style:none;margin:0;padding:0}
+.coda > li{display:grid;grid-template-columns:2.4em 1fr;column-gap:12px;padding:11px 10px;border-top:1px solid var(--line);overflow:hidden}
+.coda > li:first-child,.coda > li.giro + li,.coda > li.ora + li{border-top:0}
+.q-ini{font-family:var(--f-num);font-weight:600;font-size:17px;line-height:28px;color:var(--muted);text-align:right}
+.q-riga{display:flex;align-items:center;gap:10px;min-height:28px;min-width:0}
+.q-riga .segno{width:8px;height:8px;transform:rotate(45deg);flex:none}
+.q-nome{flex:1;min-width:0;font-size:18px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.conta{display:inline-block;font-family:var(--f-num);font-size:15px;color:var(--muted);margin-left:2px}
+.mio .q-nome{color:var(--gold)}
+.q-tu{font-size:13px;color:var(--gold);font-weight:700}
+.q-pf{font-family:var(--f-num);font-size:14px;color:var(--muted)}
+.q-pf b{color:var(--ink);font-size:16px}
+.coda > li.ora{border:1px solid var(--gold-deep);border-radius:12px;background:var(--gold-soft)}
+.ora .q-ini{color:var(--gold)}
+.q-adesso{font-family:var(--f-display);font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
+.coda > li.nascosto{border-style:dashed;border-color:var(--line)}
+.coda > li.nascosto.ora{border-color:var(--gold-deep)}
+.coda .scambia{min-height:40px;padding:6px 4px;font-size:13px}
+.coda > li > .q-membri{grid-column:2;list-style:none;margin:4px 0 0;padding:0 0 0 18px}
+.q-membri > li{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:34px;font-size:16px;overflow:hidden}
+.coda > li.giro{display:flex;align-items:center;gap:10px;padding:16px 0 6px;border-top:0;
+  font-family:var(--f-display);font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.coda > li.giro::before,.coda > li.giro::after{content:"";flex:1;height:1px;background:var(--line)}
+.legenda-mini{display:flex;flex-wrap:wrap;gap:6px 16px;margin:10px 0 0 calc(2.4em + 22px);font-size:13px;color:var(--muted)}
+.legenda-mini span{display:inline-flex;align-items:center;gap:6px}
+.legenda-mini .segno{width:7px;height:7px;transform:rotate(45deg)}
+
+/* master: ogni creatura nella sua riga, con CA e PF; un tocco apre tastierino e azioni */
+.coda > li > .q-membri.m{grid-column:1 / -1;padding:0;margin-top:6px}
+.q-membri.m > li{display:block;min-height:0}
+.m-testa{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left}
+.m-testa .nome{flex:1;min-width:0;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.m-testa .nome small{color:var(--muted);font-size:13px}
+/* creatura da sola nel suo gruppo: la sua riga è già il pulsante */
+.q-solo .q-membri.m{list-style:none;margin:0;padding:0}
+.q-solo .m-testa{min-height:28px}
+.q-solo .m-testa .segno{width:8px;height:8px;transform:rotate(45deg);flex:none}
+.q-solo .m-testa .nome{font-size:18px;font-weight:500}
+.q-solo .m-barra{margin:6px 0 0}
+.q-solo .m-pannello{margin-top:12px}
+.m-testa .ca{font-family:var(--f-num);font-size:13px;color:var(--muted)}
+.m-testa .pf{font-family:var(--f-num);font-size:15px;color:var(--muted);min-width:4.2em;text-align:right}
+.m-testa .pf b{font-size:17px;color:var(--ink)}
+.m-testa .apri{width:18px;height:18px;flex:none;color:var(--muted);transition:transform .2s}
+.m-crea.aperta .apri{transform:rotate(180deg)}
+.m-tag{flex:none;padding:2px 8px;border:1px solid var(--line);border-radius:999px;font-size:12px;color:var(--muted);white-space:nowrap}
+.m-barra{height:4px;border-radius:999px;background:var(--line);overflow:hidden;margin:-4px 0 6px}
+.m-barra i{display:block;height:100%;border-radius:inherit;background:var(--ok);transition:width .4s cubic-bezier(.16,1,.3,1)}
+.m-barra[data-s="mid"] i{background:var(--warn)}
+.m-barra[data-s="low"] i{background:var(--crimson)}
+.m-pannello{display:flex;flex-direction:column;gap:10px;margin:2px 0 12px}
+.m-qta{display:flex;align-items:baseline;justify-content:space-between}
+.m-qta span{color:var(--muted);font-size:14px}
+.m-qta output{font-family:var(--f-num);font-size:30px;font-weight:600;color:var(--ink);min-width:2ch;text-align:right}
+.tast5{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.tast5 button{min-height:48px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);color:var(--ink);font-family:var(--f-num);font-size:19px;font-weight:600}
+.tast5 button:active{background:var(--gold-soft);border-color:var(--gold-deep)}
+.tast5 .canc{grid-column:span 5;min-height:40px;font-family:var(--f-body);font-size:14px;font-weight:500;color:var(--muted)}
+.m-bott{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.m-bott .btn{min-height:52px;font-size:17px;font-weight:700}
+.m-bott .btn:disabled{opacity:.45}
+.m-reaz{display:flex;flex-direction:column;gap:6px}
+.m-reaz .btn{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-height:48px;text-align:left;font-weight:700}
+.m-reaz .btn small{font-weight:400;font-size:13px;color:var(--muted)}
+.m-pannello .lbl-sez{margin:6px 0 0}
+.m-altro{display:flex;flex-wrap:wrap;gap:4px 14px}
+.m-altro .btn.link{min-height:44px}
+.m-pannello .modello{margin-top:6px}
+
+/* master, in fondo: sconfitti, rinforzi, chiudere lo scontro */
+.in-fondo{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:12px}
+.m-sconfitti .ap-corpo{list-style:none;margin:0}
+.m-sconfitti li{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;border-top:1px solid var(--line);color:var(--muted)}
+.m-sconfitti li small{font-family:var(--f-num)}
+.chiudi-m{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.chiudi-m .btn{min-height:48px}
+
+/* gli slot di un livello: losanghe piene (liberi) e vuote (usati) */
+.pips-slot{display:inline-flex;gap:4px;vertical-align:middle;margin:0 4px}
+.pips-slot i{width:8px;height:8px;transform:rotate(45deg);box-shadow:inset 0 0 0 1.5px var(--gold-deep)}
+.pips-slot i.pieno{background:var(--gold);box-shadow:none}
+.slot-scelta{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.slot-scelta button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:72px;padding:10px 8px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);color:var(--ink);font:inherit}
+.slot-scelta button b{font-size:15px}
+.slot-scelta button small{font-family:var(--f-num);font-size:13px;color:var(--muted)}
+.slot-scelta button[aria-pressed="true"]{border-color:var(--gold);background:var(--gold-soft)}
+.slot-scelta button[aria-pressed="true"] small{color:var(--gold)}
+.slot-scelta button:disabled{opacity:.45}
+
+/* ===== l'annuncio "sconfitto", su tutti i telefoni: il solo momento animato della schermata ===== */
+.annuncio{position:fixed;left:16px;right:16px;top:calc(env(safe-area-inset-top,0px) + 68px);z-index:30;display:flex;align-items:center;gap:16px;max-width:528px;margin:0 auto;
+  padding:16px 18px;border:1px solid var(--crimson);border-radius:14px;background:color-mix(in srgb,var(--crimson-deep) 82%,var(--bg));
+  box-shadow:0 14px 34px rgba(0,0,0,.5);color:var(--on-accent);opacity:0;transform:translateY(-14px);pointer-events:none;
+  transition:opacity .25s ease-out,transform .35s cubic-bezier(.16,1,.3,1)}
+.annuncio.vede{opacity:1;transform:none}
+.annuncio b{display:block;font-family:var(--f-display);font-size:20px;letter-spacing:.04em;line-height:1.2}
+.annuncio small{display:block;margin-top:2px;font-size:14px;color:color-mix(in srgb,var(--on-accent) 82%,transparent)}
+.spezza{position:relative;width:26px;height:26px;flex:none}
+.spezza i{position:absolute;inset:4px;transform:rotate(45deg);background:var(--on-accent)}
+.spezza i:first-child{clip-path:polygon(0 0,100% 0,0 100%)}
+.spezza i:last-child{clip-path:polygon(100% 0,100% 100%,0 100%)}
+/* chi esce dalla coda: resta un attimo (si vede "sconfitto"), poi la riga si chiude */
+.esce-presto{animation:esce-coda .45s var(--d,0ms) cubic-bezier(.16,1,.3,1) forwards}
+.q-membri > li.esce-presto,.m-crea.esce-presto{--h:60px;overflow:hidden}
+.coda > li.esce-presto{--h:280px}
+@keyframes esce-coda{from{max-height:var(--h,60px)}to{max-height:0;opacity:0;padding-top:0;padding-bottom:0;margin-top:0;margin-bottom:0;border-width:0}}
+.conta.cambia{animation:conta-gira .45s ease-out}
+@keyframes conta-gira{0%{transform:none;opacity:1}45%{transform:translateY(-8px);opacity:0}55%{transform:translateY(8px);opacity:0}100%{transform:none;opacity:1}}
+@media (prefers-reduced-motion:no-preference){
+  .annuncio.vede .spezza i:first-child{animation:meta-su .7s .45s cubic-bezier(.16,1,.3,1) both}
+  .annuncio.vede .spezza i:last-child{animation:meta-giu .7s .45s cubic-bezier(.16,1,.3,1) both}
+  @keyframes meta-su{to{transform:translate(-5px,-5px) rotate(20deg);opacity:.35}}
+  @keyframes meta-giu{to{transform:translate(5px,5px) rotate(70deg);opacity:.35}}
+}
+@media (prefers-reduced-motion:reduce){
+  .annuncio,.annuncio.vede{transform:none}
+  .esce-presto{animation:svanisce .2s var(--d,0ms) forwards}
+  @keyframes svanisce{to{opacity:0;max-height:0;padding:0;margin:0;border-width:0}}
+  .conta.cambia{animation:none}
+}
+
+/* nella scelta "con cosa attacchi": usi e slot rimasti ben visibili; perché un'opzione è spenta */
+.carta .c-risorsa{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600;color:var(--gold)}
+.carta .c-risorsa .pips-slot{margin:0}
+.carta .c-motivo{color:var(--warn);font-size:13px}
+.carta:disabled .c-motivo{opacity:1}
+.avviso-balzo{margin:0;padding:10px 14px;border:1px solid var(--gold-deep);border-radius:10px;background:var(--gold-soft);color:var(--gold);font-weight:600}
+
+/* ===== righe che si aprono: Sconfitti, Arrivano rinforzi, Tratti e capacità, Trasforma =====
+   Hanno l'aria di quello che sono: un pulsante largo con la freccia, che dice cosa c'è dentro e quanti sono. */
+.apribile{border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.apribile > summary{display:flex;align-items:center;gap:12px;min-height:58px;padding:10px 14px;cursor:pointer;list-style:none;border-radius:11px;transition:background-color .15s}
+.apribile > summary::-webkit-details-marker{display:none}
+.apribile > summary:hover{background:var(--panel2)}
+.apribile > summary:active{background:var(--panel2)}
+.ap-testo{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ap-testo b{font-size:16px;font-weight:700;color:var(--ink)}
+.ap-testo small{font-size:13px;color:var(--muted)}
+.ap-n{min-width:30px;height:30px;padding:0 9px;border-radius:999px;display:grid;place-items:center;background:var(--panel2);border:1px solid var(--line);font-family:var(--f-num);font-size:14px;color:var(--ink)}
+.apribile > summary .apri{width:22px;height:22px;flex:none;color:var(--gold);transition:transform .2s}
+.apribile[open] > summary .apri{transform:rotate(180deg)}
+.apribile[open] > summary{border-bottom:1px solid var(--line);border-radius:11px 11px 0 0}
+.apribile > .ap-corpo{padding:12px 14px 14px}
+.apribile.piccola{background:transparent}
+.apribile.piccola > summary{min-height:50px}
+.apribile .aggiungi + .spunta,.apribile .ap-corpo > .aggiungi + .aggiungi{margin-top:8px}
+@media (prefers-reduced-motion:reduce){.apribile > summary .apri{transition:none}}

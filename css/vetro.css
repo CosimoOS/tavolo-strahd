@@ -1,0 +1,783 @@
+/* ======================================================================
+   VETRO DI BAROVIA
+   Il Liquid Glass di Apple nel mondo della campagna. Due strati:
+   - sotto, il contenuto: carte scure e solide, leggibili, su una notte con bagliori cremisi e oro;
+   - sopra, i comandi (barra delle sezioni, barra in alto, pannelli, pulsanti) di vetro, che lasciano
+     intravedere quello che scorre sotto. Il vetro ha un filo d'oro sul bordo, come le vetrate gotiche.
+   Il master ha la luce della luna: stesso vetro, accento argento al posto dell'oro.
+   Questo file si carica per ultimo: rimappa i colori di sempre su quelli nuovi, così anche le schermate
+   non ancora rifatte prendono la tavolozza nuova.
+   ====================================================================== */
+:root{
+  --notte:#0d0a10;
+  --bg:#0d0a10; --bg2:#141017; --panel:#1b1520; --panel2:#231b29;
+  --ink:#f3ebde; --muted:#b4a89b; --muted-2:#a2968a; --line:rgba(255,236,214,.09);
+  --crimson:#d23a52; --crimson-deep:#7a1426; --crimson-soft:rgba(210,58,82,.16);
+  --gold:#e2bd70; --gold-deep:#a77d32; --gold-soft:rgba(226,189,112,.13);
+  --oro-gruppo:#e2bd70;   /* il colore del gruppo nell'ordine dei turni: resta oro anche per il master */
+  --ok:#6cc48f; --ok-soft:rgba(108,196,143,.14); --warn:#e9a853; --on-accent:#fff6ea;
+  --luna:#c3cbf3;
+  --glow:none;
+  --vetro-fondo:rgba(40,29,42,.42); --vetro-luce:rgba(255,246,232,.13); --vetro-filo:rgba(243,214,152,.75); --vetro-filo-2:rgba(226,189,112,.5);
+  --r-carta:24px;
+  --f-display:"Cinzel","Trajan Pro",Georgia,serif;
+  --f-body:"Alegreya Sans","Segoe UI",system-ui,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --barra-h:68px;
+  color-scheme:dark;
+}
+/* il master: luce di luna */
+body.master{
+  --gold:#c3cbf3; --gold-deep:#7d87c4; --gold-soft:rgba(195,203,243,.13);
+  --vetro-fondo:rgba(30,30,48,.44); --vetro-luce:rgba(236,240,255,.13); --vetro-filo:rgba(214,222,255,.75); --vetro-filo-2:rgba(195,203,243,.45);
+}
+
+/* ---------- il fondo: notte di Barovia (fisso, si vede attraverso il vetro) ---------- */
+html{background:var(--notte)}
+body{background:transparent!important;background-image:none!important;color:var(--ink)}
+html::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+  background:
+    radial-gradient(70% 40% at 10% 0%,rgba(190,40,62,.40),transparent 70%),
+    radial-gradient(55% 34% at 100% 30%,rgba(226,189,112,.15),transparent 70%),
+    radial-gradient(80% 45% at 40% 100%,rgba(122,20,38,.40),transparent 72%),
+    linear-gradient(180deg,#120d14,#0b090d 60%,#100b12)}
+html:has(body.master)::before{
+  background:
+    radial-gradient(70% 40% at 90% 0%,rgba(96,104,196,.38),transparent 70%),
+    radial-gradient(55% 34% at 0% 30%,rgba(195,203,243,.12),transparent 70%),
+    radial-gradient(80% 45% at 60% 100%,rgba(70,46,120,.40),transparent 72%),
+    linear-gradient(180deg,#0f0d17,#0a090f 60%,#0e0c15)}
+body::before{display:none}
+::selection{background:rgba(226,189,112,.35);color:#fff}
+:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+
+/* ---------- il vetro ---------- */
+.vetro{position:relative;isolation:isolate;
+  background:linear-gradient(180deg,var(--vetro-luce),rgba(255,246,232,.035) 55%,rgba(255,246,232,.07)),var(--vetro-fondo);
+  -webkit-backdrop-filter:blur(22px) saturate(190%);backdrop-filter:blur(22px) saturate(190%);
+  box-shadow:inset 0 1px 0 rgba(255,251,240,.40),inset 0 -1px 0 rgba(0,0,0,.30),0 14px 34px rgba(0,0,0,.42),0 2px 6px rgba(0,0,0,.30)}
+.vetro::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;padding:1px;pointer-events:none;
+  background:linear-gradient(140deg,var(--vetro-filo),rgba(255,255,255,.10) 32%,rgba(255,255,255,.04) 62%,var(--vetro-filo-2));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0)}
+.vetro::after{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;
+  background:radial-gradient(130% 80% at 18% -25%,rgba(255,250,236,.18),transparent 52%)}
+
+/* ---------- carte e titoli (il contenuto, sotto il vetro) ---------- */
+section,.carta{position:relative;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:var(--r-carta);padding:16px 18px;
+  box-shadow:inset 0 1px 0 rgba(255,240,220,.05),0 8px 22px rgba(0,0,0,.28)}
+section::before{display:none!important}
+h2{font-family:var(--f-body);font-size:13px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 12px;display:flex;align-items:baseline;gap:10px}
+h2::after{display:none!important}
+h2 small{font-family:var(--f-body);letter-spacing:.02em;text-transform:none;font-weight:700;color:var(--muted-2);margin-left:auto}
+.sez{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:30px 8px 10px;font-size:13px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.sez span{font-weight:700;letter-spacing:.02em;text-transform:none;color:var(--muted-2)}
+.lbl{font-family:var(--f-body)!important;font-size:12px!important;font-weight:800;letter-spacing:.08em!important;text-transform:uppercase;color:var(--muted)}
+.hint{color:var(--muted-2)}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+/* titoli grandi, allineati a sinistra, come nelle app Apple */
+.testa-pagina{margin:8px 4px 18px}
+.testa-pagina h1{font-family:var(--f-display);font-weight:700;font-size:32px;line-height:1.1;letter-spacing:.02em;margin:0;white-space:normal;color:var(--ink)}
+.testa-pagina p{margin:6px 0 0;font-size:16px;color:var(--muted)}
+.testa-pagina p b{color:var(--ink)}
+
+/* liste a gruppi (come Impostazioni): righe con separatori rientrati */
+.lista{padding:0 0 0 18px;overflow:hidden}
+.lista > *:not(.res):not(form):not(.hint):not(.ammo):not(.wedit):not(ul):not(.skills):not(#feats):not(#atkBody):not(#extraRes){}
+.riga{display:flex;align-items:center;gap:12px;min-height:60px;padding:10px 18px 10px 0;border-top:1px solid var(--line)}
+.riga:first-child{border-top:0}
+.riga-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.riga-t b{font-size:17px;font-weight:700}
+.riga-t small{font-size:14px;color:var(--muted);line-height:1.35}
+
+/* ---------- pulsanti: capsule di vetro ---------- */
+.btn,.bv{position:relative;isolation:isolate;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border:0;border-radius:999px;
+  font-family:var(--f-body);font-weight:700;font-size:15px;letter-spacing:0;color:var(--ink);text-transform:none;
+  background:linear-gradient(180deg,rgba(255,246,232,.13),rgba(255,246,232,.04)),rgba(40,29,42,.45);
+  box-shadow:inset 0 1px 0 rgba(255,251,240,.32),inset 0 0 0 1px rgba(255,236,206,.13),0 6px 16px rgba(0,0,0,.30);
+  transition:transform .15s ease-out,background-color .2s}
+.btn:hover,.bv:hover{border:0}
+.btn:active,.bv:active{transform:scale(.97)}
+.btn:disabled,.bv:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.bv.piccolo{min-height:38px;padding:0 16px;font-size:15px}
+.bv.largo{width:100%;min-height:54px;font-size:16px}
+.btn.up,.bv.oro{color:#1f1408;font-family:var(--f-body);font-weight:800;letter-spacing:.01em;
+  background:linear-gradient(180deg,rgba(248,224,168,.97),rgba(226,186,108,.97) 55%,rgba(200,152,72,.97));
+  box-shadow:inset 0 1px 0 rgba(255,250,235,.75),inset 0 -1px 0 rgba(90,60,15,.35),0 8px 20px rgba(0,0,0,.36)}
+body.master .btn.up,body.master .bv.oro{color:#12142e;background:linear-gradient(180deg,rgba(236,240,255,.97),rgba(200,208,246,.96) 55%,rgba(166,176,230,.96));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.8),inset 0 -1px 0 rgba(50,56,110,.3),0 8px 20px rgba(0,0,0,.36)}
+.btn.gold{color:var(--gold);background:linear-gradient(180deg,rgba(226,189,112,.20),rgba(226,189,112,.07)),rgba(40,29,42,.45);box-shadow:inset 0 1px 0 rgba(255,240,200,.35),inset 0 0 0 1px rgba(226,189,112,.30),0 6px 16px rgba(0,0,0,.30)}
+.btn.dmg,.bv.cremisi{color:#fff3f4;background:linear-gradient(180deg,rgba(236,92,110,.62),rgba(170,30,52,.62)),rgba(60,14,24,.45);box-shadow:inset 0 1px 0 rgba(255,220,225,.45),inset 0 0 0 1px rgba(255,170,180,.22),0 6px 16px rgba(0,0,0,.32)}
+.btn.heal,.bv.verde{color:#f2fff6;background:linear-gradient(180deg,rgba(120,210,155,.52),rgba(40,130,80,.56)),rgba(14,44,28,.45);box-shadow:inset 0 1px 0 rgba(220,255,232,.45),inset 0 0 0 1px rgba(150,230,180,.22),0 6px 16px rgba(0,0,0,.32)}
+.btn.link{min-height:40px;padding:0 6px;background:none;box-shadow:none;color:var(--muted);text-decoration:underline;text-underline-offset:3px;font-weight:600}
+.btn.step{min-width:40px;min-height:40px;padding:0;border-radius:50%;font-size:18px}
+.btn.rosso{color:#ffb3bf;box-shadow:inset 0 1px 0 rgba(255,220,225,.3),inset 0 0 0 1px rgba(210,58,82,.5)}
+input,select,textarea{font:inherit;color:var(--ink);background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:14px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--gold);outline-offset:1px}
+
+/* losanghe: piene = disponibili (ispirazione, risorse, slot) */
+.pips{display:inline-flex;flex-wrap:wrap;gap:10px;align-items:center}
+.pip{width:22px;height:22px;padding:0;border:0;background:none;display:grid;place-items:center;position:relative}
+.pip::before{content:"";width:13px;height:13px;transform:rotate(45deg);border-radius:2px;box-shadow:inset 0 0 0 1.6px var(--gold-deep);transition:background-color .2s}
+.pip.on::before{background:linear-gradient(135deg,#f6dc9c,var(--gold) 60%,#c2913f);box-shadow:inset 0 1px 0 rgba(255,250,235,.55)}
+body.master .pip.on::before{background:linear-gradient(135deg,#eef1ff,var(--gold) 60%,#8e98d6)}
+.pip.mark::before{background:var(--crimson);box-shadow:none}
+.pips.grandi{gap:14px}
+.pips.grandi .pip{width:28px;height:28px}
+.pips.grandi .pip::before{width:18px;height:18px}
+
+/* ======================================================================
+   NAVIGAZIONE
+   ====================================================================== */
+/* in basso: la barra delle sezioni, una capsula di vetro; la sezione scelta ha la sua "lente" */
+.bordo-basso{position:fixed;left:0;right:0;bottom:0;height:calc(150px + env(safe-area-inset-bottom,0px));z-index:14;pointer-events:none;
+  background:linear-gradient(to top,rgba(13,10,16,.85),rgba(13,10,16,0));-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+  -webkit-mask-image:linear-gradient(to top,#000 35%,transparent);mask-image:linear-gradient(to top,#000 35%,transparent)}
+.tabbar{position:fixed;z-index:15;left:max(14px,env(safe-area-inset-left,0px));right:max(14px,env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));
+  max-width:560px;margin:0 auto;height:var(--barra-h);border-radius:34px;display:flex;align-items:stretch;padding:5px;
+  border:0;background:none;box-shadow:none}
+.tabbar.vetro{background:linear-gradient(180deg,var(--vetro-luce),rgba(255,246,232,.035) 55%,rgba(255,246,232,.07)),var(--vetro-fondo);
+  box-shadow:inset 0 1px 0 rgba(255,251,240,.40),inset 0 -1px 0 rgba(0,0,0,.30),0 14px 34px rgba(0,0,0,.42),0 2px 6px rgba(0,0,0,.30)}
+/* la lente: larga una voce, si sposta con una sola traslazione (niente misure a metà, niente scatti) */
+.tabbar .lente{position:absolute;z-index:0;top:5px;bottom:5px;left:5px;width:calc((100% - 10px) / var(--n,4));border-radius:29px;pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,246,232,.20),rgba(255,246,232,.07));box-shadow:inset 0 1px 0 rgba(255,251,240,.45),inset 0 0 0 1px rgba(255,236,206,.14);
+  transform:translateX(calc(var(--i,0) * 100%));transition:transform .34s cubic-bezier(.32,.72,0,1)}
+body.master .tabbar .lente{background:linear-gradient(180deg,rgba(236,240,255,.22),rgba(236,240,255,.07));box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 0 0 1px rgba(220,228,255,.16)}
+.tab{position:relative;z-index:1;flex:1;min-width:0;border:0;background:none;border-radius:29px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  color:var(--muted);font-family:var(--f-body);font-size:11.5px;font-weight:800;letter-spacing:.02em;padding:0 2px;transition:color .25s}
+.tab[hidden]{display:none!important}
+.tab svg{width:25px;height:25px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tab-nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.tab[aria-current]{color:var(--gold)}
+.tab::before{display:none!important}
+.tab.avviso::after{content:"";position:absolute;top:8px;left:calc(50% + 8px);width:10px;height:10px;border-radius:50%;background:var(--crimson);box-shadow:0 0 0 2px rgba(20,14,22,.9)}
+.tab.esce{opacity:0;transition:opacity .25s ease-out}
+body.in-scheda{padding-bottom:calc(var(--barra-h) + 44px + env(safe-area-inset-bottom,0px))}
+@media (prefers-reduced-motion:reduce){.tabbar .lente{transition:none}}
+
+/* in alto: niente barra piena; bottoni di vetro sospesi e una sfumatura che fa da bordo quando si scorre */
+.bordo-alto{position:fixed;top:0;left:0;right:0;height:calc(96px + env(safe-area-inset-top,0px));z-index:14;pointer-events:none;
+  background:linear-gradient(to bottom,rgba(13,10,16,.92),rgba(13,10,16,.55) 55%,rgba(13,10,16,0));-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  -webkit-mask-image:linear-gradient(to bottom,#000 50%,transparent);mask-image:linear-gradient(to bottom,#000 50%,transparent);opacity:0;transition:opacity .25s}
+body.scorso .bordo-alto{opacity:1}
+body.master .bordo-alto{background:linear-gradient(to bottom,rgba(12,11,19,.92),rgba(12,11,19,.55) 55%,rgba(12,11,19,0))}
+.navalto{position:fixed;z-index:17;top:calc(10px + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));
+  max-width:1088px;margin:0 auto;height:48px;display:flex;align-items:center;justify-content:flex-end;gap:8px;pointer-events:none}
+.navalto > *{pointer-events:auto}
+.nav-tit{position:absolute;left:50%;top:50%;transform:translate(-50%,-30%);max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-family:var(--f-display);font-weight:700;font-size:17px;letter-spacing:.03em;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none}
+body.scorso .nav-tit{opacity:1;transform:translate(-50%,-50%)}
+body.con-pf .nav-tit{opacity:0!important}
+.capsula{height:44px;display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:999px;font-weight:800;font-size:15px;color:var(--ink)}
+.capsula .num{font-size:15px;color:var(--muted)}
+.capsula .num b{font-size:17px;color:var(--ink)}
+.capsula small{color:var(--muted);font-weight:700}
+.capsula[hidden]{display:none}
+/* chi sei: l'avatar rotondo (per Rombosogliola: quello attivo grande, l'altro piccolo accanto, per passare con un tocco) */
+.avatar-btn{width:46px;height:46px;border:0;border-radius:50%;padding:0;background:none;display:grid;place-items:center;box-shadow:0 6px 16px rgba(0,0,0,.4);transition:transform .2s cubic-bezier(.32,.72,0,1),opacity .2s}
+.avatar-btn svg{width:100%;height:100%}
+.avatar-btn.altro{width:34px;height:34px;opacity:.72;box-shadow:0 4px 10px rgba(0,0,0,.35)}
+.avatar-btn.altro:hover{opacity:1}
+.avatar-btn:active{transform:scale(.94)}
+.nav-conto{display:flex;align-items:center;gap:6px}
+
+/* il pannello "chi sei": sale dal basso */
+.veil-conto{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .3s}
+.veil-conto.aperto{opacity:1;pointer-events:auto}
+.foglio-conto{position:fixed;z-index:41;left:max(8px,env(safe-area-inset-left,0px));right:max(8px,env(safe-area-inset-right,0px));bottom:calc(8px + env(safe-area-inset-bottom,0px));
+  max-width:520px;margin:0 auto;border-radius:38px;padding:10px 18px 22px;transform:translateY(115%);transition:transform .42s cubic-bezier(.32,.72,0,1)}
+.foglio-conto.aperto{transform:none}
+.maniglia{width:40px;height:5px;border-radius:3px;background:rgba(255,240,220,.35);margin:2px auto 16px}
+.fc-chi{display:flex;align-items:center;gap:14px;margin:0 4px 4px}
+.fc-chi svg{width:56px;height:56px;flex:none}
+.fc-chi b{display:block;font-family:var(--f-display);font-size:22px;font-weight:700}
+.fc-chi small{color:var(--muted);font-size:15px}
+.fc-lista{margin:18px 0 0;padding:0 0 0 4px}
+.fc-lista button{display:flex;align-items:center;gap:12px;width:100%;min-height:58px;padding:8px 6px 8px 0;border:0;border-top:1px solid var(--line);background:none;color:var(--ink);text-align:left}
+.fc-lista button:first-child{border-top:0}
+.fc-lista svg.av{width:34px;height:34px;flex:none}
+.fc-lista .riga-t b{font-size:16px}
+.fc-spunta{width:22px;height:22px;flex:none;color:var(--gold);margin-left:auto}
+.foglio-conto .bv.largo{margin-top:18px;color:#ffb3bf}
+.foglio-conto .nota{margin:10px 6px 0;font-size:14px;line-height:1.45;color:var(--muted-2)}
+@media (prefers-reduced-motion:reduce){.foglio-conto,.veil-conto{transition:none}}
+
+/* avvisi: una capsula di vetro sopra la barra in basso */
+.toast{position:fixed;z-index:30;left:50%;bottom:calc(var(--barra-h) + 26px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:calc(100vw - 32px);
+  display:flex;align-items:center;gap:10px;padding:10px 10px 10px 18px;border-radius:999px;font-weight:700;font-size:15px;color:var(--ink)}
+.toast.plain{padding-right:18px}
+.toast[hidden]{display:none}
+.toast .btn.link{color:var(--gold);text-decoration:none;font-weight:800}
+
+/* ======================================================================
+   LE PAGINE DELLA SCHEDA
+   ====================================================================== */
+.pagine{padding-top:calc(64px + env(safe-area-inset-top,0px));max-width:640px}
+.pagina{display:none}
+#vistaScheda[data-pagina="scheda"] .pagina[data-pagina="scheda"],
+#vistaScheda[data-pagina="magia"] .pagina[data-pagina="magia"],
+#vistaScheda[data-pagina="abilita"] .pagina[data-pagina="abilita"],
+#vistaScheda[data-pagina="zaino"] .pagina[data-pagina="zaino"]{display:block}
+#vistaScheda.in-scontro .pagine,#vistaScheda.in-altro .pagine,#vistaScheda.in-tavolo .pagine,#vistaScheda.in-bestiario .pagine{display:none}
+#vistaScheda .vista-scontro,#vistaScheda .vista-altro,#vistaScheda .vista-tavolo,#vistaScheda .vista-bestiario{padding-top:calc(64px + env(safe-area-inset-top,0px));max-width:640px;margin-left:auto;margin-right:auto}
+
+/* master che guarda una scheda dal Tavolo: si capisce subito */
+.vista-master{display:flex;align-items:center;gap:12px;margin:4px 0 14px}
+.vista-master[hidden]{display:none}
+.vista-master span{font-size:14px;color:var(--muted)}
+.vista-master b{color:var(--ink)}
+.segmenti{position:relative;display:flex;padding:4px;border-radius:999px;margin:0 0 18px}
+.segmenti[hidden]{display:none}
+.segmenti .lente{position:absolute;z-index:0;top:4px;bottom:4px;left:4px;width:calc((100% - 8px) / var(--n,4));border-radius:999px;
+  background:linear-gradient(180deg,rgba(236,240,255,.22),rgba(236,240,255,.07));box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 0 0 1px rgba(220,228,255,.16);
+  transform:translateX(calc(var(--i,0) * 100%));transition:transform .34s cubic-bezier(.32,.72,0,1)}
+.segmenti button{position:relative;z-index:1;flex:1;min-height:40px;border:0;background:none;border-radius:999px;font-weight:800;font-size:14px;color:var(--muted)}
+.segmenti button[aria-current]{color:var(--ink)}
+
+/* ---------- 1 · Scheda ---------- */
+.eroe{display:flex;flex-direction:column;align-items:center;text-align:center;padding:6px 0 22px}
+.eroe-stemma svg{width:96px;height:113px;filter:drop-shadow(0 12px 22px rgba(0,0,0,.55))}
+.eroe h1{font-family:var(--f-display);font-weight:900;font-size:clamp(26px,8vw,34px);letter-spacing:.035em;margin:14px 0 2px;line-height:1.1;white-space:normal;color:var(--ink)}
+.eroe-classe{margin:0;font-size:16px;color:var(--muted)}
+.eroe-classe b{color:var(--gold);font-weight:800}
+.eroe .tags{justify-content:center;margin:12px 0 16px}
+.tags span{font-size:13px;font-weight:700;color:var(--muted);padding:5px 11px;border-radius:999px;border:1px solid var(--line);background:rgba(255,240,220,.04)}
+.eroe-az{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center}
+.pf{padding:16px 18px}
+.pf-testa{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.pf-num{display:flex;align-items:baseline;gap:6px;margin-top:4px}
+.pf-num b{font-family:var(--f-num);font-size:46px;font-weight:600;line-height:1}
+.pf-num small{font-family:var(--f-num);font-size:20px;color:var(--muted)}
+.pf .hpbar{height:10px;margin:14px 0 14px;border:0;border-radius:999px;background:rgba(0,0,0,.35);box-shadow:inset 0 1px 2px rgba(0,0,0,.5)}
+.pf .hpbar::after{display:none}
+.pf .hpbar i{background:linear-gradient(90deg,#3e9a62,var(--ok) 70%,#a5e8be)!important;animation:none!important}
+.pf .hpbar[data-state="mid"] i{background:linear-gradient(90deg,#b8742a,var(--warn))!important}
+.pf .hpbar[data-state="low"] i{background:linear-gradient(90deg,#8d1a2c,var(--crimson))!important}
+.pf .resist{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 14px}
+.pf .resist span{font-size:13px;font-weight:700;padding:5px 11px;border-radius:999px;color:#9fd0ff;border:1px solid rgba(130,180,255,.25);background:rgba(110,160,255,.07)}
+.pf .resist .tmp{color:#c4d6f5;border-color:rgba(190,215,255,.35);background:rgba(190,215,255,.08)}
+.pf-azioni{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.pf-azioni .bv{min-height:46px;padding:0 8px}
+.dot{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--muted-2)}
+.dot i{width:8px;height:8px;border-radius:50%;background:var(--muted-2)}
+.dot.ok i{background:var(--ok)}
+.dot.busy i{background:var(--warn)}
+.dot.err i{background:var(--crimson)}
+.dot.err{color:#ffb3bf}
+.dot em{font-style:normal}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.stat{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line)!important;border-radius:18px;padding:12px 4px 10px;text-align:center}
+.stat b{display:block;font-family:var(--f-num);font-size:21px;font-weight:600;color:var(--ink)}
+.stat span{display:block;margin-top:2px;font-family:var(--f-body)!important;font-size:12px!important;font-weight:800;letter-spacing:.03em!important;text-transform:none!important;color:var(--muted)}
+.ispira{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px}
+.ispira b{display:block;font-size:17px}
+.ispira small{font-size:14px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:rgba(255,240,220,.04);color:var(--muted);font-weight:700;font-size:14px}
+.chip.on{color:#fff3f4;border-color:rgba(255,170,180,.35);background:linear-gradient(180deg,rgba(236,92,110,.5),rgba(170,30,52,.5))}
+.durata{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+.durata span{width:100%;font-weight:700}
+.conc-riga{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;font-size:14px}
+.conc-riga .conc-on{color:var(--gold)}
+.morte{margin-top:10px;display:flex;flex-direction:column;gap:10px}
+.morte-r{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:40px}
+.morte .exh{display:flex;align-items:center;gap:10px}
+.morte .exh b{font-size:18px;min-width:1.2em;text-align:center}
+/* risorse: righe da lista */
+.res{display:flex;align-items:center;gap:12px;min-height:62px;padding:10px 18px 10px 0;border-top:1px solid var(--line)}
+.lista > .res:first-child,#risorse > .res:first-of-type{border-top:0;padding-top:10px}
+#extraRes .res:first-child{border-top:1px solid var(--line)}
+.res .what{flex:1;min-width:0}
+.res .what > div{font-size:17px;font-weight:700}
+.res .what small{display:block;font-size:14px;color:var(--muted);line-height:1.35;margin-top:2px}
+.res .act{flex:none}
+.res.riserva .act{display:flex;gap:6px}
+/* attacchi: righe con i due numeri a destra */
+.att-riga{display:flex;align-items:center;gap:12px;min-height:62px;padding:10px 18px 10px 0;border-top:1px solid var(--line)}
+.att-riga:first-child{border-top:0}
+.att-riga .riga-t b .plus{font-family:var(--f-num);font-size:13px;color:var(--gold);margin-left:4px}
+.att-num{display:flex;gap:6px;flex:none}
+.att-num span{font-family:var(--f-num);font-weight:600;font-size:15px;padding:6px 10px;border-radius:12px;background:rgba(255,240,220,.06);border:1px solid var(--line)}
+.att-num span.oro{color:var(--gold);border-color:rgba(226,189,112,.35);background:var(--gold-soft)}
+.att-riga .x{width:34px;height:34px;border:0;border-radius:50%;background:var(--crimson-soft);color:#ffb3bf;font-size:18px}
+.attacchi .wform{display:flex;flex-direction:column;gap:10px;margin-top:0;padding:14px 18px 14px 0;border:0;border-top:1px solid var(--line);border-radius:0;background:none}
+.attacchi .wform input:not([type=checkbox]),.attacchi .wform select{min-height:44px;padding:0 12px;width:100%}
+.attacchi .wf-checks label{min-height:44px;gap:10px;font-size:16px}
+.attacchi .wf-checks input{flex:none;width:22px;height:22px;margin:0}
+.attacchi .wf-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.attacchi .wf-grid label{display:flex;flex-direction:column;gap:4px}
+.attacchi .hint,.attacchi .ammo{padding-right:18px}
+.attacchi .ammo{display:flex;align-items:center;gap:10px;min-height:56px;padding-top:8px;padding-bottom:8px;border-top:1px solid var(--line)}
+.attacchi .ammo span{flex:1;font-weight:700}
+.attacchi .ammo .num{min-width:2ch;text-align:center}
+.attacchi .ammo .x{width:34px;height:34px;flex:none;border:0;border-radius:50%;background:var(--crimson-soft);color:#ffb3bf;font-size:18px}
+.attacchi .wf-mun{display:flex;flex-direction:column;gap:8px}
+.attacchi .wf-mun > label{display:flex;flex-direction:column;gap:4px}
+.attacchi .wedit{margin:4px 0 10px}
+.riposi{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px}
+.riposi .bv{min-height:50px}
+
+/* ---------- 2 · Incantesimi: divisi per livello, gli slot accanto al titolo ---------- */
+.conc-banner{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:24px;margin-bottom:8px}
+.conc-banner .icona{width:40px;height:40px;flex:none;border-radius:14px;display:grid;place-items:center;background:var(--gold-soft);color:var(--gold)}
+.conc-banner .icona svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.conc-banner .riga-t b{font-size:16px}
+#spellSec.nudo{background:none;border:0;box-shadow:none;padding:0}
+.inc-classe{margin:26px 8px 0;font-family:var(--f-display);font-size:18px;font-weight:700;color:var(--ink)}
+.inc-classe small{display:block;font-family:var(--f-body);font-size:14px;font-weight:600;color:var(--muted)}
+.inc-testa{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 8px 0}
+.inc-testa .hint{margin:0}
+.inc-slot{display:inline-flex;align-items:center;gap:10px;letter-spacing:0;text-transform:none}
+.inc-slot .pips{gap:4px}
+.inc-slot .pip{width:18px;height:18px}
+.inc-slot .pip::before{width:11px;height:11px}
+.inc-riga{display:flex;align-items:flex-start;gap:12px;padding:12px 18px 12px 0;border-top:1px solid var(--line)}
+.inc-riga:first-child{border-top:0}
+.inc-riga .riga-t b{font-size:17px}
+.inc-riga .riga-t small{font-size:14px}
+.inc-riga .riga-t p{margin:6px 0 0;font-size:15px;line-height:1.45;color:var(--ink);opacity:.86}
+.inc-riga .riga-t p[hidden]{display:none}
+.inc-riga .inc-az{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:none}
+.inc-attivo{font-size:13px;font-weight:800;color:#1f1408;background:linear-gradient(180deg,#f3d58f,var(--gold));padding:5px 10px;border-radius:999px}
+.inc-riga .pip{margin-top:4px}
+.armatura .inc-riga .pips{gap:6px}
+
+/* ---------- 3 · Abilità ---------- */
+.abil{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ab{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px;border-radius:18px;background:rgba(0,0,0,.18)}
+.ab .shield{display:flex;flex-direction:column;align-items:center;background:none!important;border:0!important;padding:0!important;clip-path:none!important;width:auto!important;height:auto!important}
+.ab .shield .lbl{font-size:11px!important}
+.ab .shield .mod{font-family:var(--f-num);font-size:24px;font-weight:600;color:var(--ink)}
+.ab .shield .sc{font-family:var(--f-num);font-size:13px;color:var(--muted)}
+.ab .ts{font-size:12px;font-weight:800;color:var(--muted);padding:3px 8px;border-radius:999px;background:rgba(255,240,220,.05)}
+.ab .ts.p{color:var(--gold);background:var(--gold-soft)}
+.skills{display:block}
+.sk{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;padding:6px 18px 6px 0;border-top:1px solid var(--line)}
+.sk:first-child{border-top:0}
+.sk .n{font-size:16px;font-weight:600}
+.sk .n small{font-size:12px;color:var(--muted-2);margin-left:4px}
+.sk .num{font-size:16px;color:var(--muted)}
+.sk.p .n{color:var(--ink)}
+.sk.p .num{color:var(--gold)}
+.sk.p .n::before{content:"";display:inline-block;width:8px;height:8px;transform:rotate(45deg);background:var(--gold);margin-right:10px;vertical-align:1px}
+#feats .feat{padding:12px 18px 12px 0;border-top:1px solid var(--line)}
+#feats .feat:first-child{border-top:0}
+#feats .feat b{display:block;font-size:16px}
+#feats .feat p{margin:4px 0 0;font-size:15px;line-height:1.45;color:var(--muted)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;margin:0}
+.kv dt{font-weight:800;color:var(--muted);font-size:14px}
+.kv dd{margin:0;font-size:15px}
+
+/* ---------- 4 · Zaino ---------- */
+.purse{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.coin{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;border-radius:16px;background:rgba(0,0,0,.18)}
+.coin input{width:4.5em;min-height:40px;text-align:center;font-family:var(--f-num)}
+.coin .act{display:flex;gap:4px}
+.coin .act .btn{min-height:34px;padding:0 10px;font-size:13px}
+.inv{list-style:none;margin:0;padding:0}
+.inv li{display:flex;align-items:center;gap:10px;min-height:56px;padding:6px 18px 6px 0;border-top:1px solid var(--line)}
+.inv li:first-child{border-top:0}
+.inv li .nome-ogg{flex:1;min-width:0;font-size:16px;font-weight:600}
+.inv li.magic .nome-ogg{color:var(--gold)}
+.inv .att{width:34px;height:34px;border:0;border-radius:50%;background:rgba(255,240,220,.05);color:var(--gold);font-size:14px}
+.inv .att.on{background:var(--gold-soft)}
+.inv .qta{display:flex;align-items:center;gap:6px}
+.inv .x{width:34px;height:34px;border:0;border-radius:50%;background:var(--crimson-soft);color:#ffb3bf;font-size:18px}
+.add{display:flex;flex-wrap:wrap;gap:8px;padding:14px 18px 14px 0;border-top:1px solid var(--line)}
+.add input#newItem{flex:1 1 12em;min-height:44px;padding:0 14px}
+.add .isw{width:100%;display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted)}
+#notes{width:100%;min-height:160px;padding:12px 14px;resize:vertical;line-height:1.5}
+
+/* ---------- pannelli (salire di livello, concentrazione, PIN…) come fogli di vetro ---------- */
+.veil{background:rgba(5,3,7,.55)!important}
+.veil .sheet{border:0!important;border-radius:32px!important;background:linear-gradient(180deg,rgba(255,246,232,.10),rgba(255,246,232,.03)),rgba(28,21,31,.92)!important;
+  -webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);
+  box-shadow:inset 0 1px 0 rgba(255,251,240,.35),inset 0 0 0 1px rgba(243,214,152,.18),0 24px 60px rgba(0,0,0,.6)!important}
+.veil .sheet h3{color:var(--ink)!important;font-family:var(--f-display)}
+
+/* il tastierino dei PF (Danno, Cura, Temporanei) */
+.pf-tasti{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
+.pf-tasti button{min-height:56px;border:0;border-radius:18px;font-family:var(--f-num);font-size:24px;font-weight:600;color:var(--ink);
+  background:linear-gradient(180deg,rgba(255,246,232,.10),rgba(255,246,232,.03)),rgba(40,29,42,.5);box-shadow:inset 0 1px 0 rgba(255,251,240,.25),inset 0 0 0 1px rgba(255,236,206,.10)}
+.pf-tasti button:active{background:var(--gold-soft)}
+.pf-tasti .canc{font-family:var(--f-body);font-size:15px;font-weight:700;color:var(--muted)}
+.pf-display{display:flex;align-items:baseline;justify-content:center;gap:8px;min-height:64px}
+.pf-display b{font-family:var(--f-num);font-size:52px;font-weight:600;line-height:1}
+.pf-display small{font-size:16px;color:var(--muted)}
+
+/* il Tavolo del master */
+.tav-scontro{display:flex;flex-direction:column;gap:12px;padding:18px;border-radius:26px;margin-bottom:6px;
+  background:linear-gradient(160deg,rgba(150,32,52,.55),rgba(60,14,26,.55)),var(--panel);border:1px solid rgba(255,160,175,.18)}
+.tav-scontro.calmo{background:linear-gradient(180deg,var(--panel2),var(--panel));border-color:var(--line)}
+.tav-scontro .riga-t b{font-family:var(--f-display);font-size:21px;font-weight:700}
+.tav-scontro .riga-t small{font-size:15px;color:#f0c9cf}
+.tav-scontro.calmo .riga-t small{color:var(--muted)}
+.tav-gruppo{display:grid;grid-template-columns:repeat(auto-fill,minmax(146px,1fr));gap:10px}
+.tav-pg-testa b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tav-pg-testa > span{min-width:0}
+.tav-pg{display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:22px;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);text-align:left;color:var(--ink);font:inherit}
+.tav-pg:active{transform:scale(.98)}
+.tav-pg-testa{display:flex;align-items:center;gap:10px}
+.tav-pg-testa svg{width:36px;height:36px;flex:none}
+.tav-pg-testa b{display:block;font-size:16px;line-height:1.15}
+.tav-pg-testa small{font-size:13px;color:var(--muted)}
+.tav-pg .hpbar{height:7px;border-radius:999px;background:rgba(0,0,0,.35);overflow:hidden;position:relative}
+.tav-pg .hpbar i{position:absolute;inset:0 auto 0 0;border-radius:inherit;background:linear-gradient(90deg,#3e9a62,var(--ok))}
+.tav-pg .hpbar[data-state="mid"] i{background:linear-gradient(90deg,#b8742a,var(--warn))}
+.tav-pg .hpbar[data-state="low"] i{background:linear-gradient(90deg,#8d1a2c,var(--crimson))}
+.tav-pg-num{display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+.tav-pg-num b{font-family:var(--f-num);font-size:15px;color:var(--ink)}
+.tav-stato{font-size:12px;font-weight:800;padding:4px 9px;border-radius:999px;align-self:flex-start;color:var(--muted-2);background:rgba(255,240,220,.04)}
+.tav-stato.conc{color:var(--gold);background:var(--gold-soft)}
+.tav-stato.male{color:#ffb3bf;background:var(--crimson-soft)}
+.tav-strumenti .riga{cursor:pointer;width:100%;border-left:0;border-right:0;border-bottom:0;background:none;color:var(--ink);text-align:left;font:inherit}
+.riga .freccia{width:18px;height:18px;flex:none;color:var(--muted-2)}
+
+/* il combattimento a schermo: la banda diventa una capsula di vetro in alto a sinistra */
+.banda-scontro{position:fixed!important;z-index:18!important;top:calc(12px + env(safe-area-inset-top,0px))!important;left:max(16px,env(safe-area-inset-left,0px))!important;right:auto!important;
+  min-height:44px!important;height:44px;padding:0 16px!important;gap:8px!important;border:0!important;border-radius:999px!important;color:var(--ink)!important;
+  background:linear-gradient(180deg,var(--vetro-luce),rgba(255,246,232,.035) 55%,rgba(255,246,232,.07)),var(--vetro-fondo)!important;
+  -webkit-backdrop-filter:blur(22px) saturate(190%);backdrop-filter:blur(22px) saturate(190%);
+  box-shadow:inset 0 1px 0 rgba(255,251,240,.40),inset 0 0 0 1px rgba(243,214,152,.22),0 10px 24px rgba(0,0,0,.4)!important}
+.banda-scontro.tuo{color:#1f1408!important;background:linear-gradient(180deg,rgba(248,224,168,.97),rgba(226,186,108,.97) 55%,rgba(200,152,72,.97))!important}
+.banda-scontro .bs-segno{width:9px!important;height:9px!important;background:var(--crimson)!important}
+.banda-scontro .bs-testo{font-size:15px;font-weight:800}
+.banda-scontro .bs-testo b{font-family:var(--f-body)!important;letter-spacing:0!important}
+.banda-scontro .bs-torna{gap:6px!important;min-height:44px!important}
+.banda-scontro .bs-freccia{font-size:22px!important}
+body.con-banda{padding-top:0!important}
+body.con-banda .dock{top:auto!important}
+
+@media (min-width:900px){
+  .pagine,#vistaScheda .vista-scontro,#vistaScheda .vista-altro,#vistaScheda .vista-tavolo,#vistaScheda .vista-bestiario{max-width:720px}
+}
+
+/* tiri contro la morte: solo quando si è a terra (o ce ne sono di segnati); l'indebolimento resta sempre */
+.morte:not(.a-terra) .morte-r:not(:last-child){display:none}
+.morte:not(.a-terra){padding-top:10px;padding-bottom:10px}
+.inc-cambia{display:flex;flex-wrap:wrap;gap:4px 16px;margin:14px 8px 0}
+.ico-chev{width:18px;height:18px;flex:none}
+.pf-tasti .canc svg{width:22px;height:22px}
+#vistaScheda .vista-tavolo .testa-pagina,#vistaScheda .vista-bestiario .testa-pagina{margin-top:8px}
+.vista-bestiario > section{margin-top:4px}
+/* le losanghe di prima ruotavano il pulsante intero: qui ruota solo il disegno */
+.pip{transform:none!important;border:0!important;background:none!important;border-radius:0!important;box-shadow:none!important}
+.pip.on,.pip.mark{background:none!important;box-shadow:none!important}
+.morte-r:first-child .pip.mark::before{background:var(--ok)}
+.pips{padding:0;justify-content:flex-end}
+.morte .pips{justify-content:flex-end}
+
+/* ---------- PF temporanei e massimo ridotto ----------
+   temporanei: un pezzo chiaro come uno scudo, subito dopo i PF; massimo ridotto (maledizioni, morsi): grigio in fondo,
+   più chiaro del vuoto (i PF che mancano si possono curare, quelli persi no) */
+.hpbar i.pf-temp{position:absolute;top:0;bottom:0;border-radius:999px;background:linear-gradient(180deg,#eef4ff,#a9c0e4)!important;animation:none!important}
+.hpbar i.pf-perso{position:absolute;top:0;bottom:0;left:auto;right:0;border-radius:0 999px 999px 0;animation:none!important;
+  background:rgba(168,162,180,.5)!important;box-shadow:inset 2px 0 0 rgba(13,10,16,.55)}
+.hpbar i[hidden]{display:none}
+.pf-piu{font-style:normal;font-family:var(--f-num);font-weight:600;color:#c4d6f5;margin-left:2px}
+.pf-num .pf-piu{font-size:24px;align-self:flex-start;margin-top:4px}
+.pf .resist span.perso{color:#d8d0e2;background:rgba(168,162,180,.14);border-color:rgba(176,170,186,.35)}
+
+/* ---------- Tavolo: i livelli li concede il master ---------- */
+.tav-livelli{display:flex;flex-direction:column;gap:12px}
+.tav-livelli .vuoto,.tav-livelli .hint{margin:0}
+.tav-livelli .scelta{margin:0}
+.tav-livelli .scelta small{margin-left:auto;color:var(--muted);font-size:14px}
+.tav-liv-azioni{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tav-attesa{margin:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+
+/* ---------- il master ha concesso un livello: finestra grande e fascia in cima alla scheda ---------- */
+.sheet.salita{text-align:center;padding-top:30px}
+.salita-sopra{margin:0 0 6px;font-family:var(--f-display);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.sheet.salita h3{font-size:clamp(26px,7vw,34px);line-height:1.15;margin:0 0 10px;white-space:normal}
+.sheet.salita .intro{max-width:34ch;margin:0 auto 22px}
+.salita-az{display:flex;flex-direction:column;align-items:center;gap:10px}
+.salita-az .bv{width:100%;min-height:56px;font-size:18px}
+.salita-fascia{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 14px;padding:14px 18px;border:0;border-radius:22px;text-align:left;
+  color:#241808;background:linear-gradient(180deg,#f0d28e,var(--gold) 60%,#c79a48);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 10px 24px rgba(0,0,0,.35)}
+.salita-fascia[hidden]{display:none}
+.salita-fascia span{display:flex;flex-direction:column;gap:2px}
+.salita-fascia small{font-size:13px;font-weight:700;opacity:.8}
+.salita-fascia b{font-family:var(--f-display);font-size:21px;letter-spacing:.02em}
+.salita-fascia svg{width:22px;height:22px;flex:none}
+.tav-torna{margin:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+
+/* ---------- Scontro del master: il branco un membro alla volta, la scheda del mostro con più aria ---------- */
+.branco-fila{list-style:none;display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px;padding:0}
+.branco-fila li{padding:6px 12px;border-radius:999px;font-size:14px;font-weight:700;color:var(--muted);border:1px solid var(--line);background:rgba(255,240,220,.04)}
+.branco-fila li.fatto{opacity:.5;text-decoration:line-through}
+.branco-fila li.ora{color:var(--ink);border-color:rgba(226,189,112,.5);background:var(--gold-soft)}
+.riga-az.branco-az{display:flex;flex-direction:column;align-items:stretch;gap:8px}
+.riga-az.branco-az .btn.link{align-self:center}
+.rapida .modello .tratti-tutti{margin-top:6px}
+.rapida .modello .fonte{margin:2px 4px 0;line-height:1.45}
+.ora-testa .rapida{margin:6px 0 18px}
+
+/* ---------- editor del mostro compatto: numeri in campi piccoli, un attacco su una riga; su PC due colonne ---------- */
+.modulo .ed-nota{margin:0}
+.modulo .tre.quattro{grid-template-columns:4.6em 4.6em 5.4em minmax(0,1fr);gap:8px}
+.modulo .campo-m input{min-height:44px}
+.modulo .campo-m .lbl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ed-att{gap:6px;padding:10px 12px}
+@media (min-width:520px){
+  .ed-att{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1.6fr);gap:8px 10px;align-items:end}
+  .ed-att > .campo-m:nth-of-type(2),.ed-att > .btn.link{grid-column:1/-1}
+}
+@media (min-width:900px){
+  .passi[data-chiave="editor"] .passi-scheda{max-width:900px}
+  .passo .modulo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px 24px;align-items:start}
+  .passo .modulo > .ed-nota,.passo .modulo > .lbl-sez,.passo .modulo > .ed-attacchi,.passo .modulo > button{grid-column:1/-1}
+  .passo .modulo > .ed-attacchi{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  /* il Tavolo del master su PC: più largo, il gruppo su una riga */
+  #vistaScheda .vista-tavolo{max-width:1040px}
+  .tav-gruppo{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+
+/* ---------- Scontro: le finestre a passi nello stile Vetro di Barovia ---------- */
+.passi{background:rgba(8,5,10,.6);-webkit-backdrop-filter:blur(14px) saturate(140%);backdrop-filter:blur(14px) saturate(140%)}
+.passi-scheda{background:linear-gradient(180deg,rgba(40,30,44,.92),rgba(22,16,26,.96))}
+@media (min-width:640px){.passi-scheda{border:0;border-radius:30px;box-shadow:inset 0 1px 0 rgba(255,251,240,.28),0 24px 60px rgba(0,0,0,.5)}}
+.passi-testa{border-bottom:0;min-height:64px;padding:6px 10px}
+.passi-ind,.passi-x{width:44px;height:44px;border-radius:50%;font-size:26px;color:var(--ink);background:rgba(255,246,232,.07);box-shadow:inset 0 1px 0 rgba(255,251,240,.22)}
+.passi-tit b{font-size:14px}
+.passi-pallini i{border-radius:1px}
+.passo{gap:18px}
+.carta{min-height:68px;padding:14px 18px;border-radius:22px;border-color:var(--line);background:linear-gradient(180deg,var(--panel2),var(--panel))}
+.carta:disabled{opacity:.5}
+.carta.scelta-si{border-color:rgba(226,189,112,.55);background:var(--gold-soft)}
+.carta .c-motivo{color:#ffb3bf}
+.tasti{gap:8px}
+.tasto{min-height:54px;border:0;border-radius:18px;background:rgba(255,246,232,.07);box-shadow:inset 0 1px 0 rgba(255,251,240,.16)}
+.tasto.max{box-shadow:inset 0 0 0 1px rgba(226,189,112,.5)}
+.tasto.min{box-shadow:inset 0 0 0 1px rgba(196,48,74,.5)}
+.casella{border-radius:18px}
+.passo .fondo .btn{border-radius:999px;min-height:54px}
+.passo .seg button{border-radius:999px}
+.extra{border-radius:20px}
+/* il tastierino sta sotto il dado che si sta scrivendo */
+.riga-danni.ora{padding:12px;margin:0 -4px;border-radius:22px;background:rgba(255,246,232,.05);box-shadow:inset 0 0 0 1px rgba(226,189,112,.28)}
+.riga-danni.ora .tasti{margin-top:12px}
+/* le icone delle fasi al posto del rombo */
+.rivela{border-radius:26px;padding:30px 18px}
+.rivela-segno{width:64px;height:64px;transform:none;border:0;border-radius:50%;display:grid;place-items:center;background:rgba(255,246,232,.07);box-shadow:inset 0 0 0 1.5px currentColor}
+.rivela-segno svg{width:34px;height:34px}
+.rivela.critico .rivela-segno{background:var(--gold);color:#241808}
+.rivela.cura{color:var(--ok);border-color:var(--ok);background:var(--ok-soft)}
+@media (prefers-reduced-motion:no-preference){
+  .rivela.attesa .rivela-segno{animation:none}
+  .rivela.attesa .rivela-segno svg{animation:clessidra 1.8s cubic-bezier(.5,0,.2,1) infinite}
+  @keyframes clessidra{0%{transform:rotate(0)}40%,100%{transform:rotate(180deg)}}
+}
+
+/* ================= Passata sul design a schermo grande (Mac) e correzioni ================= */
+/* barra in basso: le voci si dividono tutta la larghezza (una vecchia regola le fermava a 150px e la lente restava storta) */
+.tab{max-width:none}
+
+/* PF: il massimo ridotto lo segna il master, con un pulsante piccolo in fondo alla carta */
+.pf .pf-max{display:inline-flex;margin:14px 0 0}
+.pf .pf-max[hidden]{display:none}
+
+/* monete: tutte uguali. Sopra la moneta e il numero, sotto i pulsanti che si dividono la riga */
+.purse{grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.coin,.coin.big{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px 12px;align-items:center;padding:12px;border-radius:20px}
+.coin .disc{width:40px;height:40px;box-shadow:none}
+.coin input,.coin.big input{width:100%;min-height:44px;font-size:19px;font-weight:600;color:var(--ink);text-align:center}
+.coin.big input{color:var(--gold)}
+.coin .act{grid-column:1/-1;display:flex;gap:6px;flex-wrap:nowrap}
+.coin .act .btn{flex:1;min-width:0;min-height:38px;padding:0 4px;font-size:14px}
+
+/* zaino: la spunta "È un'arma" accanto al suo testo */
+.add .isw{justify-content:flex-start;gap:10px;margin-top:2px}
+.add .isw input{flex:none;width:22px;height:22px;min-height:0;padding:0;margin:0}
+
+/* Campagna: ogni regola è un blocco, con la spiegazione allineata sotto al suo titolo */
+.al-sez .spunta{align-items:flex-start;gap:14px;min-height:0;margin:0;padding:16px 0 0;font-size:17px;font-weight:700;line-height:1.35;border-top:1px solid var(--line)}
+.al-sez h2 + .spunta{border-top:0;padding-top:4px}
+.al-sez .spunta input{flex:none;width:22px;height:22px;margin:1px 0 0}
+.al-sez .spunta + .hint{margin:4px 0 16px 36px;max-width:62ch}
+.al-sez .spunta + .hint:last-child{margin-bottom:0}
+
+/* scheda del mostro: i quattro numeri in riquadri separati (niente cornice doppia), poi le righe con il loro spazio */
+.modello,.rapida .modello{display:flex;flex-direction:column;gap:18px}
+.modello .cifre{border:0;padding:0;gap:8px;grid-template-columns:repeat(4,minmax(0,1fr))}
+.modello .cifre .stat{padding:12px 4px 10px}
+.modello .dati{margin:-8px 2px 0}
+.modello .sez-m{margin:4px 0 -6px}
+.modello .azioni-m{gap:12px}
+
+/* ---------- Nuovo scontro in due passi ---------- */
+.prep-passi{list-style:none;display:flex;gap:8px;margin:0 0 16px;padding:0}
+.prep-passi li{flex:1}
+.prep-passi button{width:100%;display:flex;align-items:center;gap:10px;min-height:48px;padding:0 16px;border:1px solid var(--line);border-radius:999px;background:rgba(255,240,220,.04);
+  color:var(--muted);font:inherit;font-weight:800;font-size:15px;text-align:left}
+.prep-passi button:disabled{opacity:.5}
+.prep-passi i{flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-family:var(--f-num);font-size:13px;background:rgba(255,246,232,.1)}
+.prep-passi li.ora button{color:var(--ink);border-color:rgba(226,189,112,.5);background:var(--gold-soft)}
+.prep-passi li.ora i{background:var(--gold);color:#241808}
+.prep-passi li.fatto i{background:var(--gold-soft);color:var(--gold)}
+#nzCercaPrep{width:100%;min-height:52px;padding:0 18px;border-radius:999px;border:1px solid var(--line);background:rgba(0,0,0,.28);color:var(--ink);font:inherit;font-size:17px}
+#nzCercaPrep:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.trovate{list-style:none;margin:10px 0 0;padding:0}
+.trovate li + li{border-top:1px solid var(--line)}
+.trovate button{width:100%;display:flex;align-items:center;gap:12px;min-height:60px;padding:8px 2px;border:0;background:none;color:var(--ink);font:inherit;text-align:left}
+.trovate .riga-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.trovate .riga-t b{font-size:17px}
+.trovate .riga-t small{font-size:14px;color:var(--muted)}
+.trovate .piu{flex:none;padding:8px 14px;border-radius:999px;font-size:14px;font-weight:800;color:var(--gold);background:var(--gold-soft)}
+.prep-cerca .lbl-sez{margin:18px 0 10px}
+.prep-cerca .schede-prep{margin-bottom:12px}
+.prep-campo .schierati{margin:0}
+.prep-campo .schierati li{flex-wrap:wrap;gap:6px 12px;min-height:60px;padding:8px 0}
+.prep-campo .schierati li:first-child{border-top:0}
+.prep-campo .schierati .nome{flex:1 1 9em}
+.prep-campo .schierati .stepper{display:inline-flex;align-items:center;gap:8px}
+.prep-campo .schierati .stepper .num{min-width:2ch;text-align:center;font-size:18px}
+.prep-fine{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:10px;margin-top:18px}
+.prep-fine .hint{flex:1 1 100%;margin:0}
+.prep-fine .prep-manca{color:#ffb3bf;font-weight:700}
+.prep-fine .btn.up{flex:1 1 14em;min-height:54px}
+.prep-fine .btn:not(.up){min-height:54px}
+
+/* l'annuncio ai giocatori quando parte uno scontro */
+.inizio-scontro{display:flex;flex-direction:column;align-items:center;gap:4px;padding:18px 16px;border-radius:24px;text-align:center;color:var(--gold);background:var(--gold-soft);box-shadow:inset 0 0 0 1px rgba(226,189,112,.35)}
+.inizio-scontro svg{width:36px;height:36px;margin-bottom:4px}
+.inizio-scontro b{font-family:var(--f-display);font-size:clamp(22px,6vw,28px);line-height:1.15;color:var(--ink)}
+.inizio-scontro span{font-size:16px;font-weight:700}
+
+/* l'editor del mostro non deve mai uscire dalla finestra: i campi si stringono */
+.modulo > *,.ed-att > *,.modulo .tre > *{min-width:0}
+.modulo .campo-m input,.modulo .campo-m textarea{width:100%;min-width:0}
+.ed-att .due{grid-template-columns:5.5em minmax(0,1fr)}
+
+/* ================= Seconda passata: chiarezza dello scontro ================= */
+/* i "link" sottolineati si leggevano male: testo pieno, sottolineatura leggera */
+.btn.link{color:var(--ink);font-weight:700;text-decoration-color:rgba(255,246,232,.35);text-underline-offset:4px}
+/* menu a tendina: la freccia è nostra, con il suo spazio dal bordo */
+select{-webkit-appearance:none;appearance:none;padding-right:44px!important;background-repeat:no-repeat!important;background-position:right 16px center!important;background-size:14px 14px!important;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b9ad9c' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")!important}
+
+/* da che parte sta una creatura: una losanga colorata accanto al nome, uguale ovunque */
+i.lato-mostri,i.lato-persone,i.lato-alleati{flex:none;display:inline-block;width:9px;height:9px;margin-right:10px;transform:rotate(45deg);border-radius:1px;background:var(--crimson)}
+i.lato-persone{background:var(--oro-gruppo,#e2bd70)}
+i.lato-alleati{background:var(--ok)}
+
+/* chi è in campo: nome, quanti, togli; sotto, le scelte a due con il loro titolo */
+.prep-campo .schierati li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px 12px;padding:14px 0}
+.prep-campo .schierati .nome{display:flex;align-items:center;font-size:18px;font-weight:700}
+.prep-campo .schierati .x{width:36px;height:36px;border:0;border-radius:50%;background:var(--crimson-soft);color:#ffb3bf;font-size:18px}
+.prep-campo .sch-opz{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px 18px}
+.due-scelte{display:flex;flex-direction:column;gap:5px}
+.due-scelte .lbl{font-size:12px}
+.due-scelte .seg{display:inline-flex;padding:3px;gap:0;border-radius:999px;background:rgba(0,0,0,.3);box-shadow:inset 0 0 0 1px var(--line)}
+.due-scelte .seg button{min-height:36px;padding:0 14px;border:0;border-radius:999px;background:none;color:var(--muted);font:inherit;font-size:14px;font-weight:700}
+.due-scelte .seg button[aria-pressed="true"]{background:rgba(255,246,232,.14);color:var(--ink);opacity:1}
+.due-scelte.lato .seg button[aria-pressed="true"]:first-child{background:var(--crimson-soft);color:#ffc2cb}
+.due-scelte.lato .seg button[aria-pressed="true"]:last-child{background:var(--ok-soft);color:#b9f0cd}
+.trovate button > i{margin-right:0}
+
+/* bestiario in tre parti */
+.best-cima{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.best-cima #nzCerca{flex:1 1 14em;min-height:48px;padding:0 18px;border-radius:999px;border:1px solid var(--line);background:rgba(0,0,0,.28);color:var(--ink);font:inherit}
+.best-parti{display:flex;margin:14px 0 8px}
+.best-parti button{flex:1}
+.best-parti small{font-family:var(--f-num);font-size:12px;opacity:.7;margin-left:4px}
+.best-spiega{margin:0 2px 6px}
+.bestiario .nome{display:flex;align-items:center;font-weight:700}
+.bestiario small{margin-left:19px}
+
+/* il totale di un tiro: a sinistra come ci si arriva, a destra il numero */
+.totale{display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:64px;padding:10px 22px;border-radius:22px;background:rgba(255,246,232,.05);box-shadow:inset 0 0 0 1px var(--line);
+  font-family:var(--f-body);font-size:16px;font-weight:700;color:var(--muted)}
+.totale b{font-family:var(--f-num);font-size:38px;line-height:1;font-weight:600;color:var(--gold)}
+.totale span{font-size:15px}
+.totale .tot-come i{font-style:normal;font-family:var(--f-num);color:var(--ink)}
+
+/* iniziativa e fine scontro: pulsanti veri, non scritte sottolineate */
+.tiri-az{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.tiri-az .btn{min-height:50px}
+.tiri-az .btn.up{flex:1 1 12em}
+.chiudi-m{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;margin-top:16px}
+.chiudi-m .btn{min-height:48px}
+
+/* rinforzi: ogni campo con il suo titolo e il suo spazio */
+.rinforzi .ap-corpo{display:flex;flex-direction:column;gap:14px}
+.rinforzi .campo-m select,.rinforzi .campo-m input{width:100%;min-height:48px}
+.rinf-due{display:grid;grid-template-columns:6em minmax(0,1fr);gap:10px}
+.rinf-due input{text-align:center;font-family:var(--f-num)}
+.rinforzi .spunta{margin:0;min-height:0}
+.rinforzi .rinf-ok{min-height:52px}
+.rinforzi .hint{margin:0}
+.rinforzi .btn.link{align-self:flex-start}
+
+/* sconfitti: una riga pulita per ognuno */
+.m-sconfitti > .ap-corpo{list-style:none;margin:0;padding:4px 18px 8px;border-top:0}
+.m-sconfitti .ap-corpo li{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:60px;padding:8px 0;border-top:1px solid var(--line)}
+.m-sconfitti .riga-t{display:flex;flex-direction:column;gap:2px}
+.m-sconfitti .riga-t b{font-size:17px}
+.m-sconfitti .riga-t small{font-size:14px;color:var(--muted)}
+.m-sconfitti .btn{min-height:42px}
+
+/* nel turno: se non c'è niente da usare dallo zaino resta solo "Attacca", a tutta larghezza */
+.azioni2 > :only-child{grid-column:1/-1}
+.az-icona,.inizio-scontro svg{fill:none}
+
+/* ================= Terza passata ================= */
+/* sconfitti: le righe stanno dentro il riquadro, con il loro margine; niente caratteri da macchina da scrivere */
+.m-sconfitti .ap-corpo li:first-child{border-top:0}
+.m-sconfitti .riga-t small{font-family:var(--f-body)}
+.m-sconfitti .btn{flex:none}
+
+/* gruppi pronti: una griglia ordinata di riquadri uguali, non pillole di larghezze a caso */
+.gruppi{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+.gruppi .btn{width:100%;min-height:64px;justify-content:center;gap:3px;padding:10px 16px;border-radius:18px;white-space:normal;line-height:1.25}
+.gruppi .btn small{font-size:13px;line-height:1.3;color:var(--muted)}
+
+/* l'avviso "manca un nemico" e i pulsanti sotto: ognuno con il suo respiro */
+.prep-fine{gap:12px;margin-top:22px}
+.prep-fine .hint{margin:0 2px 4px}
+
+/* Campagna: testo, pulsanti e nota non più attaccati */
+.al-sez > p{margin:0 0 16px}
+.al-sez .al-azioni{margin:0 0 14px;gap:12px}
+.al-sez .al-azioni + .hint{margin:0 0 4px}
+.al-sez .lbl-sez{margin:24px 0 12px}
+
+/* chiudere o annullare uno scontro è una scelta che pesa: rosso, ma senza gridare */
+.btn.rosso{color:#ffc2cb;background:linear-gradient(180deg,rgba(196,48,74,.28),rgba(196,48,74,.14));box-shadow:inset 0 1px 0 rgba(255,220,225,.22),inset 0 0 0 1px rgba(210,58,82,.5)}
+
+/* colpito e critico: l'icona entra una volta sola e resta ferma; un anello si allarga e svanisce (niente ritorno indietro) */
+.rivela-segno{position:relative}
+.rivela.sconfitto{color:var(--gold);border-color:var(--gold);background:var(--gold-soft)}
+.rivela.sconfitto b{font-size:clamp(24px,7vw,34px);line-height:1.15;letter-spacing:.02em}
+@media (prefers-reduced-motion:no-preference){
+  .rivela.colpito .rivela-segno,.rivela.critico .rivela-segno,.rivela.sconfitto .rivela-segno{animation:none}
+  .rivela.colpito .rivela-segno svg,.rivela.critico .rivela-segno svg,.rivela.sconfitto .rivela-segno svg{animation:segno-entra .5s cubic-bezier(.2,.8,.2,1) both}
+  .rivela.colpito .rivela-segno::after,.rivela.critico .rivela-segno::after,.rivela.sconfitto .rivela-segno::after{content:"";position:absolute;inset:0;border-radius:50%;border:2px solid var(--gold);pointer-events:none;animation:anello .9s ease-out both}
+  .rivela.critico .rivela-segno::after{animation-duration:1.1s;border-width:3px}
+  .rivela.sconfitto{animation:appare .5s cubic-bezier(.2,.8,.2,1)}
+  @keyframes segno-entra{from{opacity:0;transform:scale(.5) rotate(-30deg)}to{opacity:1;transform:none}}
+  @keyframes anello{from{opacity:.9;transform:scale(1)}to{opacity:0;transform:scale(2.1)}}
+}
+.rivela.sconfitto b{font-size:clamp(22px,6.2vw,32px);text-wrap:balance}
+.m-sconfitti .riga-t b{color:var(--ink)}
+
+/* gruppi pronti: stanno in un menu che si apre, così la schermata resta leggera */
+.prep-cerca .gruppi-pronti{margin-top:16px}
+.gruppi-pronti > .ap-corpo{padding:14px}
+.gruppi-pronti .schede-prep{margin:0 0 12px}
+/* chi è appena entrato in campo si fa notare per un attimo */
+@media (prefers-reduced-motion:no-preference){
+  .prep-campo .schierati li.appena{animation:appena 1.2s ease-out}
+  @keyframes appena{from{background:var(--gold-soft)}to{background:transparent}}
+}
+
+/* sola lettura (?sololettura): fascia fissa in alto */
+.fascia-lettura{position:fixed;z-index:60;top:0;left:0;right:0;padding:calc(6px + env(safe-area-inset-top,0px)) 16px 6px;text-align:center;font-size:14px;font-weight:800;color:#241808;background:var(--oro-gruppo,#e2bd70)}
+
+/* il master su una scheda: "‹ Tavolo" sta in alto a sinistra, sulla stessa riga dell'avatar (come un tasto Indietro),
+   non più dentro la pagina; durante uno scontro si sposta accanto alla capsula "‹ Scontro" */
+.vista-master{position:fixed;z-index:17;top:calc(12px + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));margin:0;max-width:calc(100% - 96px)}
+.vista-master .bv{min-height:44px;flex:none}
+.vista-master span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:opacity .2s}
+body.con-banda .vista-master{left:calc(max(16px,env(safe-area-inset-left,0px)) + 128px);max-width:calc(100% - 224px)}
+body.scorso .vista-master span{opacity:0}
+@media (max-width:560px){.vista-master span{display:none}}

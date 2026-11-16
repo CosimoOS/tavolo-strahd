@@ -20,6 +20,8 @@ export const CONFIG = {
   modalita: prova ? "locale" : "firebase",
   misura: indirizzo.has("misura"),
   collegamentoRobusto: indirizzo.has("robusto"),
+  /* ?sololettura → l'app non scrive niente nell'archivio: per scaricare una copia dei dati veri senza cambiarli */
+  solaLettura: indirizzo.has("sololettura"),
 
   firebase: {
     apiKey: "AIzaSyCa0xYAIHHvK3jRJPmABdwwWpddvxnrWgY",

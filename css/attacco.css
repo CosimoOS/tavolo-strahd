@@ -32,7 +32,7 @@
 .richiesta .tiro-r,.richiesta .stato-r{color:var(--muted);font-family:var(--f-num);font-size:14px}
 .richiesta .danni-r{font-size:15px}
 .richiesta .tot-r{font-family:var(--f-num);font-size:28px;font-weight:600;color:var(--gold);margin-right:4px}
-.richiesta .difese{padding:8px 12px;border-left:3px solid var(--crimson);background:var(--crimson-soft);border-radius:0 8px 8px 0;font-size:14px;line-height:1.5}
+.richiesta .difese{padding:8px 12px;border:1px solid color-mix(in srgb,var(--crimson) 60%,var(--line));background:var(--crimson-soft);border-radius:8px;font-size:14px;line-height:1.5}
 .richiesta .scelte-m{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
 .richiesta .scelte-m .btn{min-height:48px}
 .richiesta .btn.link{align-self:flex-start}
