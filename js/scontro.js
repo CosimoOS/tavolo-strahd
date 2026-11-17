@@ -357,7 +357,7 @@ const SPADE_INC = icona("scontro");
 function apriTiro(soloPer = null) {
   const lista = soloPer ? [soloPer] : daTirare(); if (!lista.length) return;
   if (TI && TI.f.aperta && !soloPer) { TI.lista = lista; return disegnaTiro(false); }
-  TI = { lista, dadi: [], master: !!soloPer };
+  TI = { lista, dadi: [], master: !!soloPer, annuncio: !soloPer };   // ai giocatori prima l'annuncio da solo, poi il tiro
   TI.f = finestra({ chiave: "iniziativa", titolo: soloPer ? "Iniziativa" : "Scontro!", onClick: clicTiro, onChiudi: () => { if (!TI || !TI.master) rimandato = SC && SC.id; TI = null; aggiorna(); } });
   disegnaTiro();
 }
@@ -367,13 +367,24 @@ function tiroDiTI(p) {
   const r = totaleIniziativa({ dadi: TI.dadi, mod: d.mod, vantaggio: d.vantaggio || TI.insp });
   return r && { dadi: r.dadi, usato: r.usato, mod: r.mod, tot: r.tot, des: d.des };
 }
+let annuncioTimer = null;
 function disegnaTiro(nuovo = true) {
   const p = TI.lista[0]; if (!p) { TI.f.chiudi(true); TI = null; return; }
   const manuale = p.tipo === "manuale", d = manuale ? null : infoDi(p), n = manuale ? 1 : (d && (d.vantaggio || TI.insp) ? 2 : 1), r = tiroDiTI(p);
   const dopo = TI.lista[1];
   /* ai giocatori si dice cosa sta succedendo, non solo "tira il d20" */
-  const annuncio = TI.master ? "" : `<div class="inizio-scontro" role="status">${SPADE_INC}<b>È iniziato uno scontro!</b><span>${esc(p.nome)}, tira l'iniziativa</span></div>`;
-  TI.f.mostra(`${annuncio}<p class="domanda">${manuale ? "Totale d'iniziativa" : TI.master ? "Tira il d20" : "Lancia il d20 e tocca il numero uscito"}</p>
+  /* ai giocatori si dice cosa sta succedendo: l'annuncio da solo, al centro, per un paio di secondi (o finché non lo tocchi);
+     poi la schermata del tiro, con tutto lo spazio per sé */
+  const el = document.getElementById("passi");
+  if (TI.annuncio) {
+    const qui = TI;
+    TI.f.mostra(`<div class="inizio-scontro" role="status">${SPADE_INC}<b>È iniziato uno scontro!</b><span>${esc(p.nome)}, tira l'iniziativa</span></div>`, { passo: 0, di: 0, nuovoPasso: true });
+    document.getElementById("passi").dataset.fase = "annuncio";
+    clearTimeout(annuncioTimer); annuncioTimer = setTimeout(() => { if (TI === qui && TI.annuncio) { TI.annuncio = false; disegnaTiro(true); } }, 2200);
+    return;
+  }
+  if (el) delete el.dataset.fase;
+  TI.f.mostra(`<p class="domanda">${manuale ? "Totale d'iniziativa" : TI.master ? "Tira il d20" : "Lancia il d20 e tocca il numero uscito"}</p>
     <p class="aiuto">${TI.master ? `<b>${esc(p.nome)}</b> · ` : ""}${manuale ? "senza scheda: scrivi il totale" : `${TI.master ? "iniziativa" : "L'app aggiunge la tua iniziativa:"} ${sg(d.mod)}${d.vantaggio ? " · con vantaggio: tira due dadi, conta il più alto" : ""}`}</p>
     ${!manuale && d && d.insp > 0 && !d.vantaggio && !TI.master ? `<button class="extra" data-ini-insp aria-pressed="${!!TI.insp}"><span class="ex-spia"></span><span class="ex-testo">Usa l'ispirazione<small>vantaggio a questo tiro · ne hai ${d.insp}</small></span></button>` : ""}
     ${caselleDadi(TI.dadi, n, manuale ? 30 : 20, "ini")}
@@ -383,6 +394,7 @@ function disegnaTiro(nuovo = true) {
     { passo: TI.master ? 0 : 1, di: 0, nuovoPasso: nuovo });
 }
 async function clicTiro(e) {
+  if (TI && TI.annuncio) { clearTimeout(annuncioTimer); TI.annuncio = false; return disegnaTiro(true); }   // un tocco salta l'annuncio
   const b = e.target.closest("button"); if (!b || b.disabled || !TI) return;
   const p = TI.lista[0], manuale = p.tipo === "manuale", n = manuale ? 1 : (infoDi(p) && (infoDi(p).vantaggio || TI.insp) ? 2 : 1);
   if (b.hasAttribute("data-ini-insp")) { TI.insp = !TI.insp; TI.dadi = TI.dadi.slice(0, TI.insp ? 2 : 1); return disegnaTiro(false); }
