@@ -199,3 +199,19 @@ test("lo scontro parte da solo quando tutti hanno tirato l'iniziativa", async ()
   assert.equal(tuttiHannoTirato(p, () => true), true);
   assert.equal(tuttiHannoTirato([], () => true), false, "senza nessuno non parte");
 });
+
+test("scheda del mostro: i sei punteggi di caratteristica con il loro modificatore", async () => {
+  const { caratteristiche } = await import("../js/regole/nemici.js");
+  const c = caratteristiche({ car: { for: 12, des: 15, cos: 12, int: 3, sag: 12, car: 6 } });
+  assert.deepEqual(c.map(x => `${x.sigla} ${x.valore} ${x.mod}`), ["FOR 12 +1", "DES 15 +2", "COS 12 +1", "INT 3 −4", "SAG 12 +1", "CAR 6 −2"]);
+  assert.equal(caratteristiche({}), null, "un modello senza punteggi non mostra la riga");
+  assert.equal(caratteristiche({ car: { for: 10 } }), null, "servono tutti e sei");
+});
+
+test("bestiario ordinato per grado di sfida: le frazioni prima degli interi, a parità per nome", async () => {
+  const { ordinaBestiario, valoreGs } = await import("../js/regole/nemici.js");
+  assert.equal(valoreGs("1/4"), 0.25); assert.equal(valoreGs("5"), 5); assert.equal(valoreGs(2), 2); assert.equal(valoreGs(""), Infinity, "senza GS va in fondo");
+  const l = [{ nome: "Zeta", gs: "3" }, { nome: "Beta", gs: "1/4" }, { nome: "Alfa", gs: "3" }, { nome: "Gamma", gs: "1/2" }, { nome: "Senza" }];
+  assert.deepEqual(ordinaBestiario(l, "gs").map(c => c.nome), ["Beta", "Gamma", "Alfa", "Zeta", "Senza"]);
+  assert.deepEqual(ordinaBestiario(l, "nome").map(c => c.nome), ["Alfa", "Beta", "Gamma", "Senza", "Zeta"]);
+});

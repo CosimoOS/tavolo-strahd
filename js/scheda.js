@@ -440,7 +440,9 @@ const tab = (sez, nome, extra = "") => `<button class="tab" data-sez="${sez}" ty
 function costruisciSelettore() {
   $("barra").innerHTML = `<span class="lente" aria-hidden="true"></span>` + (perMaster
     ? tab("tavolo", "Tavolo") + tab("scontro", "Scontro", " data-scontro") + tab("bestiario", "Bestiario") + tab("altro", "Campagna")
-    : tab("scontro", "Scontro", " data-scontro hidden") + PAGINE.map(([k, n]) => tab(k, n)).join(""));
+    : tab("scontro", "Scontro", " data-scontro") + PAGINE.map(([k, n]) => tab(k, n)).join(""));
+  /* le voci sono sempre le stesse e sempre allo stesso posto: quelle che non servono adesso sono solo spente */
+  if (!perMaster) $("barra").querySelector("[data-scontro]").classList.add("spenta");
 }
 /** La sezione che si vede adesso. */
 function sezione() {
@@ -477,7 +479,7 @@ function segnaBarra() {
   voci.forEach(b => b.dataset.sez === qui ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
   const i = voci.findIndex(b => b.dataset.sez === qui), barra = $("barra");
   barra.style.setProperty("--n", voci.length); barra.style.setProperty("--i", Math.max(0, i));
-  const magia = document.querySelector('#barra [data-sez="magia"]'); if (magia) magia.hidden = !haMagia();
+  const magia = document.querySelector('#barra [data-sez="magia"]'); if (magia) magia.classList.toggle("spenta", !haMagia());
   /* il master che guarda una scheda: intestazione e pagine della scheda in alto */
   const inScheda = perMaster && PAGINE.some(([k]) => k === sez);
   $("vistaMaster").hidden = !inScheda; $("segScheda").hidden = !inScheda;
@@ -493,6 +495,7 @@ function segnaBarra() {
 document.addEventListener("vista:cambiata", segnaBarra);
 $("barra").addEventListener("click", e => {
   const b = e.target.closest("[data-sez]"); if (!b) return;
+  if (b.classList.contains("spenta")) { toast(b.dataset.sez === "scontro" ? "Nessuno scontro in corso" : `${C.name} non lancia incantesimi`); return; }
   const prima = sezione(); vaiA(b.dataset.sez);
   if (prima !== sezione()) window.scrollTo({ top: 0 });
 });

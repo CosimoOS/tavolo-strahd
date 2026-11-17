@@ -4,7 +4,7 @@
 
      dm/bestiario → { creature:[...], gruppi:[...] }   i modelli, importati dal file privato o scritti a mano
      dm/campo     → { scontro, creature:[...], gruppi:[...] }   chi è in campo adesso, con i PF veri          */
-import { passoBranco, cercaCreature, soloItaliano, sezioneBestiario, ferite, danno, cura, schiera, togliDaOrdine, inserisciInOrdine, inserisciDopo, trasforma, leggiTratti, scriviTratti, chiaro, fonteChiara, incantesimi, media } from "./regole/nemici.js";
+import { passoBranco, cercaCreature, soloItaliano, sezioneBestiario, caratteristiche, ordinaBestiario, ferite, danno, cura, schiera, togliDaOrdine, inserisciInOrdine, inserisciDopo, trasforma, leggiTratti, scriviTratti, chiaro, fonteChiara, incantesimi, media } from "./regole/nemici.js";
 import { finestra } from "./passi.js";
 import { reazioneLibera } from "./regole/turno.js";
 import { versione } from "./copie.js";
@@ -75,7 +75,7 @@ export function htmlPreparazione() {
     ${!B.creature.length ? `<p class="vuoto">Il bestiario è vuoto: aprilo e importa il file, oppure crea un mostro.</p>` : `
     <input id="nzCercaPrep" type="search" value="${esc(cercaPrep)}" placeholder="Cerca per nome: lupo, guardia, zombi…" aria-label="Cerca una creatura nel bestiario" autocomplete="off">
     ${q ? (trovate.length ? `<ul class="trovate">${trovate.map(c => `<li><button data-nz="aggiungi-c" data-id="${esc(c.id)}" type="button">
-        <i class="lato-${sezioneBestiario(c)}" aria-hidden="true"></i><span class="riga-t"><b>${esc(c.nome)}</b><small>${{ mostri: "Mostro", persone: "Persona", alleati: "Alleato del gruppo" }[sezioneBestiario(c)]} · CA ${c.ca} · PF ${c.pf}</small></span><span class="piu">Aggiungi</span></button></li>`).join("")}</ul>`
+        <i class="lato-${sezioneBestiario(c)}" aria-hidden="true"></i><span class="riga-t"><b>${esc(c.nome)}</b><small>${{ mostri: "Mostro", persone: "Persona", alleati: "Alleato del gruppo" }[sezioneBestiario(c)]}${c.gs != null && c.gs !== "" ? ` · GS ${esc(String(c.gs))}` : ""} · CA ${c.ca} · PF ${c.pf}</small></span><span class="piu">Aggiungi</span></button></li>`).join("")}</ul>`
         : `<p class="vuoto">Nessuna creatura con questo nome. <button class="btn link" data-nz="nuovo">Creala adesso</button></p>`)
       : `<details class="apribile gruppi-pronti" data-apri="gruppi-pronti"><summary>${rigaApribile("Gruppi pronti", "scontri già composti: un tocco e sono in campo", B.gruppi.length)}</summary>
       <div class="ap-corpo">
@@ -270,10 +270,13 @@ function schedaModello(m, c, gruppo) {
       }).join("")}</ul>`;
   }
   const altri = (m.tratti || []).filter(t => t !== trInc);
+  const car = caratteristiche(m);
   const cifra = (v, l, cls = "") => v != null && v !== "" ? `<div class="stat${cls}"><b>${esc(String(v))}</b><span>${l}</span></div>` : "";
   return `<div class="modello">
     <div class="cifre">${cifra(m.ca, "CA", " ca")}${cifra(m.pf, "PF")}${cifra(sg(m.ini ?? 0), "Iniziativa")}${cifra(m.gs, "Sfida")}</div>
     ${m.vel || m.dadiPf ? `<p class="dati">${m.vel ? `Velocità ${esc(m.vel)}` : ""}${m.vel && m.dadiPf ? " · " : ""}${m.dadiPf ? `Dadi vita ${esc(m.dadiPf)}` : ""}</p>` : ""}
+    ${car ? `<div class="car6" aria-label="Punteggi di caratteristica">${car.map(x => `<div><span>${x.sigla}</span><b>${x.valore}</b><i>${x.mod}</i></div>`).join("")}</div>` : ""}
+    ${m.ts || m.abilita ? `<dl class="ts-ab">${m.ts ? `<div><dt>Tiri salvezza</dt><dd>${esc(m.ts)}</dd></div>` : ""}${m.abilita ? `<div><dt>Abilità</dt><dd>${esc(m.abilita)}</dd></div>` : ""}</dl>` : ""}
     ${m.tattica ? `<div class="tattica"><b>Cosa fa</b><p>${T(m.tattica)}</p></div>` : ""}
     ${blocco("Azioni", m.azioni)}${blocco("Azioni bonus", m.azioniBonus)}
     ${inc}
@@ -353,14 +356,15 @@ export const ferisci = (id, n, SC) => colpisci(id, n, false, SC);
    Mostri (partono contro il gruppo) · Persone (la parte si sceglie in campo) · Alleati (combattono con il gruppo). */
 const PARTI = [["mostri", "Mostri", "Partono contro il gruppo."], ["persone", "Persone", "Abitanti e PNG: quando entrano in campo scegli se stanno con voi o contro."],
   ["alleati", "Alleati", "Combattono con il gruppo e ricordano ferite e slot tra uno scontro e l'altro."]];
-let parteBest = "mostri";
+let parteBest = "mostri", ordineBest = "nome";
 export function htmlBestiarioSezione() {
   return `<header class="testa-pagina"><h1>Bestiario</h1><p>${B.creature.length} modelli · tocca per modificarli</p></header>` +
     htmlBestiario().replace(/<h2>Bestiario[^<]*<small>[^<]*<\/small><\/h2>/, "").replace(/<div class="azioni"><button class="btn up" data-nz="chiudi">Fatto<\/button><\/div>/, "");
 }
 function htmlBestiario() {
   const q = cerca.trim(), conta = k => B.creature.filter(c => sezioneBestiario(c) === k).length;
-  const lista = q ? cercaCreature(B.creature, q) : cercaCreature(B.creature, "").filter(c => sezioneBestiario(c) === parteBest);
+  const lista = ordinaBestiario(q ? cercaCreature(B.creature, q) : B.creature.filter(c => sezioneBestiario(c) === parteBest), ordineBest);
+  const gs = c => c.gs != null && c.gs !== "" ? `<span class="gs" title="Grado di sfida"><small>GS</small>${esc(String(c.gs))}</span>` : "";
   const nomeParte = k => PARTI.find(p => p[0] === k)[1];
   return `<section><h2>Bestiario <small>${B.creature.length} modelli</small></h2>
     <div class="best-cima">
@@ -370,7 +374,8 @@ function htmlBestiario() {
     </div>
     ${q ? "" : `<div class="seg best-parti">${PARTI.map(([k, n]) => `<button data-nz="parte" data-parte="${k}" aria-pressed="${parteBest === k}">${n} <small>${conta(k)}</small></button>`).join("")}</div>
     <p class="hint best-spiega">${PARTI.find(p => p[0] === parteBest)[2]}</p>`}
-    ${lista.length ? `<ul class="bestiario">${lista.map(c => `<li><button data-nz="modifica" data-id="${esc(c.id)}"><span class="nome"><i class="lato-${sezioneBestiario(c)}" aria-hidden="true"></i>${esc(c.nome)}</span>
+    <div class="best-ordine"><span class="lbl">In ordine di</span><div class="seg"><button data-nz="ordine" data-o="nome" aria-pressed="${ordineBest === "nome"}">Nome</button><button data-nz="ordine" data-o="gs" aria-pressed="${ordineBest === "gs"}">Grado di sfida</button></div></div>
+    ${lista.length ? `<ul class="bestiario">${lista.map(c => `<li><button data-nz="modifica" data-id="${esc(c.id)}"><span class="nome"><i class="lato-${sezioneBestiario(c)}" aria-hidden="true"></i>${esc(c.nome)}${gs(c)}</span>
       <small>${q ? nomeParte(sezioneBestiario(c)) + " · " : ""}CA ${c.ca} · PF ${c.pf}${(c.azioni || []).some(a => a.colpire != null) ? " · " + (c.azioni || []).filter(a => a.colpire != null).map(a => esc(a.nome)).join(", ") : ""}</small></button></li>`).join("")}</ul>`
       : `<p class="vuoto">${q ? "Nessun modello con questo nome." : "Ancora nessuno in questa parte."}</p>`}
     <div class="azioni"><button class="btn up" data-nz="chiudi">Fatto</button></div></section>`;
@@ -394,6 +399,10 @@ function disegnaEditor(nuovo = true) {
       ${campo("nome", "Nome (lo vedi solo tu)", c.nome, "", "es. Capo dei lupi")}
       ${campo("giocatori", "Nome per i giocatori", c.giocatori, "", "es. Lupo enorme")}
       <div class="tre quattro">${campo("ca", "CA", c.ca, num)}${campo("pf", "PF", c.pf, num)}${campo("ini", "Iniziativa", c.ini ?? 0, num)}${campo("vel", "Velocità", c.vel, "", "9 m")}</div>
+      <div class="ed-car"><span class="lbl">Punteggi di caratteristica</span><div class="sei">${["for", "des", "cos", "int", "sag", "car"].map(k => campo(`car-${k}`, k.toUpperCase(), (c.car || {})[k] ?? "", num, "10")).join("")}</div></div>
+      ${campo("gs", "Grado di sfida", c.gs ?? "", "", "es. 1/4")}
+      ${campo("ts", "Tiri salvezza", c.ts || "", "", "es. Des +4, Sag +2")}
+      ${campo("abilita", "Abilità", c.abilita || "", "", "es. Percezione +3, Furtività +4")}
       <div class="campo-m"><span class="lbl">Che cos'è</span><div class="seg"><button data-ed-cat="mostro" aria-pressed="${!persona(c)}">Mostro</button><button data-ed-cat="persona" aria-pressed="${persona(c)}">Persona</button></div></div>
       <div class="campo-m"><span class="lbl">Da che parte sta di solito</span><div class="seg"><button data-ed-tipo="nemico" aria-pressed="${c.tipo !== "alleato"}">Contro il gruppo</button><button data-ed-tipo="alleato" aria-pressed="${c.tipo === "alleato"}">Con il gruppo</button></div></div>
       ${c.tipo === "alleato" ? `<label class="spunta"><input type="checkbox" data-ed="pfVisibili"${c.pfVisibili ? " checked" : ""}> I giocatori vedono i suoi PF veri</label>` : ""}
@@ -418,6 +427,10 @@ function leggiEditor() {
   c.nome = v("nome"); c.giocatori = v("giocatori"); c.ca = n("ca", 10); c.pf = Math.max(1, n("pf", 1)); c.ini = n("ini", 0); c.vel = v("vel");
   if (v("pfVisibili") !== undefined) c.pfVisibili = v("pfVisibili");
   c.tattica = v("tattica"); c.tratti = leggiTratti(v("tratti"));
+  /* grado di sfida, caratteristiche, tiri salvezza e abilità: facoltativi; i punteggi si tengono solo se ci sono tutti e sei */
+  for (const k of ["gs", "ts", "abilita"]) { if (v(k)) c[k] = v(k); else delete c[k]; }
+  const sei = Object.fromEntries(["for", "des", "cos", "int", "sag", "car"].map(k => [k, parseInt(v(`car-${k}`), 10)]));
+  if (Object.values(sei).every(x => Number.isInteger(x) && x >= 1 && x <= 30)) c.car = sei; else delete c.car;
   c.azioni = (c.azioni || []).map((a, i) => {
     const colpire = parseInt(v(`a${i}-colpire`), 10), danni = v(`a${i}-danni`) || "";
     const x = { nome: v(`a${i}-nome`) || "", ...(Number.isInteger(colpire) ? { colpire, danni } : {}), ...(v(`a${i}-nota`) ? { nota: v(`a${i}-nota`) } : {}) };
@@ -518,6 +531,7 @@ export async function clic(b, SC, scrivi) {
     case "bestiario": pannello = "bestiario"; window.scrollTo({ top: 0 }); break;
     case "chiudi": pannello = null; break;
     case "parte": parteBest = b.dataset.parte; break;
+    case "ordine": ordineBest = b.dataset.o; break;
     case "branco-avanti": passo.i++; window.scrollTo({ top: 0 }); break;
     case "branco-indietro": passo.i = Math.max(0, passo.i - 1); break;
     /* creato mentre si prepara uno scontro: oltre a finire nel bestiario entra subito tra chi combatte */

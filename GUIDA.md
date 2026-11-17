@@ -24,7 +24,8 @@ Per le cose da programmatore (file, prove, pubblicazione nel dettaglio) c'è `LE
 
 - **In basso** c'è la barra di vetro con le sezioni; la "lente" chiara indica dove sei.
   - **Giocatori:** *Scheda · Incantesimi · Abilità · Zaino*, cioè la scheda divisa in pagine
-    (*Incantesimi* c'è solo per chi ne ha). *Scontro* compare in testa quando il master chiama l'iniziativa.
+    con *Scontro* in testa. Le voci sono **sempre le stesse e sempre allo stesso posto**: quelle che non servono
+    (Scontro senza uno scontro in corso, Incantesimi per chi non ne lancia) restano spente.
   - **Master:** *Tavolo · Scontro · Bestiario · Campagna*. Il **Tavolo** è la casa del master: lo scontro in corso,
     il gruppo con PF, CA e condizioni, gli strumenti. Tocca un personaggio per aprire la sua scheda
     (con le stesse pagine dei giocatori); *‹ Tavolo* riporta indietro.
@@ -84,6 +85,9 @@ Per le cose da programmatore (file, prove, pubblicazione nel dettaglio) c'è `LE
 - Diviso in tre parti: **Mostri** (partono contro il gruppo), **Persone** (abitanti e PNG: la parte si sceglie quando entrano
   in campo) e **Alleati** (combattono con il gruppo e ricordano ferite e slot). La losanga accanto al nome dice la parte:
   rossa contro, dorata persona, verde alleato. I nomi sono solo in italiano.
+- Ogni modello ha il suo **grado di sfida (GS)** accanto al nome; la lista si può mettere *in ordine di* Nome o Grado di sfida.
+- La scheda di un mostro mostra anche i **sei punteggi di caratteristica** con il modificatore, i **tiri salvezza** e le
+  **abilità**. Si modificano dall'editor del modello.
 - Quando metti qualcuno in campo scegli con due pulsanti: *Contro di voi / Con voi*, *Tutti insieme / Uno per uno*,
   *Li vedono / Nascosti*.
 

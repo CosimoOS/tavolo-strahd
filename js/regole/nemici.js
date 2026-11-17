@@ -209,3 +209,24 @@ export const sezioneBestiario = c => c.tipo === "alleato" ? "alleati" : c.catego
 
 /** Tutti i partecipanti hanno il loro tiro d'iniziativa? Allora lo scontro parte da solo. */
 export const tuttiHannoTirato = (partecipanti, haTirato) => partecipanti.length > 0 && partecipanti.every(p => haTirato(p.id));
+
+/** I sei punteggi di caratteristica di un modello con il modificatore ("+2", "−1"); null se il modello non li ha tutti. */
+const SIGLE = [["for", "FOR"], ["des", "DES"], ["cos", "COS"], ["int", "INT"], ["sag", "SAG"], ["car", "CAR"]];
+export function caratteristiche(m) {
+  const c = m && m.car;
+  if (!c || SIGLE.some(([k]) => !Number.isFinite(+c[k]) || c[k] === "" || c[k] == null)) return null;
+  return SIGLE.map(([k, sigla]) => { const mo = Math.floor((+c[k] - 10) / 2); return { k, sigla, valore: +c[k], mod: (mo < 0 ? "−" : "+") + Math.abs(mo) }; });
+}
+
+/** Il grado di sfida come numero ("1/4" → 0,25): serve per mettere in ordine il bestiario. Senza GS va in fondo. */
+export function valoreGs(gs) {
+  const t = String(gs ?? "").trim(); if (!t) return Infinity;
+  const f = t.match(/^(\d+)\s*\/\s*(\d+)$/);
+  const n = f ? +f[1] / +f[2] : parseFloat(t.replace(",", "."));
+  return Number.isFinite(n) ? n : Infinity;
+}
+/** Il bestiario in ordine: "gs" dal più debole al più forte (a parità per nome), altrimenti per nome. */
+export function ordinaBestiario(lista, come) {
+  const perNome = (a, b) => a.nome.localeCompare(b.nome, "it");
+  return [...lista].sort(come === "gs" ? (a, b) => valoreGs(a.gs) - valoreGs(b.gs) || perNome(a, b) : perNome);
+}

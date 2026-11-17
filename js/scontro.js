@@ -193,16 +193,11 @@ function modoScontro() {
   }
 }
 
-/* Il pulsante "Scontro" compare e sparisce con un piccolo movimento: si restringe e sfuma (vedi .esce in scontro.css). */
 function mostraPulsante(b, si) {
-  clearTimeout(b._timer);
-  const avvisa = () => document.dispatchEvent(new Event("vista:cambiata"));
-  if (si) { const era = b.hidden; b.classList.remove("esce"); b.hidden = false; if (era) avvisa(); return; }
-  if (b.hidden) return;
-  const fermo = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (fermo) { b.hidden = true; avvisa(); return; }
-  b.classList.add("esce");
-  b._timer = setTimeout(() => { b.hidden = true; b.classList.remove("esce"); avvisa(); }, 260);
+  /* la voce "Scontro" resta sempre al suo posto nella barra: senza scontro è spenta, così le altre voci non si spostano */
+  const era = b.classList.contains("spenta");
+  b.hidden = false; b.classList.remove("esce"); b.classList.toggle("spenta", !si);
+  if (era === si) document.dispatchEvent(new Event("vista:cambiata"));
 }
 /* Fine dello scontro per i giocatori: un riquadro "Scontro concluso" per qualche secondo, poi si torna alla scheda.
    Se il master lo annulla mentre si tirava l'iniziativa basta un avviso. */
