@@ -976,8 +976,6 @@ html{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .reazione-btn .rz-testo b{font-size:17px;font-weight:700}
 .reazione-btn .rz-testo small{font-size:14px;font-weight:400;color:var(--muted);line-height:1.3}
 .reazione-btn .rz-freccia{width:20px;height:20px;flex:none;color:var(--muted);transform:rotate(-90deg)}
-/* con una finestra dei tiri aperta, le sfumature in alto e in basso della pagina non devono velarne il titolo */
-body:has(#passi:not([hidden])) .bordo-alto,body:has(#passi:not([hidden])) .bordo-basso{display:none}
 .passo .fondo .btn.rosso{color:#ffb3bf;background:linear-gradient(180deg,rgba(236,92,110,.30),rgba(170,30,52,.30)),rgba(60,14,24,.45);box-shadow:inset 0 1px 0 rgba(255,220,225,.3),inset 0 0 0 1px rgba(210,58,82,.5),0 6px 16px rgba(0,0,0,.3)}
 @media (max-width:899px){
   /* finestre dei tiri: il risultato sta al centro dello spazio libero, non schiacciato in alto */
@@ -1004,3 +1002,10 @@ body.senza-barra .tabbar,body.senza-barra .bordo-basso{display:none}
 /* dalla scheda sbirciata si torna con la capsula in alto a sinistra: più evidente, perché è l'unica strada */
 body.modo-scontro:not(.scontro-vista):not(.master) .banda-scontro .bs-torna{color:var(--ink)}
 body.modo-scontro:not(.scontro-vista):not(.master) .banda-scontro{box-shadow:inset 0 0 0 1.5px var(--crimson),0 8px 20px rgba(0,0,0,.4)}
+
+@media (max-width:899px){
+  /* iniziativa: i due comandi del master uno sotto l'altro, a tutta larghezza (prima quello per partire) */
+  .azioni.tiri-az{display:flex;flex-direction:column;align-items:stretch;gap:10px}
+  .azioni.tiri-az .btn{width:100%;min-height:52px;margin:0}
+  .azioni.tiri-az .btn.up{order:-1}
+}
