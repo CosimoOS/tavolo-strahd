@@ -80,7 +80,7 @@ function render() {
     })() : "");
   $("atkNota").hidden = !(C.atkNota && C.atkNota(L)); $("atkNota").textContent = C.atkNota ? C.atkNota(L) : "";
   /* munizioni: le speciali per nome; le comuni solo se il master ha spento "Munizioni comuni infinite" */
-  $("munRow").innerHTML = scorte(S, opzioni().munizioniInfinite).map(m => `<div class="ammo"><span>${esc(m.nome)}</span>
+  $("munRow").innerHTML = scorte(S, opzioni().munizioniInfinite).map(m => `<div class="ammo">${editW && m.id !== "comuni" ? `<input class="mun-nome" data-munnome="${m.id}" value="${esc(m.nome)}" aria-label="Nome delle munizioni">` : `<span>${esc(m.nome)}</span>`}
     <button class="btn step" data-mun="${m.id}" data-d="-1" aria-label="Togli una: ${esc(m.nome)}">−</button><b class="num">${m.n}</b>
     <button class="btn step" data-mun="${m.id}" data-d="1" aria-label="Aggiungi una: ${esc(m.nome)}">+</button>
     ${editW && m.id !== "comuni" ? `<button class="x" data-mundel="${m.id}" aria-label="Togli la scorta ${esc(m.nome)}">×</button>` : ""}</div>`).join("");
@@ -109,17 +109,18 @@ function render() {
   $("skills").innerHTML = X.skills.map(s => `<div class="sk${s.p ? " p" : ""}"><span class="n">${s.n} <small>${ABN[s.a]}</small></span><span class="num">${sg(s.v)}</span></div>`).join("");
   $("atkBody").innerHTML = attacchiOrdinati(X).map(a => `<div class="att-riga"><span class="riga-t"><b>${esc(a.n)}${a.magic ? `<span class="plus">+${a.magic}</span>` : ""}</b><small>${esc(a.d)}</small></span>
     <span class="att-num"><span class="oro" title="Per colpire">${sg(a.hit)}</span><span title="Danni">${a.dice[0]}d${a.dice[1]}${a.mod ? sg(a.mod) : ""}</span></span>${editW ? `<button class="x" data-wdel="${a.id}" aria-label="Togli ${esc(a.n)}">×</button>` : ""}</div>`).join("");
-  $("wEdit").textContent = editW ? "Fatto" : "Modifica le armi"; $("wForm").hidden = !editW;
+  $("wEdit").textContent = editW ? "Fatto" : "Modifica armi e munizioni"; $("munNuova").hidden = !editW; $("wForm").hidden = !editW;
 
   $("feats").innerHTML = C.feats(L, X, S)
     .map(([t, p]) => `<div class="feat"><b>${esc(t)}</b><p>${esc(p)}</p></div>`).join("");
   $("kv").innerHTML = C.kv.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join("");
 
-  /* le losanghe: piene = ancora disponibili (per l'ispirazione: quelle che hai). Sulla scheda si contano gli usi spesi */
+  /* le losanghe: VUOTE = ancora disponibili, piene = già usate (scelta di Cosimo). Solo l'ispirazione va al contrario:
+     piena = ce l'hai. Sulla scheda si contano gli usi spesi */
   document.querySelectorAll("#vistaScheda .pips[data-res]").forEach(el => {
     const k = el.dataset.res, max = +el.dataset.max, avere = el.hasAttribute("data-avere");
     const usati = Math.min(max, S[k] || 0), pieni = avere ? usati : max - usati; let h = "";
-    for (let i = 0; i < max; i++) { const on = i < pieni; h += `<button class="pip${on ? " on" : ""}" data-k="${k}" data-i="${i}"${avere ? " data-avere" : ""} aria-label="${on ? (avere ? "Ce l'hai: tocca per usarla" : "Disponibile: tocca per spenderla") : (avere ? "Non ce l'hai" : "Già usata: tocca per riaverla")}"></button>`; }
+    for (let i = 0; i < max; i++) { const on = i < pieni, piena = avere ? on : !on; h += `<button class="pip${piena ? " on" : ""}" data-k="${k}" data-i="${i}"${avere ? " data-avere" : ""} aria-label="${on ? (avere ? "Ce l'hai: tocca per usarla" : "Disponibile: tocca per spenderla") : (avere ? "Non ce l'hai" : "Già usata: tocca per riaverla")}"></button>`; }
     el.innerHTML = h;
   });
   document.querySelectorAll(".pips[data-death]").forEach(el => {
@@ -204,7 +205,7 @@ function renderIncantesimi(L, X) {
     return `<h2 class="sez">${liv ? `${liv}° livello` : "Trucchetti"} <span class="inc-slot">${x ? `${pips(x)}${x.max - x.usati} su ${x.max}` : liv ? "" : "a volontà"}</span></h2>
       <section class="lista">${v.length ? v.map(({ i, classe }) => `<div class="inc-riga"><span class="riga-t"><b>${esc(i.n)}</b><small>${esc(metaInc(i, classe))}</small><p>${esc(i.t)}</p></span><span class="inc-az">${azione(i, liv)}</span></div>`).join("")
         : `<div class="inc-riga"><span class="riga-t"><small>Nessun incantesimo di questo livello: gli slot servono anche per le punizioni o per lanciare più in alto.</small></span></div>`}</section>`;
-  }).join("") + `<div class="inc-cambia">${magie.map(mm => `<button class="btn link" data-inc="${mm.id}" type="button">${mm.preparati ? `Cambia i preparati${multi ? ` (${esc(mm.nome)})` : ""}` : `Cambia gli incantesimi${multi ? ` (${esc(mm.nome)})` : ""}`}</button>`).join("")}</div>`;
+  }).join("") + `<div class="inc-cambia">${magie.map(mm => `<button class="bv" data-inc="${mm.id}" type="button">${mm.preparati ? `Cambia i preparati${multi ? ` (${esc(mm.nome)})` : ""}` : `Cambia gli incantesimi${multi ? ` (${esc(mm.nome)})` : ""}`}</button>`).join("")}</div>`;
 }
 
 /* ---------- salvataggio ----------
@@ -454,7 +455,7 @@ function costruisciSelettore() {
     ? tab("tavolo", "Tavolo") + tab("scontro", "Scontro", " data-scontro") + tab("bestiario", "Bestiario") + tab("altro", "Campagna")
     : tab("scontro", "Scontro", " data-scontro") + PAGINE.map(([k, n]) => tab(k, n)).join(""));
   /* le voci sono sempre le stesse e sempre allo stesso posto: quelle che non servono adesso sono solo spente */
-  if (!perMaster) $("barra").querySelector("[data-scontro]").classList.add("spenta");
+  if (!perMaster) $("barra").querySelector("[data-scontro]").hidden = true;
 }
 /** La sezione che si vede adesso. */
 function sezione() {
@@ -543,7 +544,8 @@ function apriConto() {
   f.innerHTML = `<div class="maniglia" aria-hidden="true"></div>
     <div class="fc-chi">${avatar(profiloAtt.stemma)}<div><b>${esc(profiloAtt.nome)}</b><small>Sei entrato con questo profilo</small></div></div>
     ${multi ? `<p class="sez" style="margin:20px 6px 2px">Le tue schede</p><div class="fc-lista">${ids.map(k => `<button data-passa="${k}" type="button">${avatar(PERSONAGGI[k].stemma, { classe: "av" })}<span class="riga-t"><b>${esc(PERSONAGGI[k].name)}</b><small>Livello ${STATE[k].level}</small></span>${k === cur ? SPUNTA : ""}</button>`).join("")}</div>` : ""}
-    <button class="bv largo" data-esci-conto type="button">Cambia profilo</button>
+    <p class="fc-domanda">Vuoi cambiare profilo?</p>
+    <div class="fc-scelte"><button class="bv" data-resta-conto type="button">Resta</button><button class="bv" data-esci-conto type="button">Cambia profilo</button></div>
     <p class="nota">Per rientrare servirà di nuovo il PIN. Le schede si salvano da sole, anche nello storico delle copie.</p>
     <button class="fc-misure" data-misure type="button" aria-expanded="false">Misure dello schermo</button>`;
   f.classList.add("aperto"); f.setAttribute("aria-hidden", "false"); $("contoVeil").classList.add("aperto");
@@ -557,7 +559,9 @@ $("navConto").addEventListener("click", e => {
 });
 $("contoFoglio").addEventListener("click", e => {
   const p = e.target.closest("[data-passa]"); if (p) { passaA(p.dataset.passa); chiudiConto(); return; }
-  if (e.target.closest("[data-esci-conto]")) { chiudiConto(); chiediUscita(); return; }
+  if (e.target.closest("[data-resta-conto]")) { chiudiConto(); return; }
+  /* telefono: il pannello è già la domanda ("vuoi cambiare profilo?"), quindi si esce subito, senza una seconda finestra */
+  if (e.target.closest("[data-esci-conto]")) { chiudiConto(); chiediUscita(); if (matchMedia("(max-width:899px)").matches) $("esciSi").click(); return; }
   /* le misure dello schermo: servono solo per capire, da una foto, un difetto che si vede su un telefono */
   const mi = e.target.closest("[data-misure]");
   if (mi) {
@@ -882,7 +886,7 @@ $("wMun").addEventListener("change", e => { $("wMunNuove").hidden = e.target.val
 /* ---------- tocchi sulla scheda ---------- */
 $("vistaScheda").addEventListener("click", e => {
   if (!S) return;
-  /* losanghe: si tocca una piena per spenderla (con quelle dopo), una vuota per riaverla */
+  /* losanghe: si tocca una disponibile per spenderla (con quelle dopo), una usata per riaverla */
   const p = e.target.closest(".pip[data-k]");
   if (p) {
     const k = p.dataset.k, i = +p.dataset.i, max = +p.closest(".pips").dataset.max, avere = p.hasAttribute("data-avere");
@@ -932,6 +936,12 @@ $("vistaScheda").addEventListener("click", e => {
     if (id === "comuni") S.ammo = Math.max(0, (S.ammo || 0) + d);
     else S.munizioni = (S.munizioni || []).map(m => m.id === id ? { ...m, n: Math.max(0, m.n + d) } : m);
     change(); return;
+  }
+  if (e.target.closest("[data-mun-aggiungi]")) {
+    const nome = $("munNuovaNome").value.trim();
+    if (!nome) { $("munNuovaNome").focus(); toast("Scrivi prima il nome delle munizioni"); return; }
+    S.munizioni = aggiungiScorta(S, nome, parseInt($("munNuovaN").value, 10) || 0).munizioni;
+    $("munNuovaNome").value = ""; $("munNuovaN").value = ""; change(); toast(`${nome}: aggiunte. Per usarle, scegli quale arma le tira`, 4000); return;
   }
   const md = e.target.closest("[data-mundel]");
   if (md) {   /* una scorta tolta: le armi che la usavano tornano alle munizioni comuni */
@@ -983,3 +993,10 @@ $("addForm").addEventListener("submit", e => {
 });
 $("notes").addEventListener("input", e => { S.notes = e.target.value; change(); });
 
+
+/* munizioni: in "Modifica armi e munizioni" il nome si riscrive sul posto */
+document.addEventListener("change", e => {
+  const n = e.target.closest?.("[data-munnome]"); if (!n || !S) return;
+  const nome = n.value.trim(); if (!nome) { render(); return; }
+  S.munizioni = (S.munizioni || []).map(m => m.id === n.dataset.munnome ? { ...m, nome } : m); change(); toast("Nome cambiato");
+});

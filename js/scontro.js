@@ -194,9 +194,9 @@ function modoScontro() {
 }
 
 function mostraPulsante(b, si) {
-  /* la voce "Scontro" resta sempre al suo posto nella barra: senza scontro è spenta, così le altre voci non si spostano */
-  const era = b.classList.contains("spenta");
-  b.hidden = false; b.classList.remove("esce"); b.classList.toggle("spenta", !si);
+  /* giocatori: senza scontro la voce "Scontro" non c'è proprio (il master ce l'ha sempre) */
+  const era = b.hidden;
+  b.classList.remove("esce", "spenta"); b.hidden = !si;
   if (era === si) document.dispatchEvent(new Event("vista:cambiata"));
 }
 /* Fine dello scontro per i giocatori: un riquadro "Scontro concluso" per qualche secondo, poi si torna alla scheda.

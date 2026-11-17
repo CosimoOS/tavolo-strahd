@@ -103,7 +103,7 @@
       <div class="morte-r"><span class="lbl">Indebolimento</span><div class="exh"><button class="btn step" data-exh="-1" aria-label="Riduci indebolimento">−</button><b class="num" id="exh">0</b><button class="btn step" data-exh="1" aria-label="Aumenta indebolimento">+</button></div></div>
     </section>
 
-    <h2 class="sez">Risorse <span>piene = disponibili</span></h2>
+    <h2 class="sez">Risorse <span>vuote = disponibili</span></h2>
     <section class="lista" id="risorse">
       <div class="res" id="reRow">
         <div class="what"><div>Recuperare energie</div><small id="reTxt">Azione bonus · 1d10 + 6 PF · riposo breve</small></div>
@@ -149,7 +149,8 @@
       </form>
       <p class="hint" id="atkNota" hidden></p>
       <div id="munRow"></div>
-      <button class="btn link wedit" id="wEdit" type="button">Modifica le armi</button>
+      <div class="mun-nuova" id="munNuova" hidden><input id="munNuovaNome" placeholder="Nuove munizioni (es. Frecce d'argento)" aria-label="Nome delle nuove munizioni"><input id="munNuovaN" type="number" inputmode="numeric" min="0" placeholder="Quante" aria-label="Quante"><button class="bv piccolo" data-mun-aggiungi type="button">Aggiungi</button></div>
+      <button class="bv wedit" id="wEdit" type="button">Modifica armi e munizioni</button>
     </section>
     <div class="riposi"><button class="bv" id="shortRest" type="button">Riposo breve</button><button class="bv" id="longRest" type="button">Riposo lungo</button></div>
   </div>

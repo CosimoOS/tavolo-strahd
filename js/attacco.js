@@ -371,7 +371,7 @@ async function inviaTs(d, op) {
 }
 
 /* gli slot di un livello come losanghe: piene quelle libere, vuote quelle usate */
-const pips = s => `<span class="pips-slot" role="img" aria-label="${s.liberi} su ${s.max} liberi">${Array.from({ length: s.max }, (_, i) => `<i${i < s.liberi ? ' class="pieno"' : ""}></i>`).join("")}</span>`;
+const pips = s => `<span class="pips-slot" role="img" aria-label="${s.liberi} su ${s.max} liberi">${Array.from({ length: s.max }, (_, i) => `<i${i < s.liberi ? "" : ' class="pieno"'}></i>`).join("")}</span>`;
 const pgDi = id => ({ id, nome: (dati(id) || {}).nome || id });
 
 /* ---------- azione bonus e reazione ----------

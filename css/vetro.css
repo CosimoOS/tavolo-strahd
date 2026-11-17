@@ -927,3 +927,42 @@ html{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
   input[type=checkbox]:active{transform:scale(.88)}
   input[type=checkbox]:disabled{opacity:.4}
 }
+
+/* ---- ritocchi dal simulatore iPhone ---- */
+/* comandi in fondo a una carta o a una pagina: pulsanti veri a tutta larghezza, non scritte sottolineate */
+.attacchi .wedit{display:flex;width:calc(100% - 18px);margin:14px 0 16px}
+.inc-cambia{display:flex;flex-direction:column;gap:10px;margin:18px 4px 0}
+.inc-cambia .bv{width:100%;min-height:48px}
+.mun-nuova{display:flex;gap:8px;align-items:center;padding:12px 18px 4px 0;border-top:1px solid var(--line)}
+.mun-nuova[hidden]{display:none}
+.mun-nuova input{min-height:44px;padding:0 12px;min-width:0}
+.mun-nuova #munNuovaNome{flex:1}
+.mun-nuova #munNuovaN{width:84px;text-align:center}
+.attacchi .ammo .mun-nome{flex:1;min-width:0;min-height:44px;padding:0 12px;font-weight:700}
+/* scontro: le losanghe piccole degli slot seguono la stessa regola (vuote = libere, piene = usate) */
+.pips-slot i.pieno{background:var(--gold-deep)}
+/* le quattro cifre in cima alla scheda hanno tutte la stessa altezza, anche con "10,5 m" */
+.stat b{white-space:nowrap}
+.fc-domanda{display:none}
+.fc-scelte{display:block}
+.fc-scelte [data-resta-conto]{display:none}
+.fc-scelte [data-esci-conto]{width:100%;min-height:54px;margin-top:18px;color:#ffb3bf}
+@media (max-width:899px){
+  .stat b{font-size:19px;letter-spacing:-.03em}
+  /* "chi sei": una finestra al centro con la domanda e le due risposte, non più un pannello che sale dal fondo */
+  html .foglio-conto{top:50%;bottom:auto;left:20px;right:20px;max-height:calc(100% - 140px);overflow-y:auto;padding:22px 20px 18px;border-radius:32px;
+    transform:translateY(-50%) scale(.94);opacity:0;visibility:hidden;transition:transform .32s cubic-bezier(.16,1,.3,1),opacity .2s ease-out,visibility 0s linear .32s}
+  html .foglio-conto.aperto{transform:translateY(-50%);opacity:1;visibility:visible;transition:transform .32s cubic-bezier(.16,1,.3,1),opacity .2s ease-out,visibility 0s}
+  .foglio-conto .maniglia{display:none}
+  .fc-domanda{display:block;margin:22px 4px 0;font-size:18px;font-weight:700;color:var(--ink)}
+  .fc-scelte{display:flex;gap:10px;margin-top:14px}
+  .fc-scelte .bv{flex:1;min-height:50px;margin:0!important}
+  .fc-scelte [data-resta-conto]{display:inline-flex}
+  .foglio-conto .nota{margin-top:14px}
+}
+@media (max-width:899px) and (prefers-reduced-motion:reduce){html .foglio-conto,html .foglio-conto.aperto{transition:none}}
+/* telefono: tenendo premuto non si seleziona il testo dell'interfaccia (succedeva scorrendo piano); nei campi si scrive e si seleziona come sempre */
+@media (hover:none) and (pointer:coarse){
+  body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  input,textarea,.fc-numeri{-webkit-user-select:text;user-select:text}
+}
