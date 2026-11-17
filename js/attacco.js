@@ -86,8 +86,8 @@ export function htmlGiocatore(pg) {
   return `<div class="gettoni" aria-label="Cosa ti resta in questo turno">
       ${gettone("azione", "Azione", st.puoAttaccare, st.azioniLibere > 1 ? ` <small>×${st.azioniLibere}</small>` : "")}${gettone("bonus", "Bonus", !st.bonus)}${gettone("reazione", "Reazione", reaz)}</div>
     <div class="azioni2">
-      ${d.opzioni.length ? `<button class="az-grande prima" data-at="apri"${st.puoAttaccare ? "" : " disabled"}>${SPADE}<span><b>Attacca</b><small>${sotto}</small></span></button>` : ""}
-      ${(d.usabili || []).length ? `<button class="az-grande seconda" data-at="oggetto"${st.puoAzione || pozioneBonus ? "" : " disabled"}>${BOCCETTA}<span><b>Oggetto</b><small>${ogg}</small></span></button>` : ""}
+      ${d.opzioni.length ? `<button class="az-grande prima" data-at="apri"${st.puoAttaccare ? "" : ` disabled data-perche="Hai già usato l'azione in questo turno"`}>${SPADE}<span><b>Attacca</b><small>${sotto}</small></span></button>` : ""}
+      ${(d.usabili || []).length ? `<button class="az-grande seconda" data-at="oggetto"${st.puoAzione || pozioneBonus ? "" : ` disabled data-perche="Hai già usato l'azione in questo turno"`}>${BOCCETTA}<span><b>Oggetto</b><small>${ogg}</small></span></button>` : ""}
     </div>${imp}${riassunto}`;
 }
 /* Azione impetuosa: un uso in meno sulla scheda, un'azione in più in questo turno */
@@ -151,7 +151,7 @@ function disegnaGiocatore(nuovo = true) {
       const risorsa = o.usiRimasti != null ? { liberi: o.usiRimasti, max: o.max, testo: o.usiRimasti ? `${o.usiRimasti} ${o.usiRimasti === 1 ? "uso" : "usi"} su ${o.max}` : "usi finiti" }
         : s ? { liberi: s.liberi, max: s.max, testo: s.liberi ? `slot di ${o.slot}° livello: ${s.liberi} su ${s.max}` : `slot di ${o.slot}° livello finiti` } : null;
       const mun = o.munizione, motivo = blocco(o) || (mun && mun.n <= 0 ? `${mun.nome.toLowerCase()}: finite` : "");
-      return `<button class="carta" data-op="${i}"${o.disponibile === false || motivo ? " disabled" : ""}><span class="c-nome"><b>${esc(o.n)}${o.etichetta ? `<span class="tag-inc">${esc(o.etichetta)}</span>` : ""}</b>
+      return `<button class="carta" data-op="${i}"${o.disponibile === false || motivo ? ` disabled data-perche="${esc(motivo ? motivo.charAt(0).toUpperCase() + motivo.slice(1) : "Adesso non si può usare")}"` : ""}><span class="c-nome"><b>${esc(o.n)}${o.etichetta ? `<span class="tag-inc">${esc(o.etichetta)}</span>` : ""}</b>
         ${risorsa ? `<span class="c-risorsa">${pips(risorsa)}${risorsa.testo}</span>` : ""}${mun && mun.n > 0 ? `<span class="c-risorsa">${esc(mun.nome)}: ${mun.n}</span>` : ""}
         <small>${dadi}${o.nota ? ` · ${esc(o.nota)}` : ""}</small>${motivo ? `<small class="c-motivo">${motivo}</small>` : ""}</span><span class="c-num">${num}</span></button>`;
     };
@@ -182,7 +182,7 @@ function disegnaGiocatore(nuovo = true) {
       ${tastierino(20, null, "data-d20")}
       <div class="bonus-riga"><span>Bonus in più <small>(es. il d4 di Benedizione)</small></span><span class="stepper"><button class="btn step" data-bonus="-1" aria-label="Bonus meno uno">−</button><b class="num">${sg(P.bonus)}</b><button class="btn step" data-bonus="1" aria-label="Bonus più uno">+</button></span></div>
       <div class="totale">${t ? `<span class="tot-come">Dado <i>${t.usato}</i> · bonus <i>${sg(t.bonus)}</i></span><b>${t.tot}</b>` : `<span>Il tuo bonus: ${sg(op.hit + P.bonus)}</span>`}</div>
-      <div class="fondo"><button class="btn up" data-att="invia-tiro"${t ? "" : " disabled"}>Attacca</button></div>`;
+      <div class="fondo"><button class="btn up" data-att="invia-tiro"${t ? "" : ` disabled data-perche="Scrivi prima il numero uscito sul d20"`}>Attacca</button></div>`;
   } else if (P.fase === "attesa") {
     h = rivelazione("attesa", "Al master…", `${a ? a.tiro.tot : ""} per colpire contro ${esc(nomeBersaglio())}`) + `<p class="aiuto centrato">Il telefono del master confronta il tiro con la difesa del bersaglio.</p>`;
   } else if (P.fase === "attesa-ts") {
@@ -207,14 +207,14 @@ function disegnaGiocatore(nuovo = true) {
     h = `<p class="domanda">Tira i danni</p><p class="aiuto">${crit ? "Critico: i dadi sono doppi. " : ""}${extra.length || slot.length ? "Accendi gli extra che valgono, poi " : ""}tocca il numero di ogni dado.</p>
       ${extra.length ? `<div class="extra-lista">${extra.map(e => `<button class="extra" data-acceso="${e.id}" aria-pressed="${P.accesi.includes(e.id)}"${e.disponibile ? "" : " disabled"}><span class="ex-spia"></span><span class="ex-testo">${esc(e.nome)}<small>${(P.auto || []).includes(e.id) ? "attivo: acceso da solo · " : ""}${esc(e.nota || "")}${e.slot ? ` · slot di ${e.slot}° ${slotDi(e.slot) ? pips(slotDi(e.slot)) : ""}` : ""}${e.slot ? " · azione bonus" : ""}</small></span><span class="ex-dadi">+${e.parti.map(p => `${p.n * (crit ? 2 : 1)}d${p.f}`).join("+")}</span></button>`).join("")}</div>` : ""}
       ${slot.length ? `<div class="riga-danni"><b>Punizione divina <small>spendi uno slot: più è alto, più dadi</small></b><div class="slot-scelta">
-        <button data-pun="0" aria-pressed="${!P.pun}"><b>No</b></button>${slot.map(s => `<button data-pun="${s.liv}" aria-pressed="${P.pun === s.liv}"${s.liberi ? "" : " disabled"}><b>${s.liv}° livello</b>${pips(s)}<small>${s.liberi ? `${s.liv + 1}d8` : "finiti"}</small></button>`).join("")}</div>
+        <button data-pun="0" aria-pressed="${!P.pun}"><b>No</b></button>${slot.map(s => `<button data-pun="${s.liv}" aria-pressed="${P.pun === s.liv}"${s.liberi ? "" : ` disabled data-perche="Nessuno slot libero di questo livello"`}><b>${s.liv}° livello</b>${pips(s)}<small>${s.liberi ? `${s.liv + 1}d8` : "finiti"}</small></button>`).join("")}</div>
         ${P.pun ? `<button class="extra" data-nm aria-pressed="${P.nonMorto}"><span class="ex-spia"></span><span class="ex-testo">Contro un non morto o un immondo<small>+1d8 radianti</small></span></button>` : ""}</div>` : ""}
       ${parti.map(p => `<div class="riga-danni${p === dadoOra ? " ora" : ""}"><b>${esc(p.nome)} <small>${p.n}d${p.facce}${p.mod ? sg(p.mod) : ""} ${esc(p.tipo)}</small></b>${caselleDadi(p.valori, p.n, p.facce, p.chiave)}
         ${p === dadoOra ? tastierino(p.facce, null, "data-faccia") : ""}</div>`).join("")}
       <div class="bonus-riga"><span>Altri danni <small>(se serve aggiungere qualcosa a mano)</small></span><span class="stepper"><button class="btn step" data-extra="-1" aria-label="Meno uno">−</button><b class="num">+${P.extra}</b><button class="btn step" data-extra="1" aria-label="Più uno">+</button></span></div>
       ${doppio ? `<p class="avviso-balzo">${crit ? "Due d8 sono uguali" : "I due d8 sono uguali"}: dopo i danni il dardo balza su un'altra creatura entro 9 m.</p>` : ""}
       <div class="totale">${som ? `Totale<b>${som.tot}</b>` : `<span>Mancano dei dadi</span>`}</div>
-      <div class="fondo"><button class="btn up" data-att="invia-danni"${som ? "" : " disabled"}>Invia ${som ? som.tot + " danni" : "i danni"}</button></div>`;
+      <div class="fondo"><button class="btn up" data-att="invia-danni"${som ? "" : ` disabled data-perche="Scrivi prima i dadi dei danni"`}>Invia ${som ? som.tot + " danni" : "i danni"}</button></div>`;
   } else if (P.fase === "confermare") {
     h = rivelazione("attesa", "Al master…", `${P.inviati} danni: li sta confermando`);
   } else if (P.fase === "fine") {
@@ -416,7 +416,7 @@ function disegnaScelta(nuovo = true) {
   } else if (AB.fase === "slot") {
     const v = AB.voce;
     h = `<p class="domanda">${esc(v.n)}</p><p class="aiuto">${esc(v.testo || "")}</p><p class="lbl-sez">Con quale slot?</p>
-      <div class="slot-scelta">${v.slot.map(s => `<button data-slot-l="${s.liv}"${s.liberi ? "" : " disabled"}><b>${s.liv}° livello</b>${pips(s)}<small>${s.liberi ? (s.liberi === 1 ? "1 libero" : `${s.liberi} liberi`) : "finiti"}</small></button>`).join("")}</div>`;
+      <div class="slot-scelta">${v.slot.map(s => `<button data-slot-l="${s.liv}"${s.liberi ? "" : ` disabled data-perche="Nessuno slot libero di questo livello"`}><b>${s.liv}° livello</b>${pips(s)}<small>${s.liberi ? (s.liberi === 1 ? "1 libero" : `${s.liberi} liberi`) : "finiti"}</small></button>`).join("")}</div>`;
   } else if (AB.fase === "bersaglio") {
     h = `<p class="domanda">${esc(AB.voce.n)}: su chi?</p><div class="carte">${bersagliGiocatore().map(c => `<button class="carta nemico" data-ef-bers="${c.id}"><span class="c-nome"><b>${esc(c.nome)}</b><small>${esc(c.ferite)}</small></span></button>`).join("")}</div>`;
   } else if (AB.fase === "arma") {
@@ -428,7 +428,7 @@ function disegnaScelta(nuovo = true) {
     h = `<p class="domanda">Tira 1d${v.dado}</p><p class="aiuto">${esc(v.n)}: recuperi il dado + ${v.piu} PF</p>
       ${caselleDadi(AB.dado, 1, v.dado, "ab")}${tastierino(v.dado, null, "data-ab-f")}
       <div class="totale">${x ? `Recuperi<b>${x + v.piu}</b>` : `<span>Tocca il numero uscito</span>`}</div>
-      <div class="fondo"><button class="btn up" data-ab-ok${x ? "" : " disabled"}>${x ? `Recupera ${x + v.piu} PF` : "Recupera"}</button></div>`;
+      <div class="fondo"><button class="btn up" data-ab-ok${x ? "" : ` disabled data-perche="Scrivi prima il numero uscito sul dado"`}>${x ? `Recupera ${x + v.piu} PF` : "Recupera"}</button></div>`;
   }
   AB.f.mostra(h, opz);
 }
@@ -510,7 +510,7 @@ function disegnaOggetto(nuovo = true) {
     h = `<p class="domanda">Tira ${p.n}d${p.f}${p.mod ? sg(p.mod) : ""}</p><p class="aiuto">${esc(O.cura.nome)} per ${esc((SC.ordine || []).find(v => v.id === O.bersaglio)?.nome || "")}</p>
       ${caselleDadi(vals, p.n, p.f, "cura")}${vals.some(vuoto) ? tastierino(p.f, null, "data-cura-f") : ""}
       <div class="totale">${tot != null ? `Cura<b>${tot}</b>` : `<span>Tocca il numero di ogni dado</span>`}</div>
-      <div class="fondo"><button class="btn up" data-cura-ok${tot != null ? "" : " disabled"}>${tot != null ? `Cura ${tot} PF` : "Cura"}</button></div>`;
+      <div class="fondo"><button class="btn up" data-cura-ok${tot != null ? "" : ` disabled data-perche="Scrivi prima i dadi della cura"`}>${tot != null ? `Cura ${tot} PF` : "Cura"}</button></div>`;
   } else if (O.fase === "fine") {
     h = rivelazione("cura", `+${O.tot}`, `<b>${esc(O.nomeBersaglio)}</b>${O.ora != null ? ` ora ha ${O.ora} PF` : ""}`) + `<div class="fondo"><button class="btn up" data-ogg-chiudi>Fatto</button></div>`;
   }
@@ -603,7 +603,7 @@ function apriConferma(a) {
         <p class="aiuto">Tira per ognuno un tiro salvezza su <b>${CAR[a.ts]}</b> contro <b>CD ${a.cd}</b>${a.meta ? ". Chi riesce prende metà danni." : ". Chi riesce non prende danni."}</p>
         <div class="carte">${a.bersagli.map(x => { const c = creaturaInCampo(x.id); return `<div class="carta ts-riga"><span class="c-nome"><b>${esc(c ? c.nome : x.nome)}</b></span>
           <span class="ts-btn"><button class="btn" data-esito="riesce" data-id="${x.id}" aria-pressed="${esiti[x.id] === true}">Riesce</button><button class="btn" data-esito="fallisce" data-id="${x.id}" aria-pressed="${esiti[x.id] === false}">Fallisce</button></span></div>`; }).join("")}</div>
-        <div class="fondo"><button class="btn up" data-ts-ok${tutti ? "" : " disabled"}>Fatto</button></div>`, { tono: "rosso", nuovoPasso: false });
+        <div class="fondo"><button class="btn up" data-ts-ok${tutti ? "" : ` disabled data-perche="Segna prima il tiro salvezza di tutti"`}>Fatto</button></div>`, { tono: "rosso", nuovoPasso: false });
     }
     const d = a.danni, parti = Object.entries(d.perTipo).map(([k, v]) => `${v} ${esc(k)}`).join(" + ");
     if (a.tipo === "ts") {
@@ -670,7 +670,7 @@ function disegnaMaster(nuovo = true) {
       <div class="seg">${[["normale", "Normale"], ["vantaggio", "Vantaggio"], ["svantaggio", "Svantaggio"]].map(([m, l]) => `<button data-mmodo="${m}" aria-pressed="${MA.modo === m}">${l}</button>`).join("")}</div>
       ${caselleDadi(MA.d20, n, 20, "md20")}${tastierino(20, null, "data-md20")}
       <div class="totale">${t ? `<span class="tot-come">Dado <i>${t.usato}</i> · bonus <i>${sg(a.colpire)}</i> · contro CA ${b.ca}</span><b>${t.tot}</b>` : `<span>Bonus: ${sg(a.colpire)}</span>`}</div>
-      <div class="fondo"><button class="btn up" data-mat="esito"${t ? "" : " disabled"}>Vedi se colpisce</button></div>`;
+      <div class="fondo"><button class="btn up" data-mat="esito"${t ? "" : ` disabled data-perche="Scrivi prima il numero uscito sul d20"`}>Vedi se colpisce</button></div>`;
   } else if (MA.fase === "esito") {
     const es = esito(t, b.ca);
     h = rivelazione(es === "mancato" ? "mancato" : t.critico ? "critico" : "colpito", es === "mancato" ? "Mancato" : t.critico ? "Critico!" : "Colpito!", `${t.tot} contro CA ${b.ca} · ${esc(b.nome)}`) +
@@ -681,7 +681,7 @@ function disegnaMaster(nuovo = true) {
       ${parti.length ? parti.map(p => `<div class="riga-danni"><b>${p.n}d${p.facce}${p.mod ? sg(p.mod) : ""} <small>${esc(p.tipo)}</small></b>${caselleDadi(p.valori, p.n, p.facce, "m" + p.k)}</div>`).join("") : `<p class="aiuto">Questa azione non ha dadi di danno: applica l'effetto a voce.</p>`}
       ${attiva ? tastierino(attiva.facce, null, "data-mfaccia") : ""}
       <div class="totale">${fin ? `Totale<b>${fin.tot}</b>${fin.dimezzati.length ? `<span>${esc(b.nome)} resiste: ${fin.dimezzati.join(", ")}</span>` : ""}` : `<span>Mancano dei dadi</span>`}</div>
-      <div class="fondo"><button class="btn up" data-mat="applica"${fin ? "" : " disabled"}>Applica ${fin ? fin.tot : ""} a ${esc(b.nome)}</button></div>`;
+      <div class="fondo"><button class="btn up" data-mat="applica"${fin ? "" : ` disabled data-perche="Scrivi prima i danni"`}>Applica ${fin ? fin.tot : ""} a ${esc(b.nome)}</button></div>`;
   } else if (MA.fase === "fine") {
     h = rivelazione("danno", `−${MA.applicati}`, `<b>${esc(b ? b.nome : "")}</b> colpito da ${esc(az.chi)}`) + `<div class="fondo"><button class="btn up" data-mat="chiudi">Fatto</button></div>`;
   }

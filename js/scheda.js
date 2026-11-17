@@ -7,12 +7,14 @@ import { INCANTESIMI_ATTACCO, EXTRA_DANNI, moltTrucchetto, partiDanno, usabileIn
 import { opzioni, suOpzioni } from "./campagna.js";
 import { scorte, usaMunizione, munizioneDi, aggiungiScorta } from "./regole/munizioni.js";
 import { massimo, danno, cura, riduci, dopoRiposoLungo, segmentiBarra } from "./regole/pf.js";
+import { cambiaSintonia, cambiaQuantita, togliOggetto, rigaZaino, SINTONIA_MAX } from "./regole/zaino.js";
 import { puoSalire, livelloPrima } from "./regole/livelli.js";
 import { effettoAttivo, bonusColpire } from "./regole/effetti.js";
 import { PERSONAGGI } from "./personaggi/index.js";
 import { stemma, avatar } from "./stemmi.js";
 import { icona } from "./icone.js";
 import { versione } from "./copie.js";
+import { misure } from "./schermo.js";
 
 const $ = id => document.getElementById(id);
 function esc(t) { const e = document.createElement("span"); e.textContent = t; return e.innerHTML; }
@@ -22,6 +24,9 @@ function esc(t) { const e = document.createElement("span"); e.textContent = t; r
 let arch = null, ids = [], cur = null, C = null, S = null;
 const STATE = {}, LOADED = {};
 let ascolti = [], canWrite = true, editW = false;
+let zainoAperto = null;   // telefono: il posto dell'oggetto dello zaino con i comandi aperti
+let zainoAppena = false;  // l'ha appena aperta un tocco: i comandi entrano con un piccolo movimento (non a ogni ridisegno)
+const FRECCIA_GIU = icona("giu", "freccia");
 const saving = {}, pending = {}, timers = {};
 let lastMove = null, floatTimer = null, chiediUscita = () => {}, onScontro = () => {}, onScheda = () => {}, onAltro = () => {};
 
@@ -132,14 +137,21 @@ function render() {
   COINS.forEach(([k]) => { const el = $("c_" + k); if (document.activeElement !== el) el.value = S.coins[k] || 0; });
   const full = S.attuned.length >= 3;
   $("attTxt").textContent = `Sintonia ${S.attuned.length}/3`;
+  /* Ogni riga ha due vesti. Sul computer i comandi stanno tutti in fila, come sempre. Sul telefono la riga mostra solo
+     nome e quantità: toccandola si apre e sotto compaiono i comandi (quantità, sintonia, togli). Le sceglie il CSS. */
+  if (zainoAperto != null && zainoAperto >= S.inv.length) zainoAperto = null;
   $("inv").innerHTML = S.inv.map((t, i) => {
-    const on = S.attuned.includes(t);
-    const q = quantita(t);
-    return `<li class="${C.magic.test(t) || on ? "magic" : ""}"><button class="att${on ? " on" : ""}" data-att="${i}" ${!on && full ? "disabled" : ""} aria-pressed="${on}" title="${on ? "In sintonia" : "Metti in sintonia"}">${on ? "◆" : "◇"}</button><span class="nome-ogg"></span>
-      <span class="qta${q.n > 1 ? " piu" : ""}">${q.n > 1 ? `<button class="btn step" data-qta-ogg="${i}" data-d="-1" aria-label="Uno in meno">−</button><b class="num">${q.n}</b>` : ""}<button class="btn step" data-qta-ogg="${i}" data-d="1" aria-label="Uno in più">+</button></span>
-      <button class="x" data-del="${i}" aria-label="Rimuovi">×</button></li>`;
+    const r = rigaZaino(t, S.attuned), on = r.sintonia, aperta = zainoAperto === i;
+    return `<li class="${C.magic.test(t) || on ? "magic" : ""}${aperta ? " aperta" : ""}"><button class="att${on ? " on" : ""}" data-att="${i}" ${!on && full ? "disabled" : ""} aria-pressed="${on}" title="${on ? "In sintonia" : "Metti in sintonia"}">${on ? "◆" : "◇"}</button><span class="nome-ogg">${esc(r.nome)}</span>
+      <span class="qta${r.n > 1 ? " piu" : ""}">${r.n > 1 ? `<button class="btn step" data-qta-ogg="${i}" data-d="-1" aria-label="Uno in meno">−</button><b class="num">${r.n}</b>` : ""}<button class="btn step" data-qta-ogg="${i}" data-d="1" aria-label="Uno in più">+</button></span>
+      <button class="x" data-del="${i}" aria-label="Rimuovi">×</button>
+      <button class="apri-ogg" data-apri-ogg="${i}" type="button" aria-expanded="${aperta}">${on ? `<i class="rombo" aria-hidden="true">◆</i>` : ""}<span class="no">${esc(r.nome)}</span>${on ? `<span class="visually-hidden"> in sintonia</span>` : ""}${r.n > 1 ? `<b class="num quanti">×${r.n}</b>` : ""}${FRECCIA_GIU}</button>
+      ${aperta ? `<div class="comandi-ogg${zainoAppena ? " entra" : ""}">
+        <span class="passo-q"><button type="button" data-qta-ogg="${i}" data-d="-1" aria-label="Uno in meno"${r.n > 1 ? "" : " disabled"}>−</button><b class="num" aria-live="polite">${r.n}</b><button type="button" data-qta-ogg="${i}" data-d="1" aria-label="Uno in più">+</button></span>
+        <button class="bv piccolo sint${on ? " on" : ""}${!on && full ? " piena" : ""}" data-att="${i}" type="button" aria-pressed="${on}">${on ? "◆" : "◇"} Sintonia</button>
+        <button class="bv piccolo rosso" data-del="${i}" type="button">Togli</button></div>` : ""}</li>`;
   }).join("");
-  $("inv").querySelectorAll("li .nome-ogg").forEach((s, i) => { const n = quantita(S.inv[i]).nome; s.textContent = n.charAt(0).toUpperCase() + n.slice(1); });
+  zainoAppena = false;
   if (document.activeElement !== $("notes")) $("notes").value = S.notes;
   aggiornaNavPf();
   document.dispatchEvent(new Event("scheda:aggiornata"));
@@ -452,7 +464,7 @@ function sezione() {
 }
 function go(k) {
   if (!ids.includes(k)) k = ids[0];
-  cur = k; C = PERSONAGGI[k]; S = STATE[k]; editW = false; editInc = null; hideLast();
+  cur = k; C = PERSONAGGI[k]; S = STATE[k]; editW = false; editInc = null; zainoAperto = null; hideLast();
   render(); disegnaNav(); avvisaSalita();
   try { if (location.hash !== "#" + k) history.replaceState(null, "", "#" + k); } catch (_) {}
 }
@@ -497,7 +509,9 @@ $("barra").addEventListener("click", e => {
   const b = e.target.closest("[data-sez]"); if (!b) return;
   if (b.classList.contains("spenta")) { toast(b.dataset.sez === "scontro" ? "Nessuno scontro in corso" : `${C.name} non lancia incantesimi`); return; }
   const prima = sezione(); vaiA(b.dataset.sez);
+  /* toccare la sezione in cui sei già riporta in cima, come nelle app del telefono */
   if (prima !== sezione()) window.scrollTo({ top: 0 });
+  else window.scrollTo({ top: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
 });
 $("segScheda").addEventListener("click", e => { const b = e.target.closest("[data-pag]"); if (b) { vaiA(b.dataset.pag); window.scrollTo({ top: 0 }); } });
 $("tornaTavolo").onclick = () => { vaiA("tavolo"); window.scrollTo({ top: 0 }); };
@@ -530,7 +544,8 @@ function apriConto() {
     <div class="fc-chi">${avatar(profiloAtt.stemma)}<div><b>${esc(profiloAtt.nome)}</b><small>Sei entrato con questo profilo</small></div></div>
     ${multi ? `<p class="sez" style="margin:20px 6px 2px">Le tue schede</p><div class="fc-lista">${ids.map(k => `<button data-passa="${k}" type="button">${avatar(PERSONAGGI[k].stemma, { classe: "av" })}<span class="riga-t"><b>${esc(PERSONAGGI[k].name)}</b><small>Livello ${STATE[k].level}</small></span>${k === cur ? SPUNTA : ""}</button>`).join("")}</div>` : ""}
     <button class="bv largo" data-esci-conto type="button">Cambia profilo</button>
-    <p class="nota">Per rientrare servirà di nuovo il PIN. Le schede si salvano da sole, anche nello storico delle copie.</p>`;
+    <p class="nota">Per rientrare servirà di nuovo il PIN. Le schede si salvano da sole, anche nello storico delle copie.</p>
+    <button class="fc-misure" data-misure type="button" aria-expanded="false">Misure dello schermo</button>`;
   f.classList.add("aperto"); f.setAttribute("aria-hidden", "false"); $("contoVeil").classList.add("aperto");
 }
 function chiudiConto() { $("contoFoglio").classList.remove("aperto"); $("contoFoglio").setAttribute("aria-hidden", "true"); $("contoVeil").classList.remove("aperto"); }
@@ -542,7 +557,14 @@ $("navConto").addEventListener("click", e => {
 });
 $("contoFoglio").addEventListener("click", e => {
   const p = e.target.closest("[data-passa]"); if (p) { passaA(p.dataset.passa); chiudiConto(); return; }
-  if (e.target.closest("[data-esci-conto]")) { chiudiConto(); chiediUscita(); }
+  if (e.target.closest("[data-esci-conto]")) { chiudiConto(); chiediUscita(); return; }
+  /* le misure dello schermo: servono solo per capire, da una foto, un difetto che si vede su un telefono */
+  const mi = e.target.closest("[data-misure]");
+  if (mi) {
+    const giu = $("contoFoglio").querySelector(".fc-numeri");
+    if (giu) giu.remove(); else mi.insertAdjacentHTML("afterend", `<pre class="fc-numeri">${misure().map(esc).join("\n")}</pre>`);
+    mi.setAttribute("aria-expanded", String(!giu));
+  }
 });
 $("contoVeil").addEventListener("click", chiudiConto);
 document.addEventListener("keydown", e => { if (e.key === "Escape" && $("contoFoglio").classList.contains("aperto")) chiudiConto(); });
@@ -835,11 +857,11 @@ $("lvChoice").addEventListener("click", e => {
 $("wEdit").onclick = () => { editW = !editW; render(); };
 $("wForm").addEventListener("submit", e => {
   e.preventDefault();
-  const n = $("wName").value.trim(); if (!n) { $("wName").focus(); return; }
+  const n = $("wName").value.trim(); if (!n) { $("wName").focus(); toast("Scrivi prima il nome dell'arma"); return; }
   const dice = $("wDice").value.split("d").map(Number), ranged = $("wRanged").checked, mun = ranged ? $("wMun").value : "";
   const arma = { id: "w" + Date.now().toString(36), n, t: $("wType").value, note: $("wNote").value.trim(), ab: $("wAb").value, dice, magic: +$("wMagic").value || 0, ranged };
   if (mun === "+") {   /* munizioni speciali nuove, con il loro nome e quante sono */
-    const nome = $("wMunNome").value.trim(); if (!nome) { $("wMunNome").focus(); return; }
+    const nome = $("wMunNome").value.trim(); if (!nome) { $("wMunNome").focus(); toast("Scrivi prima il nome delle munizioni"); return; }
     const sc = aggiungiScorta(S, nome, parseInt($("wMunN").value, 10)); S.munizioni = sc.munizioni; arma.mun = sc.id;
   } else if (mun) arma.mun = mun;
   else if (ranged) arma.ammo = true;
@@ -921,7 +943,11 @@ $("vistaScheda").addEventListener("click", e => {
   const co = e.target.closest("[data-coin]");
   if (co) { const k = co.dataset.coin; S.coins[k] = Math.max(0, (S.coins[k] || 0) + +co.dataset.step); change(); return; }
   const at = e.target.closest("[data-att]");
-  if (at && !at.disabled) { const t = S.inv[+at.dataset.att]; S.attuned = S.attuned.includes(t) ? S.attuned.filter(x => x !== t) : [...S.attuned, t].slice(0, 3); change(); return; }
+  if (at && !at.disabled) {
+    const r = cambiaSintonia(S.attuned, S.inv[+at.dataset.att]);
+    if (r.esito === "piena") { toast(`Hai già ${SINTONIA_MAX} oggetti in sintonia: toglila prima a uno`, 3200); return; }
+    S.attuned = r.inSintonia; change(); return;
+  }
   const wd = e.target.closest("[data-wdel]");
   if (wd) {
     const id = wd.dataset.wdel;
@@ -931,15 +957,23 @@ $("vistaScheda").addEventListener("click", e => {
   }
   const qo = e.target.closest("[data-qta-ogg]");
   if (qo && !qo.disabled) {
-    const i = +qo.dataset.qtaOgg, vecchio = S.inv[i], q = quantita(vecchio), nuovo = conQuantita(q.nome, Math.max(1, q.n + +qo.dataset.d));
-    S.inv = S.inv.map((t, k) => k === i ? nuovo : t); S.attuned = S.attuned.map(t => t === vecchio ? nuovo : t); change(); return;
+    const r = cambiaQuantita({ inv: S.inv, inSintonia: S.attuned }, +qo.dataset.qtaOgg, +qo.dataset.d);
+    S.inv = r.inv; S.attuned = r.inSintonia; change(); return;
   }
   const del = e.target.closest("[data-del]");
-  if (del) { const t = S.inv[+del.dataset.del]; S.inv.splice(+del.dataset.del, 1); if (!S.inv.includes(t)) S.attuned = S.attuned.filter(x => x !== t); change(); return; }
+  if (del) {
+    const r = togliOggetto({ inv: S.inv, inSintonia: S.attuned }, +del.dataset.del);
+    S.inv = r.inv; S.attuned = r.inSintonia; zainoAperto = null; change(); toast(`Tolto dallo zaino: ${r.tolto}`); return;
+  }
+  /* telefono: toccare la riga di un oggetto la apre (e chiude quella che era aperta) */
+  const ao = e.target.closest("[data-apri-ogg]");
+  if (ao) { const i = +ao.dataset.apriOgg; zainoAperto = zainoAperto === i ? null : i; zainoAppena = zainoAperto != null; render(); return; }
 });
 COINS.forEach(([k]) => $("c_" + k).addEventListener("input", e => { S.coins[k] = Math.max(0, parseInt(e.target.value, 10) || 0); change(); }));
 $("addForm").addEventListener("submit", e => {
-  e.preventDefault(); const v = $("newItem").value.trim(); if (!v) return; S.inv = aggiungiOggetto(S.inv, v); $("newItem").value = "";
+  e.preventDefault(); const v = $("newItem").value.trim();
+  if (!v) { $("newItem").focus(); toast("Scrivi prima il nome dell'oggetto"); return; }
+  S.inv = aggiungiOggetto(S.inv, v); $("newItem").value = "";
   const w = $("isWeapon").checked; $("isWeapon").checked = false; change();
   if (w) {
     editW = true; render(); $("wName").value = v; $("wForm").scrollIntoView({ behavior: "smooth", block: "center" });

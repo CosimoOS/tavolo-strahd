@@ -8,6 +8,7 @@ import { passoBranco, cercaCreature, soloItaliano, sezioneBestiario, caratterist
 import { finestra } from "./passi.js";
 import { reazioneLibera } from "./regole/turno.js";
 import { versione } from "./copie.js";
+import { icona } from "./icone.js";
 
 const BEST = "dm/bestiario", CAMPO = "dm/campo", PNG = "dm/png";
 /* dm/png → { <modello>: { pf, slotUsati } }: i compagni del master (alleati come Ezmerelda) e chi lancia incantesimi
@@ -194,7 +195,7 @@ function pannelloCreatura(c, g, SC) {
     ${c.nascosto ? `<div class="nascosto-riga"><span>Nascosto ai giocatori</span><button class="btn gold" data-nz="rivela" data-id="${c.id}">Rivela</button></div>` : ""}
     <div class="m-qta"><span>Quanti PF</span><output aria-live="polite">${q || "0"}</output></div>
     <div class="tast5">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(n => `<button data-nz="cifra" data-id="${c.id}" data-v="${n}">${n}</button>`).join("")}<button class="canc" data-nz="canc" data-id="${c.id}">Cancella</button></div>
-    <div class="m-bott"><button class="btn dmg" data-nz="danno" data-id="${c.id}"${q ? "" : " disabled"}>Danno${q ? ` ${q}` : ""}</button><button class="btn heal" data-nz="cura" data-id="${c.id}"${q ? "" : " disabled"}>Cura${q ? ` ${q}` : ""}</button></div>
+    <div class="m-bott"><button class="btn dmg" data-nz="danno" data-id="${c.id}"${q ? "" : ` disabled data-perche="Scrivi prima quanti PF"`}>Danno${q ? ` ${q}` : ""}</button><button class="btn heal" data-nz="cura" data-id="${c.id}"${q ? "" : ` disabled data-perche="Scrivi prima quanti PF"`}>Cura${q ? ` ${q}` : ""}</button></div>
     ${attacchi.length || (m && m.reazioni && m.reazioni.length) ? `<p class="lbl-sez">Reazione${usata ? " · già usata in questo round" : ""}</p>
       <div class="m-reaz">${attacchi.map(([a, i]) => `<button class="btn" data-at="m-nuovo" data-g="${g.id}" data-i="${i}" data-r="${c.id}">${esc(a.nome)}<small>attacco di opportunità</small></button>`).join("")}
       ${(m.reazioni || []).map((r, i) => `<button class="btn" data-nz="reaz-usa" data-id="${c.id}" data-k="${i}">${esc(r.nome)}<small>${esc(chiaro(r.testo || "").slice(0, 70))}${(r.testo || "").length > 70 ? "…" : ""}</small></button>`).join("")}</div>` : ""}
@@ -358,27 +359,35 @@ const PARTI = [["mostri", "Mostri", "Partono contro il gruppo."], ["persone", "P
   ["alleati", "Alleati", "Combattono con il gruppo e ricordano ferite e slot tra uno scontro e l'altro."]];
 let parteBest = "mostri", ordineBest = "nome";
 export function htmlBestiarioSezione() {
-  return `<header class="testa-pagina"><h1>Bestiario</h1><p>${B.creature.length} modelli · tocca per modificarli</p></header>` +
-    htmlBestiario().replace(/<h2>Bestiario[^<]*<small>[^<]*<\/small><\/h2>/, "").replace(/<div class="azioni"><button class="btn up" data-nz="chiudi">Fatto<\/button><\/div>/, "");
+  /* sul telefono "Nuovo" sta accanto al titolo e "Importa" in fondo alla lista: in cima restano solo cerca, parti e ordine */
+  return `<header class="testa-pagina con-azione"><div><h1>Bestiario</h1><p>${B.creature.length} modelli<span class="solo-pc"> · tocca per modificarli</span></p></div>
+    <button class="bv oro solo-telefono" data-nz="nuovo" type="button">${icona("piu")}Nuovo</button></header>` + htmlBestiario(true);
 }
-function htmlBestiario() {
+/* sezione: true nella pagina Bestiario del master (ha il suo titolo); false nel pannello aperto durante uno scontro */
+function htmlBestiario(sezione = false) {
   const q = cerca.trim(), conta = k => B.creature.filter(c => sezioneBestiario(c) === k).length;
   const lista = ordinaBestiario(q ? cercaCreature(B.creature, q) : B.creature.filter(c => sezioneBestiario(c) === parteBest), ordineBest);
   const gs = c => c.gs != null && c.gs !== "" ? `<span class="gs" title="Grado di sfida"><small>GS</small>${esc(String(c.gs))}</span>` : "";
   const nomeParte = k => PARTI.find(p => p[0] === k)[1];
-  return `<section><h2>Bestiario <small>${B.creature.length} modelli</small></h2>
+  const pc = sezione ? " solo-pc" : "";
+  return `<section class="best${sezione ? " best-pagina" : ""}">${sezione ? "" : `<h2>Bestiario <small>${B.creature.length} modelli</small></h2>`}
     <div class="best-cima">
-      <input id="nzCerca" type="search" placeholder="Cerca in tutto il bestiario" value="${esc(cerca)}" aria-label="Cerca nel bestiario">
-      <button class="btn gold" data-nz="nuovo">Nuovo modello</button>
-      <label class="btn">Importa dal file<input id="nzFile" type="file" accept=".json,application/json" hidden></label>
+      <label class="best-cerca">${icona("cerca")}<input id="nzCerca" type="search" placeholder="Cerca in tutto il bestiario" value="${esc(cerca)}" aria-label="Cerca nel bestiario"></label>
+      <button class="btn gold${pc}" data-nz="nuovo">Nuovo modello</button>
+      <label class="btn${pc}">Importa dal file<input data-nz-file type="file" accept=".json,application/json" hidden></label>
     </div>
-    ${q ? "" : `<div class="seg best-parti">${PARTI.map(([k, n]) => `<button data-nz="parte" data-parte="${k}" aria-pressed="${parteBest === k}">${n} <small>${conta(k)}</small></button>`).join("")}</div>
-    <p class="hint best-spiega">${PARTI.find(p => p[0] === parteBest)[2]}</p>`}
-    <div class="best-ordine"><span class="lbl">In ordine di</span><div class="seg"><button data-nz="ordine" data-o="nome" aria-pressed="${ordineBest === "nome"}">Nome</button><button data-nz="ordine" data-o="gs" aria-pressed="${ordineBest === "gs"}">Grado di sfida</button></div></div>
+    ${q ? "" : `<div class="seg best-parti">${PARTI.map(([k, n]) => `<button data-nz="parte" data-parte="${k}" aria-pressed="${parteBest === k}">${n} <small>${conta(k)}</small></button>`).join("")}</div>`}
+    <div class="best-riga">
+      <p class="hint best-spiega${q ? " solo-telefono" : ""}">${q ? (lista.length === 1 ? "1 modello trovato in tutto il bestiario." : `${lista.length} modelli trovati in tutto il bestiario.`) : PARTI.find(p => p[0] === parteBest)[2]}</p>
+      ${sezione ? `<button class="best-ordina solo-telefono" data-nz="ordine" data-o="${ordineBest === "nome" ? "gs" : "nome"}" type="button" aria-label="In ordine ${ordineBest === "nome" ? "di nome" : "di grado di sfida"}: tocca per cambiare">${icona("ordine")}<span>${ordineBest === "nome" ? "Per nome" : "Per grado di sfida"}</span></button>` : ""}
+    </div>
+    <div class="best-ordine${pc}"><span class="lbl">In ordine di</span><div class="seg"><button data-nz="ordine" data-o="nome" aria-pressed="${ordineBest === "nome"}">Nome</button><button data-nz="ordine" data-o="gs" aria-pressed="${ordineBest === "gs"}">Grado di sfida</button></div></div>
     ${lista.length ? `<ul class="bestiario">${lista.map(c => `<li><button data-nz="modifica" data-id="${esc(c.id)}"><span class="nome"><i class="lato-${sezioneBestiario(c)}" aria-hidden="true"></i>${esc(c.nome)}${gs(c)}</span>
       <small>${q ? nomeParte(sezioneBestiario(c)) + " · " : ""}CA ${c.ca} · PF ${c.pf}${(c.azioni || []).some(a => a.colpire != null) ? " · " + (c.azioni || []).filter(a => a.colpire != null).map(a => esc(a.nome)).join(", ") : ""}</small></button></li>`).join("")}</ul>`
       : `<p class="vuoto">${q ? "Nessun modello con questo nome." : "Ancora nessuno in questa parte."}</p>`}
-    <div class="azioni"><button class="btn up" data-nz="chiudi">Fatto</button></div></section>`;
+    ${sezione ? `<div class="best-fondo solo-telefono"><label class="bv">${icona("file")}Importa dal file<input data-nz-file type="file" accept=".json,application/json" hidden></label>
+      <p class="hint">Aggiunge i modelli del file e aggiorna quelli che ci sono già. Prima salva una copia del bestiario nello storico.</p></div>`
+      : `<div class="azioni"><button class="btn up" data-nz="chiudi">Fatto</button></div>`}</section>`;
 }
 
 const slug = t => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "modello";
@@ -653,6 +662,6 @@ export function input(e) {
     const n = $("nzCerca"); if (n) { n.focus(); n.setSelectionRange(pos, pos); }
     return true;
   }
-  if (e.target.id === "nzFile" && e.target.files[0]) { importa(e.target.files[0]); e.target.value = ""; return true; }
+  if (e.target.matches?.("[data-nz-file]") && e.target.files[0]) { importa(e.target.files[0]); e.target.value = ""; return true; }
   return false;
 }

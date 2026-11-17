@@ -362,7 +362,7 @@ function disegnaTiro(nuovo = true) {
     ${caselleDadi(TI.dadi, n, manuale ? 30 : 20, "ini")}
     ${tastierino(manuale ? 30 : 20, null, "data-ini")}
     <div class="totale">${r ? (manuale ? `Totale<b>${r.tot}</b>` : `<span class="tot-come">Dado <i>${r.usato}</i> · iniziativa <i>${sg(r.mod)}</i></span><b>${r.tot}</b>`) : `<span>${manuale ? "Tocca il totale" : "Tocca il numero uscito"}</span>`}</div>
-    <div class="fondo"><button class="btn up" data-ini-ok${r ? "" : " disabled"}>${dopo ? `Avanti: ${esc(dopo.nome)}` : "Conferma"}</button></div>`,
+    <div class="fondo"><button class="btn up" data-ini-ok${r ? "" : ` disabled data-perche="Scrivi prima il numero uscito sul d20"`}>${dopo ? `Avanti: ${esc(dopo.nome)}` : "Conferma"}</button></div>`,
     { passo: TI.master ? 0 : 1, di: 0, nuovoPasso: nuovo });
 }
 async function clicTiro(e) {
@@ -417,17 +417,17 @@ function vistaPreparazione() {
   if (pannelloAperto()) return htmlPreparazione();
   const tutti = catalogo(), dentro = nelGruppo();
   const passi = `<ol class="prep-passi" aria-label="Passi della preparazione"><li class="${passoPrep === 1 ? "ora" : "fatto"}"><button data-az="prep-1" type="button"><i>1</i>Il gruppo</button></li>
-    <li class="${passoPrep === 2 ? "ora" : ""}"><button data-az="prep-2" type="button"${dentro.length ? "" : " disabled"}><i>2</i>Chi combatte</button></li></ol>`;
+    <li class="${passoPrep === 2 ? "ora" : ""}"><button data-az="prep-2" type="button"${dentro.length ? "" : ` disabled data-perche="Scegli almeno un personaggio del gruppo"`}><i>2</i>Chi combatte</button></li></ol>`;
   if (passoPrep === 1) return `<header class="testa-pagina"><h1>Nuovo scontro</h1><p>Primo passo: chi del gruppo partecipa.</p></header>${passi}
     <section><h2>Il gruppo <span>${dentro.length} su ${tutti.length}</span></h2>
     <ul class="scelta">${tutti.map(p => `<li><label><input type="checkbox" data-part="${p.id}"${fuori.has(p.id) ? "" : " checked"}>
       <span>${esc(p.nome)}</span>${p.tipo === "manuale" ? `<small>senza scheda: scrivi tu il totale</small>` : ""}</label></li>`).join("")}</ul></section>
-    <div class="azioni prep-fine"><button class="btn up" data-az="prep-2"${dentro.length ? "" : " disabled"}>Avanti: chi combatte</button></div>`;
+    <div class="azioni prep-fine"><button class="btn up" data-az="prep-2"${dentro.length ? "" : ` disabled data-perche="Scegli almeno un personaggio del gruppo"`}>Avanti: chi combatte</button></div>`;
   const st = statoPreparazione(), v = puoIniziare({ gruppo: dentro.length, scelte: st.scelte, modelli: st.modelli });
   return `<header class="testa-pagina"><h1>Chi combatte</h1><p>Secondo passo: i nemici e chi altro c'è. Del gruppo partecipano <b>${dentro.map(p => esc(p.nome)).join(", ")}</b>.</p></header>${passi}
     ${htmlPreparazione()}
     <div class="azioni prep-fine">${v.ok ? `<p class="hint">Sui telefoni dei giocatori comparirà la richiesta dell'iniziativa.</p>` : `<p class="hint prep-manca">${v.perche}</p>`}
-      <button class="btn" data-az="prep-1">Indietro</button><button class="btn up" data-az="chiedi"${v.ok ? "" : " disabled"}>Tirate l'iniziativa</button></div>`;
+      <button class="btn" data-az="prep-1">Indietro</button><button class="btn up" data-az="chiedi"${v.ok ? "" : ` disabled data-perche="${esc(v.perche)}"`}>Tirate l'iniziativa</button></div>`;
 }
 
 /* il d20 che rotola: la prima volta che questo telefono vede il tiro parte l'animazione; se la lista si ridisegna
@@ -458,7 +458,7 @@ function vistaTiri() {
     <ul class="tiri">${righe}</ul>
     ${dm ? `<p class="hint">${mancano.length ? `Mancano ${esc(mancano.join(", "))}. Quando avranno tirato tutti lo scontro parte da solo.` : "Hanno tirato tutti: lo scontro parte adesso."}</p>
       <div class="azioni tiri-az"><button class="btn rosso" data-az="chiudi">Annulla lo scontro</button>
-      ${mancano.length ? `<button class="btn up" data-az="inizia"${fatti ? "" : " disabled"}>Inizia senza chi manca</button>` : ""}</div>`
+      ${mancano.length ? `<button class="btn up" data-az="inizia"${fatti ? "" : ` disabled data-perche="Non ha ancora tirato nessuno"`}>Inizia senza chi manca</button>` : ""}</div>`
       : `<p class="hint">Quando avranno tirato tutti, lo scontro parte da solo.</p>`}</section>`;
 }
 
@@ -600,14 +600,14 @@ function vistaTurni() {
   let testa;
   if (mioTurno) {
     testa = `<div class="mio-turno"><h2>${esc(a.nome)}, tocca a te</h2>${htmlGiocatore(a)}
-      <button class="btn fine-t" data-az="fine"${inVolo ? " disabled" : ""}>Fine turno</button></div>`;
+      <button class="btn fine-t" data-az="fine"${inVolo ? ` disabled data-perche="Un attimo: sto passando il turno"` : ""}>Fine turno</button></div>`;
   } else if (dm) {
     /* un branco gioca un membro alla volta: "Avanti: Lupo 2", e solo l'ultimo chiude il turno del branco */
     const br = M.branco;
     testa = `<div class="ora-testa lato-${latoA}"><h2><span class="segno" aria-hidden="true"></span>Turno di ${br ? `${esc(br.membro.nome)} <span class="conta">${br.n} di ${br.tot}</span>` : nomeA}</h2>${M.rapida}
       <div class="riga-az${br && !br.ultimo ? " branco-az" : ""}">${br && !br.ultimo
-        ? `<button class="btn up" data-nz="branco-avanti">Avanti: ${esc(br.prossimo)}</button><button class="btn link" data-az="fine"${inVolo ? " disabled" : ""}>Fine turno del branco</button>`
-        : `<button class="btn up" data-az="fine"${inVolo ? " disabled" : ""}>${br ? "Fine turno del branco" : `Fine turno${a ? ` di ${nomeConConta(a, true)}` : ""}`}</button>`}</div></div>`;
+        ? `<button class="btn up" data-nz="branco-avanti">Avanti: ${esc(br.prossimo)}</button><button class="btn link" data-az="fine"${inVolo ? ` disabled data-perche="Un attimo: sto passando il turno"` : ""}>Fine turno del branco</button>`
+        : `<button class="btn up" data-az="fine"${inVolo ? ` disabled data-perche="Un attimo: sto passando il turno"` : ""}>${br ? "Fine turno del branco" : `Fine turno${a ? ` di ${nomeConConta(a, true)}` : ""}`}</button>`}</div></div>`;
   } else {
     const quando = quandoTocca();
     testa = `<div class="ora-testa lato-${a && visibile(a) ? latoA : "nemico"}"><h2><span class="segno" aria-hidden="true"></span>${a && !visibile(a) ? "Turno del master" : `Turno di ${nomeA}`}</h2>
@@ -620,7 +620,7 @@ function vistaTurni() {
   return `${dm ? htmlMaster() : ""}${testa}
     <div class="coda-blocco">${mioTurno ? `<h3>Dopo di te</h3>` : ""}<ol class="coda">${lista}</ol>${legenda()}</div>
     ${dm ? `<div class="in-fondo">${M.sconfitti}${M.rinforzi}
-      <div class="chiudi-m"><button class="btn rosso" data-az="chiudi">Chiudi lo scontro</button><button class="btn" data-az="indietro"${SC.round <= 1 && SC.turno === 0 ? " disabled" : ""}>Turno precedente</button></div></div>` : ""}`;
+      <div class="chiudi-m"><button class="btn rosso" data-az="chiudi">Chiudi lo scontro</button><button class="btn" data-az="indietro"${SC.round <= 1 && SC.turno === 0 ? ` disabled data-perche="È il primo turno: prima non c'è niente"` : ""}>Turno precedente</button></div></div>` : ""}`;
 }
 
 /* dall'iniziativa al round 1: chi ha tirato entra nell'ordine dei turni */

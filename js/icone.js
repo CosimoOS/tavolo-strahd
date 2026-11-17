@@ -18,6 +18,12 @@ const D = {
   clessidra: `<path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/>`,
   goccia: `<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>`,
   boccetta: `<path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/>`,
+  /* comandi */
+  piu: `<path d="M5 12h14"/><path d="M12 5v14"/>`,
+  giu: `<path d="m6 9 6 6 6-6"/>`,
+  ordine: `<path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/>`,
+  cerca: `<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>`,
+  file: `<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 12v6"/><path d="m15 15-3-3-3 3"/>`,
 };
 /* nomi d'uso: lo stesso disegno serve in più posti */
 const COME = { attesa: "clessidra", colpito: "spada", critico: "scontro", mancato: "scheda", danno: "goccia", cura: "boccetta", oggetto: "boccetta", sconfitto: "bestiario" };

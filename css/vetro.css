@@ -828,3 +828,102 @@ body.in-scheda{padding-bottom:calc(var(--barra-h) + var(--barra-giu) + 28px)}
 /* iPhone: i campi con testo sotto i 16px fanno ingrandire tutta la pagina al tocco, e la barra sembra spostarsi */
 @media (hover:none) and (pointer:coarse){input,select,textarea{font-size:16px!important}}
 @media (hover:none) and (pointer:coarse){.coin input,.coin.big input{font-size:19px!important}#nzCercaPrep{font-size:17px!important}}
+
+/* ================= TELEFONO: ordine e respiro =================
+   Tutto quello che segue vale sotto i 900px (o sugli schermi da toccare): il computer resta com'è.
+   .solo-pc si vede solo sul computer, .solo-telefono solo sul telefono. */
+@media (min-width:900px){.solo-telefono,.apri-ogg,.comandi-ogg{display:none!important}.best-cerca{display:contents}.best-cerca svg{display:none}}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+/* iPhone, app installata: la pagina è alta sempre almeno quanto lo schermo vero (js/schermo.js). Senza, nelle pagine
+   corte la barra in basso, gli avvisi e le finestre restano sollevati di quanto è alta la fascia con l'orologio. */
+html.alto-pieno{min-height:var(--alto)}
+/* il tocco risponde subito: niente attesa del doppio tocco, niente lampo grigio del telefono (c'è il nostro, sotto) */
+html{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+@media (hover:none) and (pointer:coarse){
+  button:active:not(:disabled),label.btn:active,label.bv:active,summary:active{opacity:.62;transition-duration:0s}
+  /* un comando spento lascia passare il tocco: js/schermo.js lo raccoglie e dice perché è spento */
+  button:disabled{pointer-events:none}
+}
+/* gli avvisi stanno sopra a tutto, anche alle finestre dei tiri: altrimenti chi tocca un comando spento non li vede */
+.toast{z-index:70}
+.fc-misure{display:block;margin:14px auto 0;min-height:40px;padding:0 12px;border:0;background:none;color:var(--muted-2);font-size:14px;text-decoration:underline;text-underline-offset:3px}
+.fc-numeri{margin:6px 6px 0;padding:12px 14px;border-radius:16px;background:rgba(0,0,0,.3);box-shadow:inset 0 0 0 1px var(--line);font-family:var(--f-num);font-size:12.5px;line-height:1.6;color:var(--ink);white-space:pre-wrap;user-select:text;-webkit-user-select:text}
+
+@media (max-width:899px){
+  .solo-pc{display:none!important}
+  /* gli avvisi usano tutta la larghezza che serve: prima andavano a capo a metà schermo */
+  .toast{left:16px;right:16px;transform:none;margin:0 auto;width:fit-content;max-width:calc(100% - 32px)}
+  /* la schermata dei profili sta in uno schermo esatto: centrata davvero e senza scorrere a vuoto */
+  .profili{min-height:calc(var(--alto,100dvh) - env(safe-area-inset-top,0px) - 56px)}
+  /* tutti i titoli di pagina alla stessa altezza: passando da una sezione all'altra il titolo non salta */
+  #vistaScheda .vista-scontro,#vistaScheda .vista-altro{margin-top:8px}
+  /* Campagna: la spiegazione di ogni regola parte sotto il suo titolo, accanto alla casella più grande */
+  .al-sez .spunta + .hint{margin-left:40px}
+  /* un titolo con il suo comando accanto */
+  .testa-pagina.con-azione{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+  .testa-pagina.con-azione .bv{flex:none;min-height:42px;padding:0 16px 0 12px;gap:6px}
+  .testa-pagina.con-azione .bv svg{width:18px;height:18px}
+
+  /* scheda: nella carta delle condizioni la riga della concentrazione occupa posto solo quando c'è */
+  .conc-riga:empty{display:none}
+
+  /* ---- Bestiario: in cima solo cerca, parti e ordine, appoggiati sulla pagina; la lista è l'unica carta ---- */
+  .best-pagina{background:none;border:0;border-radius:0;padding:0;box-shadow:none}
+  .best-pagina .best-cima{display:block}
+  .best-pagina .best-cerca{display:flex;align-items:center;gap:10px;min-height:48px;padding:0 16px;border-radius:999px;background:rgba(0,0,0,.3);box-shadow:inset 0 0 0 1px var(--line);color:var(--muted)}
+  .best-pagina .best-cerca svg{width:18px;height:18px;flex:none}
+  .best-pagina .best-cerca #nzCerca{flex:1;min-width:0;min-height:46px;padding:0;border:0;border-radius:0;background:none;outline:0}
+  .best-pagina .best-cerca:focus-within{box-shadow:inset 0 0 0 2px var(--gold);color:var(--ink)}
+  .best-pagina .best-parti{flex-wrap:nowrap;gap:0;padding:3px;margin:12px 0 0;border-radius:999px;background:rgba(0,0,0,.3);box-shadow:inset 0 0 0 1px var(--line)}
+  .best-pagina .best-parti button{min-height:40px;padding:0 4px;border:0;border-radius:999px;background:none;color:var(--muted);font-size:15px;font-weight:700;white-space:nowrap;transition:background-color .2s ease-out,color .2s ease-out}
+  .best-pagina .best-parti button[aria-pressed="true"]{background:rgba(255,246,232,.16);color:var(--ink)}
+  .best-riga{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin:12px 6px 12px}
+  .best-riga .best-spiega{flex:1;min-width:0;margin:0;padding-top:11px;font-size:15px;line-height:1.4}
+  .best-ordina{flex:none;display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:0 2px 0 8px;border:0;background:none;color:var(--gold);font-size:15px;font-weight:700}
+  .best-ordina svg{width:17px;height:17px}
+  .best-pagina .bestiario{margin:0;padding:2px 16px 2px 18px;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:var(--r-carta);box-shadow:inset 0 1px 0 rgba(255,240,220,.05),0 8px 22px rgba(0,0,0,.28)}
+  .best-pagina .bestiario li:first-child button{border-top:0}
+  .best-pagina .bestiario button{min-height:62px;padding:11px 0}
+  .best-pagina .vuoto{margin:8px 6px}
+  .best-fondo{margin:22px 4px 0;display:flex;flex-direction:column;align-items:flex-start}
+  .best-fondo .bv svg{width:18px;height:18px}
+  .best-fondo .hint{margin:10px 4px 0;font-size:14px;line-height:1.45}
+
+  /* ---- Zaino: la riga mostra nome e quantità; toccandola si apre e sotto compaiono i comandi ---- */
+  .inv li{display:block;min-height:0;padding:0}
+  .inv li > .att,.inv li > .nome-ogg,.inv li > .qta,.inv li > .x{display:none}
+  .apri-ogg{display:flex;align-items:center;gap:10px;width:100%;min-height:54px;padding:10px 16px 10px 0;border:0;background:none;color:var(--ink);text-align:left;font-size:17px;font-weight:600;line-height:1.3}
+  .apri-ogg .no{flex:1;min-width:0;overflow-wrap:anywhere}
+  .apri-ogg .rombo{flex:none;font-style:normal;font-size:12px;color:var(--gold)}
+  .inv li.magic .apri-ogg .no{color:var(--gold)}
+  .apri-ogg .quanti{flex:none;font-size:15px;font-weight:500;color:var(--muted)}
+  .apri-ogg .freccia{flex:none;width:18px;height:18px;color:var(--muted-2);transition:transform .28s cubic-bezier(.16,1,.3,1)}
+  .inv li.aperta .apri-ogg .freccia{transform:rotate(180deg)}
+  .comandi-ogg{display:flex;align-items:center;gap:8px;padding:0 16px 14px 0}
+  .inv li .passo-q{flex:none;display:inline-flex;align-items:center;height:42px;border-radius:999px;background:rgba(0,0,0,.3);box-shadow:inset 0 0 0 1px var(--line)}
+  .passo-q button{width:44px;height:42px;border:0;border-radius:999px;background:none;color:var(--ink);font-size:21px;line-height:1}
+  .passo-q button:disabled{opacity:.28}
+  .passo-q b{min-width:2.4ch;text-align:center;font-size:17px;font-weight:500}
+  .comandi-ogg .bv.piccolo{min-height:42px;padding:0 14px}
+  .comandi-ogg .sint{margin-left:auto}
+  .comandi-ogg .sint.on{color:var(--gold);box-shadow:inset 0 1px 0 rgba(255,240,200,.35),inset 0 0 0 1px rgba(226,189,112,.45),0 6px 16px rgba(0,0,0,.30)}
+  .comandi-ogg .sint.piena{opacity:.5}
+  .comandi-ogg .rosso{color:#ffb3bf}
+}
+@media (max-width:899px) and (prefers-reduced-motion:no-preference){
+  .comandi-ogg.entra{animation:comandi-entra .28s cubic-bezier(.16,1,.3,1)}
+  @keyframes comandi-entra{from{opacity:0;transform:translateY(-6px)}}
+}
+
+/* le caselle da spuntare sul telefono: un cerchio vuoto, pieno con la spunta quando è scelto
+   (su iPhone il fondo scuro dei campi di testo finiva dentro la casella: un quadrato nero nel cerchio) */
+@media (max-width:899px),(hover:none) and (pointer:coarse){
+  input[type=checkbox]{-webkit-appearance:none;appearance:none;flex:none;width:26px!important;height:26px!important;min-height:0!important;padding:0!important;
+    border:1.5px solid rgba(255,246,232,.42);border-radius:50%;background:rgba(0,0,0,.22) center/15px 15px no-repeat;
+    transition:background-color .18s ease-out,border-color .18s ease-out,transform .12s ease-out}
+  input[type=checkbox]:checked{background-color:var(--gold);border-color:var(--gold);
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23181210' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E")}
+  input[type=checkbox]:active{transform:scale(.88)}
+  input[type=checkbox]:disabled{opacity:.4}
+}

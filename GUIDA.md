@@ -31,6 +31,13 @@ Per le cose da programmatore (file, prove, pubblicazione nel dettaglio) c'è `LE
     (con le stesse pagine dei giocatori); *‹ Tavolo* riporta indietro.
   - **Campagna → Regole del tavolo** (solo il master): opzioni del Calderone di Tasha, pozioni da soli come azione bonus,
     *Munizioni comuni infinite* (accesa: è la regola del vostro tavolo).
+  - Toccare la sezione **in cui sei già** riporta in cima alla pagina.
+- **Ogni tocco ha una risposta.** I pulsanti si attenuano mentre li premi; se tocchi un comando spento (per esempio
+  *Attacca* prima di aver scritto il dado) un avviso in basso dice che cosa manca.
+- **Sul telefono lo Zaino è una lista**: nome e quantità. Tocca un oggetto per aprirlo: sotto compaiono la quantità
+  (− e +), *Sintonia* e *Togli*. Sul computer i comandi restano tutti in fila.
+- **Sul telefono il Bestiario** ha in cima solo la ricerca, le tre parti e l'ordine (*Per nome* / *Per grado di sfida*:
+  si cambia toccandolo). *Nuovo* sta accanto al titolo, *Importa dal file* in fondo alla lista.
 - Un **pallino rosso** su *Scontro* vuol dire che serve la tua attenzione (tirare l'iniziativa, il tuo turno).
 - **In alto a destra** c'è il tuo **avatar**: toccalo per vedere le tue schede o cambiare profilo.
   Rombosogliola ha accanto un **avatar piccolo** (Ireena): toccandolo si passa all'altra scheda.
@@ -199,3 +206,7 @@ Finite le azioni, *Attacca* si spegne. Se il master concede un'eccezione, tocca 
   (`privato/bestiario.json`, che resta solo sul computer).
 - Se l'aggiornamento cambia le **regole di sicurezza** (`firestore.rules`), vanno pubblicate nella console di Firebase.
 - Su iPhone, se la barra in alto copre qualcosa: togli e rimetti l'icona dalla schermata Home.
+- **Se sull'iPhone qualcosa finisce nel posto sbagliato** (la barra in basso sollevata, un avviso tagliato): tocca il tuo
+  avatar in alto a destra → *Misure dello schermo* e fai una foto dei numeri che compaiono. Con quelli si capisce
+  subito che cosa il telefono sta sbagliando. (La barra sollevata nelle pagine corte era questo: l'iPhone contava
+  lo schermo più corto di quanto è; ora l'app glielo corregge da sola all'avvio.)

@@ -84,6 +84,9 @@ npm test
 | `privato/` | Il bestiario preparato dai manuali. **Non va su git** (è in `.gitignore`): si carica nell'app dal profilo del master |
 | `js/personaggi/` | Le regole di ogni personaggio e l'elenco dei profili |
 | `js/regole/` | Conti della 5e, funzioni pure provate dai test |
+| `js/regole/zaino.js` | Zaino: sintonia (massimo tre), quantità, togliere un oggetto |
+| `js/regole/schermo.js`, `js/schermo.js` | iPhone con l'app installata: tiene la pagina alta quanto lo schermo vero (altrimenti la barra in basso resta sollevata nelle pagine corte) e legge le misure dello schermo |
+| `js/regole/tocchi.js` | Avviso quando si tocca un comando spento (il motivo sta sul comando, in `data-perche`) |
 | `js/stemmi.js` | Gli stemmi in SVG |
 | `firestore.rules` | Chi può leggere e scrivere cosa su Firebase |
 | `strumenti/` | Server locale e pagina di importazione |
