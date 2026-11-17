@@ -143,7 +143,7 @@ function render() {
   if (zainoAperto != null && zainoAperto >= S.inv.length) zainoAperto = null;
   $("inv").innerHTML = S.inv.map((t, i) => {
     const r = rigaZaino(t, S.attuned), on = r.sintonia, aperta = zainoAperto === i;
-    return `<li class="${C.magic.test(t) || on ? "magic" : ""}${aperta ? " aperta" : ""}"><button class="att${on ? " on" : ""}" data-att="${i}" ${!on && full ? "disabled" : ""} aria-pressed="${on}" title="${on ? "In sintonia" : "Metti in sintonia"}">${on ? "◆" : "◇"}</button><span class="nome-ogg">${esc(r.nome)}</span>
+    return `<li class="${on ? "magic" : ""}${aperta ? " aperta" : ""}"><button class="att${on ? " on" : ""}" data-att="${i}" ${!on && full ? "disabled" : ""} aria-pressed="${on}" title="${on ? "In sintonia" : "Metti in sintonia"}">${on ? "◆" : "◇"}</button><span class="nome-ogg">${esc(r.nome)}</span>
       <span class="qta${r.n > 1 ? " piu" : ""}">${r.n > 1 ? `<button class="btn step" data-qta-ogg="${i}" data-d="-1" aria-label="Uno in meno">−</button><b class="num">${r.n}</b>` : ""}<button class="btn step" data-qta-ogg="${i}" data-d="1" aria-label="Uno in più">+</button></span>
       <button class="x" data-del="${i}" aria-label="Rimuovi">×</button>
       <button class="apri-ogg" data-apri-ogg="${i}" type="button" aria-expanded="${aperta}">${on ? `<i class="rombo" aria-hidden="true">◆</i>` : ""}<span class="no">${esc(r.nome)}</span>${on ? `<span class="visually-hidden"> in sintonia</span>` : ""}${r.n > 1 ? `<b class="num quanti">×${r.n}</b>` : ""}${FRECCIA_GIU}</button>

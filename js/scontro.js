@@ -15,6 +15,7 @@ import { avviaNemici, fermaNemici, htmlPreparazione, statoPreparazione, htmlBest
 import { avviaAttacchi, fermaAttacchi, aggiornaScontro, htmlGiocatore, htmlMaster, danniPerGiocatore, apriReazione, clic as clicAttacco, input as inputAttacco } from "./attacco.js";
 import { sistemaEvocati, puoIniziare, tuttiHannoTirato } from "./regole/nemici.js";
 import { icona } from "./icone.js";
+import { schermoBattaglia, tornaAlloScontro } from "./regole/battaglia.js";
 import { totaleIniziativa, ordina, pariConPrecedente, avanza, indietro } from "./regole/combattimento.js";
 
 const DOC = "scontro/attuale", TIRI = "scontro/attuale/tiri";
@@ -52,7 +53,7 @@ export function avviaScontro({ archivio, profilo, datiIniziativa, datiAttacco, s
 }
 export function fermaScontro() {
   ascolti.forEach(stop => stop()); ascolti = [];
-  document.body.classList.remove("modo-scontro", "con-banda"); const banda = document.getElementById("bandaScontro"); if (banda) banda.hidden = true;
+  document.body.classList.remove("modo-scontro", "con-banda", "senza-barra"); { const sb = document.getElementById("sbirciaScheda"); if (sb) sb.hidden = true; } const banda = document.getElementById("bandaScontro"); if (banda) banda.hidden = true;
   if (dm) fermaNemici();
   fermaAttacchi();
   SC = null; mostraVista(false); if (TI) { TI.f.chiudi(true); TI = null; }
@@ -134,7 +135,7 @@ function aggiorna() {
   document.dispatchEvent(new Event("scontro:cambiato"));   // il Tavolo del master si aggiorna
   const b = document.querySelector("#barra [data-scontro]");
   if (b) {
-    mostraPulsante(b, dm || SC.stato !== "chiuso");
+    mostraPulsante(b, dm);   // i giocatori non hanno mai la voce "Scontro": lo scontro prende tutto lo schermo
     b.classList.toggle("avviso", daTirare().length > 0 || !!(attivo() && mio(attivo().id)));
   }
   if (!dm && SC.stato === "chiuso" && vista && !congedo) mostraVista(false);
@@ -168,6 +169,7 @@ function aggiorna() {
 /* ---------- modalità scontro ----------
    Durante uno scontro l'app cambia aspetto: il selettore in basso mette in evidenza "Scontro", e quando si guarda
    la scheda una banda cremisi in alto ricorda round e turno (dorata se tocca a te), con un tocco per tornare allo scontro. */
+let eraMioTurno = false;
 function modoScontro() {
   const attivoOra = !!(SC && SC.stato !== "chiuso" && (dm || (SC.partecipanti || []).some(p => mio(p.id))));
   document.body.classList.toggle("modo-scontro", attivoOra);
@@ -180,8 +182,23 @@ function modoScontro() {
     document.body.appendChild(banda);
   }
   banda.hidden = !attivoOra; document.body.classList.toggle("con-banda", attivoOra);
-  if (!attivoOra) return;
+  /* giocatori: dentro lo scontro la barra delle sezioni sparisce e resta un solo pulsante per sbirciare la scheda */
+  const schermo = schermoBattaglia({ master: dm, inScontro: attivoOra, vista });
+  document.body.classList.toggle("senza-barra", !schermo.barra);
+  let sbircia = $("sbirciaScheda");
+  if (!sbircia) {
+    sbircia = document.createElement("button");
+    sbircia.id = "sbirciaScheda"; sbircia.type = "button"; sbircia.className = "sbircia vetro"; sbircia.hidden = true;
+    sbircia.innerHTML = `${icona("scheda")}<span>Guarda la scheda</span>`;
+    sbircia.addEventListener("click", () => { mostraVista(false); window.scrollTo({ top: 0 }); });
+    document.body.appendChild(sbircia);
+  }
+  sbircia.hidden = !schermo.sbircia;
+  if (!attivoOra) { eraMioTurno = false; return; }
   const a = attivo(), tuo = !!(a && mio(a.id));
+  /* comincia il mio turno mentre guardo la scheda: si torna allo scontro, una volta sola */
+  const torna = tornaAlloScontro({ mioTurno: tuo, eraMioTurno, vista }); eraMioTurno = tuo;
+  if (torna && !dm) { mostraVista(true); window.scrollTo({ top: 0 }); return; }
   const chi = SC.stato === "tiri" ? "tirate l'iniziativa" : `round ${SC.round}`;
   banda.classList.toggle("tuo", tuo && !vista);
   if (vista) {

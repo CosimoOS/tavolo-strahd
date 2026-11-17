@@ -38,6 +38,10 @@ Per le cose da programmatore (file, prove, pubblicazione nel dettaglio) c'è `LE
   (− e +), *Sintonia* e *Togli*. Sul computer i comandi restano tutti in fila.
 - **Sul telefono il Bestiario** ha in cima solo la ricerca, le tre parti e l'ordine (*Per nome* / *Per grado di sfida*:
   si cambia toccandolo). *Nuovo* sta accanto al titolo, *Importa dal file* in fondo alla lista.
+- **Giocatori, durante uno scontro:** il telefono mostra solo lo scontro. La barra in basso sparisce e resta il pulsante
+  *Guarda la scheda*; dalla scheda si torna con *‹ Scontro* in alto a sinistra. Quando comincia il tuo turno il telefono
+  torna da solo allo scontro. Senza scontro, la voce *Scontro* nella barra non c'è.
+- Nello Zaino il nome dorato con la losanga vuol dire **in sintonia** (non più "oggetto magico").
 - Un **pallino rosso** su *Scontro* vuol dire che serve la tua attenzione (tirare l'iniziativa, il tuo turno).
 - **In alto a destra** c'è il tuo **avatar**: toccalo per vedere le tue schede o cambiare profilo.
   Rombosogliola ha accanto un **avatar piccolo** (Ireena): toccandolo si passa all'altra scheda.

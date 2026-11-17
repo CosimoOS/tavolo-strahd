@@ -994,3 +994,13 @@ body:has(#passi:not([hidden])) .bordo-alto,body:has(#passi:not([hidden])) .bordo
   .fc-lista button{min-height:52px}
   .fc-scelte [data-esci-conto]{margin-top:14px;min-height:52px}
 }
+
+/* ---- scontro a tutto schermo per i giocatori ---- */
+body.senza-barra .tabbar,body.senza-barra .bordo-basso{display:none}
+.sbircia{position:fixed;z-index:15;left:50%;bottom:var(--barra-giu);transform:translateX(-50%);display:inline-flex;align-items:center;gap:10px;min-height:52px;padding:0 22px 0 18px;border:0;border-radius:999px;color:var(--ink);font-family:var(--f-body);font-size:16px;font-weight:700;white-space:nowrap}
+.sbircia[hidden]{display:none}
+.sbircia svg{width:20px;height:20px;color:var(--gold)}
+.sbircia:active{transform:translateX(-50%) scale(.97)}
+/* dalla scheda sbirciata si torna con la capsula in alto a sinistra: più evidente, perché è l'unica strada */
+body.modo-scontro:not(.scontro-vista):not(.master) .banda-scontro .bs-torna{color:var(--ink)}
+body.modo-scontro:not(.scontro-vista):not(.master) .banda-scontro{box-shadow:inset 0 0 0 1.5px var(--crimson),0 8px 20px rgba(0,0,0,.4)}
