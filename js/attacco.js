@@ -123,7 +123,7 @@ function fondoDopo() {
   else if (mio && st.puoAttaccare) primo = `<button class="btn up" data-att="ancora">${st.inAttacco ? `Attacco ${st.prossimoAttacco} di ${st.perAzione}` : "Nuovo attacco"}</button>`;
   else if (mio && impetuosaPronta(d.az, ch, d.perAzione, d.impetuose)) primo = `<button class="btn up" data-att="impetuosa">Azione impetuosa</button>`;
   return `${P.doppio && !balzo ? `<p class="aiuto centrato">Due d8 sono uguali, ma non c'è un'altra creatura su cui balzare.</p>` : ""}
-    <div class="fondo"><button class="btn" data-att="chiudi">Chiudi</button><button class="btn${primo ? "" : " up"}" data-att="fine-turno">Fine turno</button>${primo}</div>`;
+    <div class="fondo"><button class="btn" data-att="chiudi">Chiudi</button><button class="btn rosso" data-att="fine-turno">Fine turno</button>${primo}</div>`;
 }
 const PASSI_G = ["bersaglio", "arma", "tiro", "esito", "danni", "fine"];
 const passoDi = f => ({ marchio: 2, area: 2, "attesa-ts": 4, "esito-ts": 4, attesa: 4, confermare: 6 }[f] || PASSI_G.indexOf(f) + 1);

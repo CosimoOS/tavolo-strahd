@@ -546,8 +546,7 @@ function apriConto() {
     ${multi ? `<p class="sez" style="margin:20px 6px 2px">Le tue schede</p><div class="fc-lista">${ids.map(k => `<button data-passa="${k}" type="button">${avatar(PERSONAGGI[k].stemma, { classe: "av" })}<span class="riga-t"><b>${esc(PERSONAGGI[k].name)}</b><small>Livello ${STATE[k].level}</small></span>${k === cur ? SPUNTA : ""}</button>`).join("")}</div>` : ""}
     <p class="fc-domanda">Vuoi cambiare profilo?</p>
     <div class="fc-scelte"><button class="bv" data-resta-conto type="button">Resta</button><button class="bv" data-esci-conto type="button">Cambia profilo</button></div>
-    <p class="nota">Per rientrare servirà di nuovo il PIN. Le schede si salvano da sole, anche nello storico delle copie.</p>
-    <button class="fc-misure" data-misure type="button" aria-expanded="false">Misure dello schermo</button>`;
+    <p class="nota">Per rientrare servirà di nuovo il PIN.</p>`;
   f.classList.add("aperto"); f.setAttribute("aria-hidden", "false"); $("contoVeil").classList.add("aperto");
 }
 function chiudiConto() { $("contoFoglio").classList.remove("aperto"); $("contoFoglio").setAttribute("aria-hidden", "true"); $("contoVeil").classList.remove("aperto"); }

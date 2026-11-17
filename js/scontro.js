@@ -242,7 +242,7 @@ async function chiudiScontro(vittoria) {
 /* il pannello di fine: vittoria con un po' di festa, oppure semplicemente "scontro concluso" */
 function mostraFine(f) {
   const danni = Object.entries(f.danni || {}).sort((a, b) => b[1] - a[1]);
-  const fin = finestra({ chiave: "fine", titolo: f.vittoria ? "Vittoria" : "Fine dello scontro", onChiudi: () => { if (SC && SC.stato === "chiuso") mostraVista(false); },
+  const fin = finestra({ chiave: "fine", titolo: f.vittoria ? "Vittoria" : "Fine dello scontro", onChiudi: () => { if (!dm && SC && SC.stato === "chiuso") mostraVista(false); },   // il master resta nella sua pagina Scontro, non finisce su una scheda
     onClick: e => { if (e.target.closest("[data-fine-ok]")) fin.chiudi(); } });
   vibra(f.vittoria ? [80, 60, 80, 60, 160] : 60);
   fin.mostra(`<div class="fine-centro"><div class="vittoria${f.vittoria ? "" : " semplice"}" role="status">
@@ -612,7 +612,7 @@ function vistaTurni() {
     const quando = quandoTocca();
     testa = `<div class="ora-testa lato-${a && visibile(a) ? latoA : "nemico"}"><h2><span class="segno" aria-hidden="true"></span>${a && !visibile(a) ? "Turno del master" : `Turno di ${nomeA}`}</h2>
       ${quando ? `<p>${quando}</p>` : ""}
-      ${miei.length ? `<div class="riga-az"><button class="btn reazione-btn" data-az="reazione">Reazione<small>attacco di opportunità e altro</small></button></div>` : ""}</div>`;
+      ${miei.length ? `<div class="riga-az"><button class="btn reazione-btn" data-az="reazione"><span class="rz-testo"><b>Reazione</b><small>attacco di opportunità e altro</small></span>${icona("giu", "rz-freccia")}</button></div>` : ""}</div>`;
   }
   /* quando tocca a me il mio riquadro sta in cima: la coda parte da chi viene dopo */
   const lista = mioTurno ? coda(SC.turno, true) : coda();
