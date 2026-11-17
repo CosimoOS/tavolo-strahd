@@ -20,6 +20,7 @@ import { finestra, finestraAperta, tastierino, caselleDadi, rivelazione, vibra }
 import { chiaveTurno, statoTurno, impetuosaPronta, dopoAttacco, dopoAzione, dopoBonus, conImpetuosa, giraAzione, giraBonus, reazioneLibera, puoIncantesimo } from "./regole/turno.js";
 import { extraAccesi, proponiMarchio, attiva, EFFETTI } from "./regole/effetti.js";
 import { opzioni } from "./campagna.js";
+import { tiroMorte } from "./regole/morte.js";
 import { icona } from "./icone.js";
 
 const ATT = "scontro/attuale/attacchi";
@@ -72,6 +73,7 @@ export function aggiornaScontro(nuovo) {
 export function htmlGiocatore(pg) {
   if (!SC || SC.stato !== "in corso") return "";
   const d = dati(pg.id); if (!d) return "";
+  if (d.morte && d.morte.stato !== "in-piedi") return htmlATerra(pg, d.morte);
   const ch = chiaveTurno(SC), st = statoTurno(d.az, ch, d.perAzione), reaz = reazioneLibera(d.reazione, SC, pg.id);
   const fatti = A.filter(x => x.scontro === SC.id && x.pg === pg.id && x.round === SC.round && x.turno === SC.turno && x.tipo !== "cura" && !x.reazione);
   const ultimo = fatti[fatti.length - 1];
@@ -90,6 +92,59 @@ export function htmlGiocatore(pg) {
       ${(d.usabili || []).length ? `<button class="az-grande seconda" data-at="oggetto"${st.puoAzione || pozioneBonus ? "" : ` disabled data-perche="Hai già usato l'azione in questo turno"`}>${BOCCETTA}<span><b>Oggetto</b><small>${ogg}</small></span></button>` : ""}
     </div>${imp}${riassunto}`;
 }
+/* ---------- a terra: il tiro contro la morte al posto delle azioni ----------
+   A 0 PF il turno è solo questo tiro (un d20 senza modificatori), una volta per turno. Le regole stanno in regole/morte.js. */
+const losanghe = (n, tipo) => `<span class="mt-pips ${tipo}" aria-hidden="true">${[0, 1, 2].map(i => `<i class="${i < n ? "on" : ""}"></i>`).join("")}</span>`;
+const contiMorte = m => `<div class="mt-conti"><div aria-label="Successi: ${m.s} su 3"><span>Successi</span>${losanghe(m.s, "ok")}</div><div aria-label="Fallimenti: ${m.f} su 3"><span>Fallimenti</span>${losanghe(m.f, "ko")}</div></div>`;
+function htmlATerra(pg, m) {
+  const tirato = m.turno === chiaveTurno(SC);
+  if (m.stato === "morto") return `<div class="a-terra"><p class="mt-stato">Tre fallimenti: ${esc(pg.nome)} è morto.</p>${contiMorte(m)}<p class="aiuto">Parla con il master. Passa il turno.</p></div>`;
+  if (m.stato === "stabile") return `<div class="a-terra"><p class="mt-stato">Sei stabile, ma ancora a terra con 0 PF.</p>${contiMorte(m)}<p class="aiuto">Niente più tiri: ti rialzi quando qualcuno ti cura. Passa il turno.</p></div>`;
+  return `<div class="a-terra"><p class="mt-stato">Sei a terra con 0 PF.</p>${contiMorte(m)}
+    ${tirato ? `<p class="aiuto">Hai già tirato in questo turno: passa il turno.</p>`
+      : `<button class="az-grande prima mt-tira" data-at="morte">${icona("clessidra", "az-icona")}<span><b>Tiro contro la morte</b><small>un d20 senza modificatori: 10 o più è un successo</small></span></button>`}</div>`;
+}
+let TM = null;
+function apriTiroMorte(pg) {
+  TM = { pg, d20: null, esito: null };
+  TM.f = finestra({ chiave: "morte", titolo: "Tiro contro la morte", onClick: clicTiroMorte, onChiudi: () => { TM = null; ridisegna(); } });
+  disegnaTiroMorte();
+}
+function disegnaTiroMorte(nuovo = true) {
+  if (!TM) return;
+  if (!TM.esito) {
+    return TM.f.mostra(`<p class="domanda">Tira il d20</p><p class="aiuto">Senza modificatori. 10 o più: un successo. 1: due fallimenti. 20: ti rialzi con 1 PF.</p>
+      ${tastierino(20, TM.d20, "data-tm")}
+      <div class="fondo"><button class="btn up" data-tm-ok${TM.d20 ? "" : ` disabled data-perche="Tocca prima il numero uscito sul d20"`}>Vedi l'esito</button></div>`, { nuovoPasso: nuovo, tono: "rosso" });
+  }
+  const m = dati(TM.pg.id).morte, conto = `${m.s} ${m.s === 1 ? "successo" : "successi"} · ${m.f} ${m.f === 1 ? "fallimento" : "fallimenti"}`;
+  const R = {
+    "in-piedi": ["critico", "20: ti rialzi!", "Torni in gioco con 1 PF. Il turno è tuo."],
+    stabile: ["colpito", "Stabile", "Tre successi: niente più tiri. Resti a terra finché qualcuno non ti cura."],
+    successo: ["colpito", "Successo", conto],
+    fallimento: ["mancato", "Fallimento", conto],
+    "due-fallimenti": ["mancato", "1: due fallimenti", conto],
+    morto: ["mancato", "Tre fallimenti", `${esc(TM.pg.nome)} è morto. Parla con il master.`],
+  }[TM.esito];
+  TM.f.mostra(rivelazione(R[0], R[1], `Hai tirato ${TM.d20} · ${R[2]}`) + (TM.esito === "in-piedi"
+    ? `<div class="fondo"><button class="btn up" data-tm-chiudi>Torna in gioco</button></div>`
+    : `<div class="fondo"><button class="btn" data-tm-chiudi>Chiudi</button><button class="btn rosso" data-tm-fine>Fine turno</button></div>`), { tono: "rosso" });
+}
+function clicTiroMorte(e) {
+  if (!TM) return;
+  const b = e.target.closest("button"); if (!b || b.disabled) return;
+  if (b.dataset.tm) { TM.d20 = +b.dataset.tm; return disegnaTiroMorte(false); }
+  if (b.hasAttribute("data-tm-ok") && TM.d20) {
+    const d = dati(TM.pg.id), ch = chiaveTurno(SC);
+    const r = tiroMorte({ deathS: d.morte.s, deathF: d.morte.f }, TM.d20);
+    modifica(TM.pg.id, St => { Object.assign(St, r.cambia); St.morteTurno = ch; });
+    TM.esito = r.esito; vibra(r.esito === "in-piedi" || r.esito === "stabile" || r.esito === "successo" ? [60, 40, 120] : 160);
+    ridisegna(); return disegnaTiroMorte();
+  }
+  if (b.hasAttribute("data-tm-chiudi")) return TM.f.chiudi();
+  if (b.hasAttribute("data-tm-fine")) { TM.f.chiudi(true); TM = null; document.querySelector('#vistaScontro [data-az="fine"]')?.click(); }
+}
+
 /* Azione impetuosa: un uso in meno sulla scheda, un'azione in più in questo turno */
 function usaImpetuosa(id) {
   modifica(id, St => { St.ai = (St.ai || 0) + 1; });
@@ -650,7 +705,7 @@ function bersagliMaster() {
 function apriAttaccoMaster(gruppo, i, reazione = null) {
   MA = { gruppo, i, reazione, fase: "bersaglio", bersaglio: null, modo: "normale", d20: [], dadi: {} };
   MA.f = finestra({ chiave: "mattacco", titolo: reazione ? "Attacco di opportunità" : "Attacco del master", onClick: clicFinestraMaster, onChiudi: () => { MA = null; setTimeout(proponiConferma, 50); },
-    onIndietro: () => { if (MA.fase === "tiro") { MA.fase = "bersaglio"; MA.d20 = []; } else if (MA.fase === "danni") { MA.fase = "tiro"; } disegnaMaster(); } });
+    onIndietro: () => { if (MA.fase === "tiro") { MA.fase = "bersaglio"; MA.d20 = []; } else if (MA.fase === "danni") { MA.fase = "tiro"; MA.vicino = false; MA.dadi = {}; } disegnaMaster(); } });
   disegnaMaster();
 }
 const PASSI_M = ["bersaglio", "tiro", "esito", "danni", "fine"];
@@ -658,7 +713,7 @@ function disegnaMaster(nuovo = true) {
   const az = azioneDi(MA.gruppo, MA.i); if (!az) return MA.f.chiudi();
   if (MA.reazione) az.chi = (creaturaInCampo(MA.reazione) || {}).nome || az.chi;
   const a = az.azione, bs = bersagliMaster(), b = bs.find(x => x.id === MA.bersaglio);
-  const t = tiroPerColpire({ dadi: MA.d20, modo: MA.modo, bonus: a.colpire });
+  const t = tiroMaster(a);
   const opz = { passo: PASSI_M.indexOf(MA.fase) + 1, di: PASSI_M.length, nuovoPasso: nuovo, indietro: MA.fase === "tiro" || MA.fase === "danni", tono: "rosso" };
   const testa = `<p class="aiuto">${esc(az.chi)} · ${esc(a.nome)} ${sg(a.colpire)} · ${esc(a.danni || "")}</p>`;
   let h = "";
@@ -674,7 +729,11 @@ function disegnaMaster(nuovo = true) {
   } else if (MA.fase === "esito") {
     const es = esito(t, b.ca);
     h = rivelazione(es === "mancato" ? "mancato" : t.critico ? "critico" : "colpito", es === "mancato" ? "Mancato" : t.critico ? "Critico!" : "Colpito!", `${t.tot} contro CA ${b.ca} · ${esc(b.nome)}`) +
-      (es === "mancato" ? `<div class="fondo"><button class="btn up" data-mat="chiudi">Chiudi</button></div>` : `<div class="fondo"><button class="btn up" data-mat="danni">Tira i danni${t.critico ? " (doppi)" : ""}</button></div>`);
+      (es === "mancato" ? `<div class="fondo"><button class="btn up" data-mat="chiudi">Chiudi</button></div>`
+        : !b.creatura && b.hp === 0 && !t.critico
+          ? `<p class="aiuto centrato">${esc(b.nome)} è a terra: se il colpo parte da vicino (entro 1,5 m) è un critico, e vale due fallimenti contro la morte.</p>
+            <div class="fondo"><button class="btn up" data-mat="danni-vicino">Da vicino: critico</button><button class="btn" data-mat="danni">Da lontano: tira i danni</button></div>`
+          : `<div class="fondo"><button class="btn up" data-mat="danni">Tira i danni${t.critico ? " (doppi)" : ""}</button></div>`);
   } else if (MA.fase === "danni") {
     const parti = partiMaster(a, t), som = sommaDanni(parti), fin = som ? conResistenze(som.perTipo, b.res) : null, attiva = parti.find(p => p.valori.some(vuoto));
     h = `<p class="domanda">Tira i danni</p><p class="aiuto">${t.critico ? "Critico: i dadi sono doppi. " : ""}${esc(a.danni || "")}</p>
@@ -687,6 +746,12 @@ function disegnaMaster(nuovo = true) {
   }
   MA.f.mostra(h, opz);
 }
+/* il tiro per colpire del master; contro chi è a terra un colpo andato a segno da vicino (entro 1,5 m) è critico: lo dice il master */
+function tiroMaster(a) {
+  const t = tiroPerColpire({ dadi: MA.d20, modo: MA.modo, bonus: a.colpire });
+  if (t && MA.vicino && !t.fallimento) t.critico = true;
+  return t;
+}
 function partiMaster(a, t) {
   return partiFormula(a.danni).map((p, k) => {
     const n = t && t.critico ? p.n * 2 : p.n;
@@ -698,7 +763,7 @@ async function clicFinestraMaster(e) {
   const b = e.target.closest("button"); if (!b || b.disabled) return;
   const ds = b.dataset, az = azioneDi(MA.gruppo, MA.i); if (!az) return;
   if (MA.reazione) az.chi = (creaturaInCampo(MA.reazione) || {}).nome || az.chi;
-  const a = az.azione, t = tiroPerColpire({ dadi: MA.d20, modo: MA.modo, bonus: a.colpire });
+  const a = az.azione, t = tiroMaster(a);
   if (ds.mb) { MA.bersaglio = ds.mb; MA.fase = "tiro"; return disegnaMaster(); }
   if (ds.mmodo) { MA.modo = ds.mmodo; MA.d20 = MA.d20.slice(0, MA.modo === "normale" ? 1 : 2); return disegnaMaster(false); }
   if (ds.md20) { const n = MA.modo === "normale" ? 1 : 2, i = Array.from({ length: n }, (_, k) => MA.d20[k]).findIndex(vuoto); if (i >= 0) MA.d20[i] = +ds.md20; else MA.d20[n - 1] = +ds.md20; return disegnaMaster(false); }
@@ -715,12 +780,13 @@ async function clicFinestraMaster(e) {
       return disegnaMaster();
     }
     case "danni": MA.fase = "danni"; return disegnaMaster();
+    case "danni-vicino": MA.vicino = true; MA.dadi = {}; MA.fase = "danni"; return disegnaMaster();
     case "applica": {
       const bb = bersagliMaster().find(x => x.id === MA.bersaglio), som = sommaDanni(partiMaster(a, t)); if (!som) return;
       const fin = conResistenze(som.perTipo, bb.res);
       try {
         if (bb.creatura) { const campi = await ferisci(bb.id, fin.tot, SC); await scriviScontro(campi); }
-        else colpisciPg(bb.id, fin.tot, az.chi);
+        else colpisciPg(bb.id, fin.tot, az.chi, { critico: !!(t && t.critico) });
       } catch (_) { toast("Non salvato: controlla la connessione", 5000); return; }
       MA.applicati = fin.tot; MA.fase = "fine"; return disegnaMaster();
     }
@@ -735,6 +801,7 @@ export async function clic(b, pg, scrivi) {
   if (scrivi) scriviScontro = scrivi;
   switch (b.dataset.at) {
     case "apri": if (pg) apriAttacco(pg); return true;
+    case "morte": if (pg) apriTiroMorte(pg); return true;
     case "oggetto": if (pg) apriOggetto(pg); return true;
     case "m-nuovo": apriAttaccoMaster(b.dataset.g, +b.dataset.i, b.dataset.r || null); return true;
     /* i gettoni del turno: Azione si gira a mano, Bonus e Reazione aprono il loro menu (o si riaccendono se già usati) */

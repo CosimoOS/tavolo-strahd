@@ -7,6 +7,7 @@ import { INCANTESIMI_ATTACCO, EXTRA_DANNI, moltTrucchetto, partiDanno, usabileIn
 import { opzioni, suOpzioni } from "./campagna.js";
 import { scorte, usaMunizione, munizioneDi, aggiungiScorta } from "./regole/munizioni.js";
 import { massimo, danno, cura, riduci, dopoRiposoLungo, segmentiBarra } from "./regole/pf.js";
+import { colpo, statoMorte } from "./regole/morte.js";
 import { cambiaSintonia, cambiaQuantita, togliOggetto, rigaZaino, SINTONIA_MAX } from "./regole/zaino.js";
 import { puoSalire, livelloPrima } from "./regole/livelli.js";
 import { effettoAttivo, bonusColpire } from "./regole/effetti.js";
@@ -286,7 +287,7 @@ export function apriScheda({ archivio, personaggi, onEsci, scontro, altro, tavol
       /* giocatore: una finestra che non si può non vedere; se ne ha già una aperta (sta tirando) o è il master, basta l'avviso */
       if (perMaster || document.body.classList.contains("passi-aperta")) toast(`${PERSONAGGI[k].name}: −${c.n} PF da ${c.da}`, 6000);
       else {
-        const t = testoColpito({ da: c.da, n: c.n, restano: STATE[k].hp, massimo: massimo(STATE[k]), nome: ids.length > 1 ? PERSONAGGI[k].name : "" });
+        const t = testoColpito({ da: c.da, n: c.n, restano: STATE[k].hp, massimo: massimo(STATE[k]), nome: ids.length > 1 ? PERSONAGGI[k].name : "", fallimenti: c.fallimenti || 0, totFallimenti: STATE[k].deathF || 0, morto: !!c.morto });
         const f = finestra({ chiave: "colpito", titolo: "Colpito", onClick: e => { if (e.target.closest("[data-colpito-ok]")) f.chiudi(); } });
         f.mostra(`${rivelazione("danno", t.numero, `<b>${esc(t.frase)}</b><br>${esc(t.sotto)}`)}<div class="fondo"><button class="btn up" data-colpito-ok>Ho capito</button></div>`, { tono: "rosso" });
       }
@@ -368,7 +369,7 @@ export function datiAttacco(k) {
     ...(St.styles || []).filter(n => /\breazion/i.test(STYLES[n] || "")).map(n => ({ n, testo: STYLES[n], tipo: "stile" })),
     ...incTesti.filter(i => /^reazione/i.test(i.t || "")).map(i => lancio(i, "reazione")),
   ];
-  return { nome: P.name, livello: L, critMin: P.critMin(L), attacchi: armi, opzioni: [...armi, ...incantesimi, ...oggetto, ...acqua], extra,
+  return { nome: P.name, livello: L, critMin: P.critMin(L), morte: { stato: statoMorte(St), s: St.deathS || 0, f: St.deathF || 0, turno: St.morteTurno || "" }, attacchi: armi, opzioni: [...armi, ...incantesimi, ...oggetto, ...acqua], extra,
     punizione: !!P.punizione && L >= 2, slot, inv: St.inv.slice(), usabili: St.inv.filter(usabileInCombattimento),
     perAzione: P.attacks(L), impetuose: P.surge ? { max: P.surges(L), usate: St.ai || 0 } : null,
     az: St.az || null, reazione: St.reazione || null, bonus, reazioni, conc: St.conc || "", effetto: eff, insp: P.insp ? (St.insp || 0) : 0 };
@@ -428,10 +429,10 @@ export function bersaglioPg(k) {
 }
 /** Il master colpisce un personaggio: tolti i PF (prima quelli temporanei) e salvato.
     "colpito" avvisa il telefono del giocatore, che mostra chi l'ha colpito e chiede la concentrazione. */
-export function colpisciPg(k, n, da) {
+export function colpisciPg(k, n, da, { critico = false } = {}) {
   const St = STATE[k]; if (!St) return null;
-  Object.assign(St, danno(St, n));
-  St.colpito = { n, da, t: Date.now() };
+  const r = colpo(St, n, { critico }); Object.assign(St, r.cambia);
+  St.colpito = { n, da, t: Date.now(), ...(r.fallimenti ? { fallimenti: r.fallimenti } : {}), ...(r.morto ? { morto: true } : {}) };
   if (k === cur) change(); else { clearTimeout(timers[k]); timers[k] = setTimeout(() => flush(k), 300); }
   return St.hp;
 }
@@ -614,8 +615,11 @@ function applicaPf(modo, n) {
   const prima = snap();
   if (modo === "danno") {
     if (!n) return;
-    Object.assign(S, danno(S, n)); change(); remember(`−${n} PF`, prima);
+    const r = colpo(S, n); Object.assign(S, r.cambia); change(); remember(`−${n} PF`, prima);
     controllaConcentrazione(n);
+    if (r.morto) toast("Danni mortali: tre fallimenti contro la morte", 6000);
+    else if (r.fallimenti) toast(`Danni a terra: un fallimento contro la morte (${S.deathF} su 3)`, 6000);
+    else if (S.hp === 0 && prima.hp > 0) toast("Sei a terra: qui sotto i tiri contro la morte", 6000);
   } else if (modo === "cura") {
     if (!n) return;
     if (S.hp === 0) { S.deathS = 0; S.deathF = 0; } S.hp = cura(S, n).hp; change(); remember(`+${n} PF`, prima);

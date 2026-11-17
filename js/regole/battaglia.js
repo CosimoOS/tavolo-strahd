@@ -16,10 +16,13 @@ export function tornaAlloScontro({ mioTurno, eraMioTurno, vista }) {
 }
 
 /** Le parole della finestra "ti hanno colpito". nome: solo per chi gioca più personaggi (dice quale è stato colpito). */
-export function testoColpito({ da, n, restano, massimo, nome }) {
+export function testoColpito({ da, n, restano, massimo, nome, fallimenti = 0, totFallimenti = 0, morto = false }) {
+  const aTerra = morto ? "Il colpo è mortale"
+    : fallimenti ? `Eri a terra${fallimenti > 1 ? ", colpo critico: due fallimenti" : ": un fallimento"} contro la morte (${totFallimenti} su 3)`
+    : "Sei a terra: 0 PF";
   return {
     numero: `−${n}`,
     frase: nome ? `${da} ha colpito ${nome}` : `${da} ti ha colpito`,
-    sotto: restano > 0 ? `Ti restano ${restano} PF su ${massimo}` : "Sei a terra: 0 PF",
+    sotto: restano > 0 ? `Ti restano ${restano} PF su ${massimo}` : aTerra,
   };
 }

@@ -1041,3 +1041,16 @@ body.modo-scontro:not(.scontro-vista):not(.master) .banda-scontro{box-shadow:ins
   .passi[data-fase="annuncio"] .inizio-scontro{animation:annuncio-entra .5s cubic-bezier(.16,1,.3,1) both}
   @keyframes annuncio-entra{from{opacity:0;transform:scale(.92)}}
 }
+
+/* ---------- a terra nello scontro: il tiro contro la morte al posto delle azioni ---------- */
+.a-terra{display:flex;flex-direction:column;gap:14px}
+.a-terra .mt-stato{margin:0;font-size:17px;line-height:1.35;color:var(--ink)}
+.a-terra .aiuto{margin:0}
+.mt-conti{display:flex;flex-direction:column;gap:10px;padding:14px 16px;border:1px solid var(--line);border-radius:14px}
+.mt-conti > div{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:28px}
+.mt-conti span:first-child{font-family:var(--f-display);font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.mt-pips{display:flex;gap:14px;padding-right:4px}
+.mt-pips i{width:14px;height:14px;transform:rotate(45deg);border:1.5px solid var(--gold-deep);border-radius:2px}
+.mt-pips.ok i.on{background:var(--ok);border-color:var(--ok)}
+.mt-pips.ko i.on{background:var(--crimson);border-color:var(--crimson)}
+.az-grande.mt-tira{width:100%;min-height:92px}
