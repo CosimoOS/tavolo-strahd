@@ -473,9 +473,8 @@ function vistaTiri() {
   const mancano = parts.filter(p => !tiroDi(p.id)).map(p => p.nome);
   return `<section><h2>Tirate l'iniziativa <small>${fatti} su ${parts.length}</small></h2>
     <ul class="tiri">${righe}</ul>
-    ${dm ? `<p class="hint">${mancano.length ? `Mancano ${esc(mancano.join(", "))}. Quando avranno tirato tutti lo scontro parte da solo.` : "Hanno tirato tutti: lo scontro parte adesso."}</p>
-      <div class="azioni tiri-az"><button class="btn rosso" data-az="chiudi">Annulla lo scontro</button>
-      ${mancano.length ? `<button class="btn up" data-az="inizia"${fatti ? "" : ` disabled data-perche="Non ha ancora tirato nessuno"`}>Inizia senza chi manca</button>` : ""}</div>`
+    ${dm ? `<p class="hint">${mancano.length ? `Mancano ${esc(mancano.join(", "))}. Quando avranno tirato tutti lo scontro parte da solo: per chi non può, tocca Tira accanto al suo nome.` : "Hanno tirato tutti: lo scontro parte adesso."}</p>
+      <div class="azioni tiri-az"><button class="btn rosso" data-az="chiudi">Annulla lo scontro</button></div>`
       : `<p class="hint">Quando avranno tirato tutti, lo scontro parte da solo.</p>`}</section>`;
 }
 

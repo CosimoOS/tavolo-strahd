@@ -6,7 +6,7 @@
    Strategia: per i file dell'app prima la rete (così un aggiornamento arriva subito) e, se la rete manca,
    la copia salvata. Le librerie di Firebase e i caratteri di Google hanno l'indirizzo con la versione,
    quindi non cambiano mai: per quelli prima la copia. I dati (Firestore) non passano mai di qui. */
-const VERSIONE = "tavolo-v30";
+const VERSIONE = "tavolo-v31";
 const FILE = [
   "./", "index.html", "manifest.webmanifest",
   "css/tema.css", "css/scheda.css", "css/profili.css", "css/scontro.css", "css/nemici.css", "css/attacco.css", "css/passi.css", "css/altro.css", "css/vetro.css",

@@ -90,7 +90,7 @@ Per le cose da programmatore (file, prove, pubblicazione nel dettaglio) c'è `LE
 5. **Tirate l'iniziativa** si accende solo con **almeno un nemico** in campo. Ai giocatori compare
    *È iniziato uno scontro! Tira l'iniziativa*.
    I PNG (Ireena, alleati, mostri) **tirano da soli**: si vede il d20 che rotola.
-6. Quando hanno tirato tutti **lo scontro parte da solo**. Se qualcuno non c'è: *Inizia senza chi manca* (resta fuori).
+6. Quando hanno tirato tutti **lo scontro parte da solo**. Se qualcuno non può tirare, il master tocca *Tira* accanto al suo nome e tira al suo posto.
 
 ### Il bestiario
 - Diviso in tre parti: **Mostri** (partono contro il gruppo), **Persone** (abitanti e PNG: la parte si sceglie quando entrano
