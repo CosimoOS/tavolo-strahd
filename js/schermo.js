@@ -64,3 +64,11 @@ export function avviaTocchi(avvisa) {
     if (testo) avvisa(testo);
   }, true);
 }
+
+/** Finché l'app è aperta lo schermo non va in standby (dove il telefono lo permette). Il permesso cade ogni volta
+    che l'app passa in secondo piano, quindi si richiede di nuovo quando torna davanti. */
+export function tieniSveglio() {
+  if (!("wakeLock" in navigator)) return;
+  const chiedi = () => { if (document.visibilityState === "visible") navigator.wakeLock.request("screen").catch(() => {}); };
+  chiedi(); document.addEventListener("visibilitychange", chiedi);
+}

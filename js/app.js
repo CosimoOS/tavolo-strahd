@@ -11,12 +11,13 @@ import { avviaScontro, fermaScontro, mostraVista, statoScontroBreve, mostraBesti
 import { profilo } from "./personaggi/index.js";
 import { stemma } from "./stemmi.js";
 import { impostaOpzioni, opzioni } from "./campagna.js";
-import { avviaSchermo, avviaTocchi } from "./schermo.js";
+import { avviaSchermo, avviaTocchi, tieniSveglio } from "./schermo.js";
 
 const $ = id => document.getElementById(id);
 /* iPhone: la pagina alta quanto lo schermo vero, prima di tutto il resto (altrimenti la barra in basso resta sollevata) */
 avviaSchermo();
 avviaTocchi(t => toast(t));
+tieniSveglio();
 const arch = await creaArchivio(CONFIG);
 /* sola lettura: una fascia sempre visibile, così non ci si dimentica che niente viene salvato */
 if (CONFIG.solaLettura) {

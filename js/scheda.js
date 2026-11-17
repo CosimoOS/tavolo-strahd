@@ -560,8 +560,8 @@ $("navConto").addEventListener("click", e => {
 $("contoFoglio").addEventListener("click", e => {
   const p = e.target.closest("[data-passa]"); if (p) { passaA(p.dataset.passa); chiudiConto(); return; }
   if (e.target.closest("[data-resta-conto]")) { chiudiConto(); return; }
-  /* telefono: il pannello è già la domanda ("vuoi cambiare profilo?"), quindi si esce subito, senza una seconda finestra */
-  if (e.target.closest("[data-esci-conto]")) { chiudiConto(); chiediUscita(); if (matchMedia("(max-width:899px)").matches) $("esciSi").click(); return; }
+  /* un tocco solo: il pannello dice già che servirà di nuovo il PIN, niente seconda conferma */
+  if (e.target.closest("[data-esci-conto]")) { chiudiConto(); chiediUscita(); $("esciSi").click(); return; }
   /* le misure dello schermo: servono solo per capire, da una foto, un difetto che si vede su un telefono */
   const mi = e.target.closest("[data-misure]");
   if (mi) {

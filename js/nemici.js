@@ -360,7 +360,7 @@ const PARTI = [["mostri", "Mostri", "Partono contro il gruppo."], ["persone", "P
 let parteBest = "mostri", ordineBest = "nome";
 export function htmlBestiarioSezione() {
   /* sul telefono "Nuovo" sta accanto al titolo e "Importa" in fondo alla lista: in cima restano solo cerca, parti e ordine */
-  return `<header class="testa-pagina con-azione"><div><h1>Bestiario</h1><p>${B.creature.length} modelli<span class="solo-pc"> · tocca per modificarli</span></p></div>
+  return `<header class="testa-pagina con-azione"><div><h1>Bestiario</h1><p>${B.creature.length === 1 ? "1 modello" : B.creature.length + " modelli"}<span class="solo-pc"> · tocca per modificarli</span></p></div>
     <button class="bv oro solo-telefono" data-nz="nuovo" type="button">${icona("piu")}Nuovo</button></header>` + htmlBestiario(true);
 }
 /* sezione: true nella pagina Bestiario del master (ha il suo titolo); false nel pannello aperto durante uno scontro */
