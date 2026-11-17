@@ -14,7 +14,9 @@ import { PERSONAGGI } from "./personaggi/index.js";
 import { stemma, avatar } from "./stemmi.js";
 import { icona } from "./icone.js";
 import { versione } from "./copie.js";
+import { finestra, rivelazione } from "./passi.js";
 import { misure } from "./schermo.js";
+import { testoColpito } from "./regole/battaglia.js";
 
 const $ = id => document.getElementById(id);
 function esc(t) { const e = document.createElement("span"); e.textContent = t; return e.innerHTML; }
@@ -281,7 +283,13 @@ export function apriScheda({ archivio, personaggi, onEsci, scontro, altro, tavol
     /* colpito da un attacco del master: avviso, e tiro di concentrazione se serve */
     const c = STATE[k].colpito;
     if (!primaVolta && c && c.t !== prima && Date.now() - c.t < 60000) {
-      toast(`${PERSONAGGI[k].name}: −${c.n} PF da ${c.da}`, 6000);
+      /* giocatore: una finestra che non si può non vedere; se ne ha già una aperta (sta tirando) o è il master, basta l'avviso */
+      if (perMaster || document.body.classList.contains("passi-aperta")) toast(`${PERSONAGGI[k].name}: −${c.n} PF da ${c.da}`, 6000);
+      else {
+        const t = testoColpito({ da: c.da, n: c.n, restano: STATE[k].hp, massimo: massimo(STATE[k]), nome: ids.length > 1 ? PERSONAGGI[k].name : "" });
+        const f = finestra({ chiave: "colpito", titolo: "Colpito", onClick: e => { if (e.target.closest("[data-colpito-ok]")) f.chiudi(); } });
+        f.mostra(`${rivelazione("danno", t.numero, `<b>${esc(t.frase)}</b><br>${esc(t.sotto)}`)}<div class="fondo"><button class="btn up" data-colpito-ok>Ho capito</button></div>`, { tono: "rosso" });
+      }
       try { navigator.vibrate && navigator.vibrate([120, 60, 120]); } catch (_) {}
       if (k === cur) { S = STATE[k]; controllaConcentrazione(c.n); }
     }

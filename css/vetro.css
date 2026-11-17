@@ -1009,3 +1009,25 @@ body.modo-scontro:not(.scontro-vista):not(.master) .banda-scontro{box-shadow:ins
   .azioni.tiri-az .btn{width:100%;min-height:52px;margin:0}
   .azioni.tiri-az .btn.up{order:-1}
 }
+@media (max-width:899px){
+  /* tiro d'iniziativa: tutto in uno schermo, senza scorrere. Il tastierino prende lo spazio che resta e Conferma è sempre in vista */
+  .passi[data-chiave="iniziativa"] .passi-corpo{display:flex;flex-direction:column;overflow:hidden;padding:8px 18px max(14px,env(safe-area-inset-bottom,0px))}
+  .passi[data-chiave="iniziativa"] .passo{flex:1;min-height:0;gap:10px}
+  .passi[data-chiave="iniziativa"] .passo > h2,.passi[data-chiave="iniziativa"] .passo > h3{margin:0}
+  .passi[data-chiave="iniziativa"] .aiuto{margin:0;font-size:15px;line-height:1.35}
+  .passi[data-chiave="iniziativa"] .extra{min-height:48px;padding-top:6px;padding-bottom:6px}
+  .passi[data-chiave="iniziativa"] .casella{width:60px;height:60px}
+  .passi[data-chiave="iniziativa"] .tasti{flex:1;min-height:0;grid-auto-rows:minmax(0,1fr);gap:8px;max-height:340px}
+  .passi[data-chiave="iniziativa"] .tasto{min-height:0}
+  .passi[data-chiave="iniziativa"] .totale{min-height:52px;padding-top:6px;padding-bottom:6px}
+  .passi[data-chiave="iniziativa"] .fondo{margin-top:0;padding-top:0}
+  .passi[data-chiave="iniziativa"] .fondo .btn.up{min-height:56px}
+}
+@media (max-width:899px){
+  .passi[data-chiave="iniziativa"] .rivela{padding:14px 16px;gap:4px;border-radius:22px}
+  .passi[data-chiave="iniziativa"] .rivela-segno{width:40px;height:40px}
+  .passi[data-chiave="iniziativa"] .rivela-segno svg{width:22px;height:22px}
+  .passi[data-chiave="iniziativa"] .rivela b{font-size:20px;letter-spacing:.02em}
+  .passi[data-chiave="iniziativa"] .rivela span{font-size:15px}
+  .passi[data-chiave="iniziativa"] .passo > h2,.passi[data-chiave="iniziativa"] .passo > h3{font-size:20px;line-height:1.2}
+}

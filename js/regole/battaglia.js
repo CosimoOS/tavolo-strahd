@@ -14,3 +14,12 @@ export function schermoBattaglia({ master, inScontro, vista }) {
 export function tornaAlloScontro({ mioTurno, eraMioTurno, vista }) {
   return !!(mioTurno && !eraMioTurno && !vista);
 }
+
+/** Le parole della finestra "ti hanno colpito". nome: solo per chi gioca più personaggi (dice quale è stato colpito). */
+export function testoColpito({ da, n, restano, massimo, nome }) {
+  return {
+    numero: `−${n}`,
+    frase: nome ? `${da} ha colpito ${nome}` : `${da} ti ha colpito`,
+    sotto: restano > 0 ? `Ti restano ${restano} PF su ${massimo}` : "Sei a terra: 0 PF",
+  };
+}
